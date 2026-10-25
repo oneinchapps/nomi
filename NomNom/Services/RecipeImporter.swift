@@ -21,30 +21,13 @@ enum RecipeImporter {
         let save: Bool
     }
 
-    private struct ErrorBody: Decodable {
-        let error: String
-    }
-
-    struct ImportError: LocalizedError {
-        let message: String
-        var errorDescription: String? { message }
-    }
-
     static func importRecipe(url: URL?, text: String? = nil, save: Bool) async throws -> Result {
-        do {
-            return try await supabase.functions.invoke(
-                "import-recipe",
-                options: FunctionInvokeOptions(
-                    body: Request(url: url?.absoluteString, text: text, save: save),
-                    // Seite laden + Claude + Bild kopieren dauert gern 15–30 Sekunden
-                    timeoutInterval: 90
-                )
-            )
-        } catch let FunctionsError.httpError(_, data) {
-            // Die Funktion liefert verständliche deutsche Fehlermeldungen
-            let message = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error
-            throw ImportError(message: message ?? "Das Rezept ließ sich nicht auslesen.")
-        }
+        // Seite laden + Claude + Bild kopieren dauert gern 15–30 Sekunden
+        try await callFunction(
+            "import-recipe",
+            body: Request(url: url?.absoluteString, text: text, save: save),
+            fallbackMessage: "Das Rezept ließ sich nicht auslesen."
+        )
     }
 
     /// Erste http(s)-URL aus geteiltem Text, z. B. „Schau mal! https://vm.tiktok.com/…“

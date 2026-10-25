@@ -133,3 +133,16 @@ struct DurationLabelTests {
         #expect(Recipe.durationLabel(95) == "1 Std 35 Min")
     }
 }
+
+struct EmojiTests {
+    @Test(arguments: [
+        ("Kürbis-Gnocchi mit Salbeibutter", "🎃"),
+        ("Rührei mit Schnittlauch", "🍳"),
+        ("Halloumi-Tacos", "🌮"),
+        ("Klassische Rinderrouladen", "🥩"),
+        ("Etwas ganz anderes", "🍽️"),
+    ])
+    func picksFittingEmoji(title: String, emoji: String) {
+        #expect(Recipe(title: title).emoji == emoji)
+    }
+}

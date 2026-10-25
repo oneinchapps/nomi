@@ -94,7 +94,7 @@ struct ImportLinkView: View {
                     )
                 }
             } catch {
-                self.error = (error as? LocalizedError)?.errorDescription ?? userMessage(for: error)
+                self.error = displayMessage(for: error)
             }
             withAnimation { isImporting = false }
         }

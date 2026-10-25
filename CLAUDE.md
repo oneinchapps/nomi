@@ -30,6 +30,12 @@ Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
 - Lokal starten: `supabase functions serve import-recipe`
 - Teilen-Erweiterung `NomNomShare` nutzt Design-System, Modelle und Services der App mit (siehe project.yml) und teilt die Anmeldung über die Keychain-Gruppe `<Team>.de.gregorzoller.nomnom.shared`.
 
+## Gemeinsam entscheiden (Heute-Tab)
+- Edge Function `supabase/functions/decide`: `suggest` (Chat + Sammlung + bisherige Stimmen → 5 Karten, Antwort von nomnom) und `expand` (Idee → vollständiges Rezept in der Sammlung). Prompts in `suggest.ts`, gemeinsames Rezeptschema und Claude-Aufruf in `supabase/functions/_shared/recipe.ts`.
+- Match entsteht per Trigger `check_match`, sobald alle Mitglieder dieselbe Karte mögen.
+- Antworten von nomnom (`user_id` null) schreibt nur die Function mit `supabaseAdmin`; Nutzer:innen dürfen per RLS nur als sie selbst schreiben.
+- Neue Tabellen haben auch für `service_role` keine Standardrechte – bei Bedarf gezielt `grant`.
+
 ## Tests
 - `NomNomTests` (Swift Testing): Zutaten-Parser, Mengenformat, Skalierung, Abteilungs-Zuordnung
 - `NomNomUITests`: Onboarding mit zwei Personen und Rezept-Flow (anlegen, öffnen, Portionen skalieren). Gemeinsame Helfer stehen in `UITestSupport.swift`.

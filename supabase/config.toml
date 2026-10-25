@@ -432,3 +432,10 @@ entrypoint = "./functions/import-recipe/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/import-recipe/*.html" ]
+
+[functions.decide]
+enabled = true
+# Auth übernimmt withSupabase({ auth: "user" }) in der Function
+verify_jwt = false
+import_map = "./functions/decide/deno.json"
+entrypoint = "./functions/decide/index.ts"

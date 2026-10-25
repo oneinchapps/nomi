@@ -120,7 +120,7 @@ struct ShareImportView: View {
             let result = try await RecipeImporter.importRecipe(url: url, text: input.text, save: true)
             withAnimation(.smooth) { phase = .done(result.recipe, foundRecipe: result.foundRecipe) }
         } catch {
-            phase = .failed((error as? LocalizedError)?.errorDescription ?? userMessage(for: error))
+            phase = .failed(displayMessage(for: error))
         }
     }
 }

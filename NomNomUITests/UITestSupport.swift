@@ -135,6 +135,15 @@ class NomNomUITestCase: XCTestCase {
         return [:]
     }
 
+    /// GET auf eine Liste (PostgREST liefert ein Array).
+    func apiList(_ path: String, as user: APIUser) async throws -> [[String: Any]] {
+        var request = URLRequest(url: URL(string: apiURL + path)!)
+        request.setValue(localKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization")
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
+    }
+
     /// Holt den Code aus der neuesten Mail an diese Adresse in Mailpit.
     func fetchCode(for email: String) throws -> String {
         let deadline = Date.now.addingTimeInterval(15)
