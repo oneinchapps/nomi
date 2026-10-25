@@ -178,13 +178,15 @@ enum IngredientParser {
 // MARK: - Mengen formatieren
 
 enum QuantityFormatter {
-    /// Menge mit Einheit; große Gramm-/Milliliter-Werte als kg/l („1500 g“ → „1,5 kg“).
+    /// Menge mit Einheit in der lesbarsten Größe: „1500 g“ → „1,5 kg“, „0,75 l“ → „750 ml“.
     static func amount(_ quantity: Double?, unit: String?) -> String {
         guard let quantity else { return unit ?? "" }
         var value = quantity
         var unit = unit
         if unit == "g", value >= 1000 { value /= 1000; unit = "kg" }
         if unit == "ml", value >= 1000 { value /= 1000; unit = "l" }
+        if unit == "kg", value < 1 { value *= 1000; unit = "g" }
+        if unit == "l", value < 1 { value *= 1000; unit = "ml" }
         let shown = value > 1 ? unit.map { plurals[$0] ?? $0 } : unit
         return [string(for: value, unit: unit), shown].compactMap { $0 }.joined(separator: " ")
     }

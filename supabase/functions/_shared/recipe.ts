@@ -98,7 +98,13 @@ export function claude(): Anthropic {
 
 /** Strukturierte Antwort von Claude (JSON-Schema), mit Fallback bei fälschlicher Ablehnung. */
 export async function structured<T>(
-  options: { system: string; user: string; schema: Record<string, unknown>; effort?: "low" | "medium" | "high" },
+  options: {
+    system: string;
+    /** Text oder Inhaltsblöcke (z. B. Fotos + Text) */
+    user: string | Anthropic.Beta.BetaContentBlockParam[];
+    schema: Record<string, unknown>;
+    effort?: "low" | "medium" | "high";
+  },
 ): Promise<T> {
   const response = await claude().beta.messages.create({
     model: "claude-opus-5-5",

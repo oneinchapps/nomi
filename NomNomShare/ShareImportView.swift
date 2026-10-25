@@ -54,7 +54,7 @@ struct ShareImportView: View {
                 text: "Öffne nomnom einmal und melde dich an. Danach kannst du Rezepte direkt hierher teilen."
             )
         case .noLink:
-            message(emoji: "🔗", title: "Kein Link gefunden", text: "Teile einen Beitrag oder eine Rezeptseite mit Link.")
+            message(emoji: "🔗", title: "Nichts zum Auslesen", text: "Teile einen Beitrag, eine Rezeptseite oder ein Foto von einem Rezept.")
         case .failed(let text):
             message(emoji: "🫠", title: "Hat nicht geklappt", text: text)
         case .done(let recipe, let found):
@@ -111,13 +111,18 @@ struct ShareImportView: View {
             return
         }
         let input = await loadInput()
-        guard let url = input.url else {
+        let photos = input.images.compactMap(UIImage.init(data:))
+        guard input.url != nil || !photos.isEmpty else {
             phase = .noLink
             return
         }
         phase = .importing
         do {
-            let result = try await RecipeImporter.importRecipe(url: url, text: input.text, save: true)
+            let result = if let url = input.url {
+                try await RecipeImporter.importRecipe(url: url, text: input.text, save: true)
+            } else {
+                try await RecipeImporter.importRecipe(photos: photos, save: true)
+            }
             withAnimation(.smooth) { phase = .done(result.recipe, foundRecipe: result.foundRecipe) }
         } catch {
             phase = .failed(displayMessage(for: error))

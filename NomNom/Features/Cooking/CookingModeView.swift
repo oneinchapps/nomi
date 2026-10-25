@@ -3,21 +3,22 @@ import SwiftUI
 /// Kochmodus: Vorbereitung, dann ein Schritt pro Seite, Timer laufen über alle Seiten weiter.
 struct CookingModeView: View {
     let recipe: Recipe
-    let servings: Int
 
     @Environment(\.dismiss) private var dismiss
+    /// Startet mit der Portionenzahl aus der Rezeptansicht, lässt sich in der Vorbereitung ändern.
+    @State private var servings: Int
     @State private var page = 0
     @State private var checked: Set<Int> = []
     @State private var timers: CookingTimers
 
     init(recipe: Recipe, servings: Int) {
         self.recipe = recipe
-        self.servings = servings
+        _servings = State(initialValue: servings)
         _timers = State(initialValue: CookingTimers(recipeTitle: recipe.title))
     }
 
     private var ingredients: [Ingredient] { recipe.scaledIngredients(for: servings) }
-    private var steps: [Recipe.Step] { recipe.steps }
+    private var steps: [Recipe.Step] { recipe.scaledSteps(for: servings) }
     /// Vorbereitung + Schritte + „Guten Appetit“
     private var lastPage: Int { steps.count + 1 }
 
@@ -169,8 +170,11 @@ struct CookingModeView: View {
                 Text("Erst mal alles bereitstellen")
                     .font(.heading(26, relativeTo: .title2))
                     .foregroundStyle(Color.ink)
-                    .padding(.bottom, 4)
-                MetaLabel(Recipe.servingsLabel(servings))
+                    .padding(.bottom, 8)
+                // Mengen in Zutaten und Schritten rechnen sich mit
+                ServingsStepper(servings: $servings)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("cooking-servings")
                     .padding(.bottom, 10)
                 ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
                     Button {
@@ -299,13 +303,17 @@ struct StepTimerCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     MetaLabel(timer?.isFinished == true ? "Fertig" : (timer?.isRunning == true ? "Läuft" : "Timer"))
                     Text(CookingFormat.countdown(remaining))
-                        .font(.custom("DMMono-Medium", size: 40, relativeTo: .largeTitle))
+                        // Mit Stunden („1:59:41“) kleiner, damit die Anzeige in einer Zeile bleibt
+                        .font(.custom("DMMono-Medium", size: duration >= 3600 ? 32 : 40, relativeTo: .largeTitle))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                         .foregroundStyle(timer?.isFinished == true ? Color.brand : Color.ink)
                         .contentTransition(.numericText(countsDown: true))
                         .accessibilityLabel("Restzeit \(CookingFormat.countdown(remaining))")
                 }
-                Spacer()
+                .layoutPriority(1)
+                Spacer(minLength: 8)
                 if timer != nil {
                     roundButton("arrow.counterclockwise", label: "Timer zurücksetzen") { timers.reset(step: step) }
                 }

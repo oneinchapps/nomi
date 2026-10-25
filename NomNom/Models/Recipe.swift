@@ -16,7 +16,7 @@ struct Recipe: Codable, Identifiable, Hashable, Sendable {
     var createdAt: Date?
 
     enum Source: String, Codable, Sendable {
-        case manual, web, instagram, tiktok, ai
+        case manual, web, instagram, tiktok, ai, photo
     }
 
     struct Step: Codable, Hashable, Sendable {

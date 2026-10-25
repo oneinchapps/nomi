@@ -47,3 +47,28 @@ struct MentionTests {
         #expect(step.mentionedIngredients(from: ingredients).isEmpty)
     }
 }
+
+struct StepScalingTests {
+    @Test(arguments: [
+        ("200 g Mehl unterheben", 2.0, "400 g Mehl unterheben"),
+        ("1 Dose Tomaten und 2 EL Öl dazu", 2.0, "2 Dosen Tomaten und 4 EL Öl dazu"),
+        ("½ TL Salz", 2.0, "1 TL Salz"),
+        ("1,5 l Wasser aufkochen", 0.5, "750 ml Wasser aufkochen"),
+        ("3 Zehen Knoblauch", 0.5, "1 ½ Zehen Knoblauch"),
+        ("750g Kartoffeln", 2.0, "1,5 kg Kartoffeln"),
+    ] as [(String, Double, String)])
+    func scalesAmountsWithUnits(text: String, factor: Double, expected: String) {
+        #expect(StepText.scaled(text, by: factor) == expected)
+    }
+
+    @Test func leavesTemperaturesTimesAndBareNumbersAlone() {
+        let text = "Bei 180 °C 25 Minuten backen, dann in 3 Stücke schneiden und 2 lange Streifen legen."
+        #expect(StepText.scaled(text, by: 2) == text)
+    }
+
+    @Test func recipeScalesStepTexts() {
+        let recipe = Recipe(title: "Test", servings: 2, steps: [Recipe.Step(text: "100 g Zucker einrühren", timerSeconds: 60)])
+        #expect(recipe.scaledSteps(for: 4).first == Recipe.Step(text: "200 g Zucker einrühren", timerSeconds: 60))
+        #expect(recipe.scaledSteps(for: 2).first?.text == "100 g Zucker einrühren")
+    }
+}

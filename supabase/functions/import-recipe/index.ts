@@ -1,6 +1,7 @@
-// Rezept aus einem geteilten Link (Blog, Instagram, TikTok) auslesen.
+// Rezept aus einem geteilten Link (Blog, Instagram, TikTok) oder von Fotos (gedruckt oder handgeschrieben) auslesen.
 //
 // POST { url: string, text?: string, save?: boolean }
+// POST { images: [{ data: base64, media_type: "image/jpeg" }], text?: string, save?: boolean }
 // → { recipe: Recipe, found_recipe: boolean, saved: boolean }
 //
 // `recipe` hat das Format der Tabelle public.recipes und lässt sich in der App direkt als Recipe dekodieren.
@@ -10,8 +11,9 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "@anthropic-ai/sdk";
 import { withSupabase } from "@supabase/server";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { assertPublicURL, scrape } from "./scrape.ts";
-import { ExtractionError, extractRecipe } from "./extract.ts";
+import type { ExtractedRecipe } from "../_shared/recipe.ts";
+import { assertPublicURL, scrape, type ScrapedPage } from "./scrape.ts";
+import { ExtractionError, extractRecipe, extractRecipeFromPhotos, type PhotoMediaType } from "./extract.ts";
 
 const BUCKET = "recipe-images";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -20,10 +22,12 @@ const IMAGE_TYPES: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+const MAX_PHOTOS = 4;
 
 interface ImportRequest {
   url?: string;
   text?: string;
+  images?: { data?: string; media_type?: string }[];
   save?: boolean;
 }
 
@@ -42,8 +46,12 @@ export default {
       return error(400, "Ungültige Anfrage.");
     }
     const sharedText = body.text?.trim() || null;
-    const rawURL = body.url?.trim() || firstURL(sharedText);
-    if (!rawURL) return error(400, "Kein Link gefunden.");
+    const photos = (body.images ?? [])
+      .filter((image) => image.data && image.media_type && image.media_type in IMAGE_TYPES)
+      .map((image) => ({ data: image.data!, mediaType: image.media_type as PhotoMediaType }));
+    const rawURL = photos.length ? null : body.url?.trim() || firstURL(sharedText);
+    if (!photos.length && !rawURL) return error(400, "Kein Link und kein Foto gefunden.");
+    if (photos.length > MAX_PHOTOS) return error(400, `Höchstens ${MAX_PHOTOS} Fotos pro Rezept.`);
 
     const { data: membership } = await ctx.supabase
       .from("household_members")
@@ -53,31 +61,25 @@ export default {
     if (!membership) return error(403, "Kein Haushalt.");
     const householdId: string = membership.household_id;
 
-    // 1. Seite laden
-    let page;
-    try {
-      page = await scrape(rawURL);
-    } catch (e) {
-      console.error("scrape failed", rawURL, e);
-      if (!sharedText) {
-        return error(422, "Die Seite ließ sich nicht öffnen. Kopier den Rezepttext und füg ihn ein.");
+    // 1. Quelle vorbereiten: Fotos direkt, Links erst laden
+    let page: ScrapedPage | null = null;
+    if (rawURL) {
+      try {
+        page = await scrape(rawURL);
+      } catch (e) {
+        console.error("scrape failed", rawURL, e);
+        if (!sharedText) {
+          return error(422, "Die Seite ließ sich nicht öffnen. Kopier den Rezepttext und füg ihn ein.");
+        }
+        // Ohne Seite, aber mit mitgeschicktem Text (z. B. kopierte Caption) geht es trotzdem
+        page = { url: rawURL, platform: "web", title: null, description: null, imageURL: null, recipeJSON: null, text: null };
       }
-      // Ohne Seite, aber mit mitgeschicktem Text (z. B. kopierte Caption) geht es trotzdem
-      page = {
-        url: rawURL,
-        platform: "web" as const,
-        title: null,
-        description: null,
-        imageURL: null,
-        recipeJSON: null,
-        text: null,
-      };
     }
 
     // 2. Rezept auslesen
-    let extracted;
+    let extracted: ExtractedRecipe;
     try {
-      extracted = await extractRecipe(page, sharedText);
+      extracted = page ? await extractRecipe(page, sharedText) : await extractRecipeFromPhotos(photos, sharedText);
     } catch (e) {
       console.error("extract failed", e);
       if (e instanceof Anthropic.RateLimitError) {
@@ -89,8 +91,9 @@ export default {
       throw e;
     }
 
-    // 3. Bild in den eigenen Speicher kopieren – Instagram/TikTok-Bildlinks laufen nach Tagen ab
-    const copied = page.imageURL ? await copyImage(ctx.supabase, householdId, page.imageURL) : null;
+    // 3. Bild in den eigenen Speicher kopieren – Instagram/TikTok-Bildlinks laufen nach Tagen ab.
+    // Fotos von Kochbuchseiten oder Karteikarten taugen nicht als Rezeptbild – da bleibt es leer.
+    const copied = page?.imageURL ? await copyImage(ctx.supabase, householdId, page.imageURL) : null;
     const imageURL = copied ? reachableFromClient(copied, req) : null;
 
     const recipe = {
@@ -98,8 +101,8 @@ export default {
       household_id: householdId,
       title: extracted.title.trim() || "Neues Rezept",
       summary: extracted.summary,
-      source: page.platform,
-      source_url: page.url,
+      source: page ? page.platform : "photo",
+      source_url: page?.url ?? null,
       image_url: imageURL,
       total_minutes: extracted.total_minutes && extracted.total_minutes > 0 ? extracted.total_minutes : null,
       servings: extracted.servings > 0 ? extracted.servings : 2,

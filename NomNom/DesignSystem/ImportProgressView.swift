@@ -2,10 +2,12 @@ import SwiftUI
 
 /// Wartezustand – das Auslesen dauert ein paar Sekunden, deshalb mit etwas Bewegung.
 struct ImportProgressView: View {
+    static let defaultMessages = ["Seite wird geöffnet …", "Zutaten werden gezählt …", "Schritte werden sortiert …", "Fast fertig …"]
+
+    var messages = defaultMessages
     @State private var step = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let messages = ["Seite wird geöffnet …", "Zutaten werden gezählt …", "Schritte werden sortiert …", "Fast fertig …"]
     private let emojis = ["🥕", "🧄", "🍋", "🌶️", "🧀", "🍅"]
 
     var body: some View {

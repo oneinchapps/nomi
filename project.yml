@@ -62,6 +62,7 @@ targets:
         # Nur für `supabase start` auf 127.0.0.1 während der Entwicklung
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSCameraUsageDescription: nomnom fotografiert Rezepte aus Kochbüchern oder von Karteikarten, um sie auszulesen.
         # Gemeinsame Anmeldung mit der Teilen-Erweiterung (siehe SupabaseEnvironment.keychainGroup)
         KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomnom.shared
     scheme:
@@ -118,6 +119,7 @@ targets:
             NSExtensionActivationRule:
               NSExtensionActivationSupportsWebURLWithMaxCount: 1
               NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsImageWithMaxCount: 4
 
   NomNomTests:
     type: bundle.unit-test

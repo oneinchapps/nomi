@@ -43,3 +43,42 @@ extension Recipe.Step {
         }
     }
 }
+
+extension StepText {
+    /// Mengen mit Einheit im Schritttext umrechnen („200 g Mehl unterheben“ → „400 g …“ bei doppelter Menge).
+    /// Zahlen ohne Einheit (Temperaturen, Zeiten, „in 3 Teile schneiden“) bleiben, wie sie sind.
+    static func scaled(_ text: String, by factor: Double) -> String {
+        guard factor != 1, factor > 0 else { return text }
+        let pattern = /(?<number>\d+(?:[.,]\d+)?(?:\s*[½¼¾⅓⅔])?|\d+\/\d+|[½¼¾⅓⅔])\s*(?<unit>kg|g|mg|ml|cl|l|EL|TL|Esslöffel|Teelöffel|Gramm|Liter|Prisen?|Msp\.?|Bund|Dosen?|Packungen?|Päckchen|Zehen?|Scheiben?|Becher|Tassen?|Gläser|Glas|Handvoll|Stück)\b/
+            .ignoresCase()
+        return text.replacing(pattern) { match in
+            guard let value = number(match.output.number) else { return String(match.output.0) }
+            let unitText = String(match.output.unit)
+            let unit = IngredientParser.units[unitText.lowercased()] ?? (unitText.lowercased() == "gläser" ? "Glas" : unitText)
+            return QuantityFormatter.amount(value * factor, unit: unit)
+        }
+    }
+
+    private static func number(_ text: Substring) -> Double? {
+        let fractions: [Character: Double] = ["½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1.0 / 3, "⅔": 2.0 / 3]
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.count == 1, let f = fractions[trimmed.first!] { return f }
+        if trimmed.contains("/") {
+            let parts = trimmed.split(separator: "/").compactMap { Double($0) }
+            return parts.count == 2 && parts[1] != 0 ? parts[0] / parts[1] : nil
+        }
+        if let last = trimmed.last, let f = fractions[last] {
+            return Double(trimmed.dropLast().trimmingCharacters(in: .whitespaces)).map { $0 + f }
+        }
+        return Double(trimmed.replacingOccurrences(of: ",", with: "."))
+    }
+}
+
+extension Recipe {
+    /// Schritte mit umgerechneten Mengen im Text.
+    func scaledSteps(for targetServings: Int) -> [Step] {
+        guard targetServings != servings, servings > 0 else { return steps }
+        let factor = Double(targetServings) / Double(servings)
+        return steps.map { Step(text: StepText.scaled($0.text, by: factor), timerSeconds: $0.timerSeconds) }
+    }
+}

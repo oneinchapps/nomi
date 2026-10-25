@@ -76,7 +76,7 @@ final class RecipeStore {
 
     /// Verkleinert auf max. 1600 px, speichert als JPEG unter <household>/<uuid>.jpg und liefert die öffentliche URL.
     func uploadImage(_ image: UIImage) async throws -> URL {
-        let data = Self.jpegData(for: image)
+        let data = image.jpegData(maxSide: 1600)
         let path = "\(householdId.uuidString.lowercased())/\(UUID().uuidString.lowercased()).jpg"
         try await supabase.storage.from(Self.bucket).upload(
             path,
@@ -94,16 +94,5 @@ final class RecipeStore {
     private func storagePath(of url: URL?) -> String? {
         guard let url, let range = url.path.range(of: "/\(Self.bucket)/") else { return nil }
         return String(url.path[range.upperBound...])
-    }
-
-    static func jpegData(for image: UIImage, maxSide: CGFloat = 1600) -> Data {
-        let scale = min(1, maxSide / max(image.size.width, image.size.height))
-        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        let resized = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            image.draw(in: CGRect(origin: .zero, size: size))
-        }
-        return resized.jpegData(compressionQuality: 0.8) ?? Data()
     }
 }

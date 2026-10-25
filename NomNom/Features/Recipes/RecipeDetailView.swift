@@ -52,7 +52,7 @@ struct RecipeDetailView: View {
                     }
                     ingredients(recipe.scaledIngredients(for: currentServings))
                     if !recipe.steps.isEmpty {
-                        steps(recipe.steps)
+                        steps(recipe.scaledSteps(for: currentServings))
                     }
                     InlineError(message: error)
                 }
@@ -138,6 +138,7 @@ struct RecipeDetailView: View {
         case .tiktok: " · TikTok"
         case .web: recipe.sourceURL?.host().map { " · " + $0.replacingOccurrences(of: "www.", with: "") } ?? ""
         case .ai: " · Idee von nomnom"
+        case .photo: " · vom Foto"
         case .manual: ""
         }
     }

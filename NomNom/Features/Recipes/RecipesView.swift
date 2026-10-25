@@ -5,6 +5,7 @@ struct RecipesView: View {
     @State private var query = ""
     @State private var showsEditor = false
     @State private var showsImport = false
+    @State private var showsPhotoImport = false
 
     private var filtered: [Recipe] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -63,6 +64,7 @@ struct RecipesView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("Aus Link importieren", systemImage: "link") { showsImport = true }
+                    Button("Aus Foto importieren", systemImage: "camera") { showsPhotoImport = true }
                     Button("Von Hand anlegen", systemImage: "square.and.pencil") { showsEditor = true }
                 } label: {
                     Image(systemName: "plus")
@@ -80,6 +82,9 @@ struct RecipesView: View {
         }
         .sheet(isPresented: $showsImport) {
             ImportLinkView()
+        }
+        .sheet(isPresented: $showsPhotoImport) {
+            ImportPhotoView()
         }
     }
 
@@ -106,13 +111,15 @@ struct RecipesView: View {
             Text("Noch keine Rezepte")
                 .font(.cardTitle)
                 .foregroundStyle(Color.ink)
-            Text("Teilt Rezepte aus Instagram, TikTok oder Blogs direkt an nomnom – oder legt euer Lieblingsrezept von Hand an.")
+            Text("Teilt Rezepte aus Instagram, TikTok oder Blogs direkt an nomnom, fotografiert Kochbuch oder Omas Karteikarte – oder legt euer Lieblingsrezept von Hand an.")
                 .font(.bodySans)
                 .foregroundStyle(Color.inkMuted)
                 .lineSpacing(3)
             Button("Rezept aus Link") { showsImport = true }
                 .buttonStyle(.primary)
                 .padding(.top, 8)
+            Button("Rezept vom Foto", systemImage: "camera") { showsPhotoImport = true }
+                .buttonStyle(.secondary)
             Button("Erstes Rezept anlegen") { showsEditor = true }
                 .font(.bodySansMedium)
                 .foregroundStyle(Color.ink)

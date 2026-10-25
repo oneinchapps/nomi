@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Supabase
 
 /// Ruft die Edge Function `import-recipe` auf. Wird von der App (Vorschau im Editor)
@@ -16,9 +17,31 @@ enum RecipeImporter {
     }
 
     private struct Request: Encodable {
-        let url: String?
-        let text: String?
+        var url: String?
+        var text: String?
+        var images: [Photo]?
         let save: Bool
+    }
+
+    private struct Photo: Encodable {
+        let data: String
+        let media_type = "image/jpeg"
+    }
+
+    static let maxPhotos = 4
+
+    /// Rezept von Fotos (gedruckt oder handgeschrieben). Fotos werden auf 1600 px verkleinert –
+    /// genug zum Lesen von Handschrift, klein genug für einen schnellen Upload.
+    static func importRecipe(photos: [UIImage], note: String? = nil, save: Bool) async throws -> Result {
+        let encoded = photos.prefix(maxPhotos).map { photo in
+            Photo(data: photo.jpegData(maxSide: 1600, quality: 0.75).base64EncodedString())
+        }
+        return try await callFunction(
+            "import-recipe",
+            body: Request(text: note, images: Array(encoded), save: save),
+            timeout: 120,
+            fallbackMessage: "Das Rezept ließ sich nicht vom Foto lesen."
+        )
     }
 
     static func importRecipe(url: URL?, text: String? = nil, save: Bool) async throws -> Result {

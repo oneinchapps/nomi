@@ -19,6 +19,46 @@ So füllst du die Felder:
 
 Erfinde nichts. Enthält die Quelle kein Rezept – etwa ein Video, dessen Caption nur "Rezept in den Kommentaren" sagt –, setz found_recipe auf false, gib einen passenden title aus der Quelle an und lass ingredients und steps leer. Steht nur ein Teil da (z. B. Zutaten ohne Schritte), übernimm diesen Teil und setz found_recipe auf true.`;
 
+const PHOTO_PROMPT = `Du liest Rezepte von Fotos aus und überträgst sie in das Format einer deutschsprachigen Koch-App für einen Zwei-Personen-Haushalt. Die Fotos zeigen gedruckte Kochbuch- oder Zeitschriftenseiten, Screenshots oder handgeschriebene Rezeptkarten. Mehrere Fotos gehören zu einem Rezept und stehen in Lesereihenfolge.
+
+Handschrift entzifferst du sorgfältig, auch Abkürzungen ("Essl." = EL, "Teel." = TL, "Pfd." = 500 g, "Msp." = Messerspitze). Ist ein Wort nicht sicher lesbar, nimm die Lesart, die im Rezept Sinn ergibt; ist eine Menge unleserlich, lass quantity und unit leer statt zu raten. Ignoriere alles auf dem Foto, was nicht zum Rezept gehört (Seitenzahlen, Werbung, andere Rezepte daneben).
+
+Für die Felder gelten dieselben Regeln wie immer:
+- Alles auf Deutsch; title kurz und appetitlich, summary ein Satz oder null.
+- servings laut Vorlage, sonst anhand der Mengen schätzen; total_minutes laut Vorlage, sonst aus den Schritten schätzen.
+- Mengen als Zahl (1/2 → 0.5), amerikanische Maße umrechnen. Bei ganzen Dingen ("3 Eier", "2 Zwiebeln") bleibt unit null – kein "Stück". Ohne Mengenangabe sind quantity und unit null, Zusätze wie "fein gehackt" gehören in note, jede Zutat bekommt ihre Supermarkt-Abteilung.
+- steps: knappe, vollständige Arbeitsschritte in der Du-Form; nennt ein Schritt eine Dauer, setz timer_seconds.
+- tags: 2 bis 4 kurze deutsche Schlagworte.
+
+Ist auf den Fotos kein Rezept zu erkennen, setz found_recipe auf false, gib einen passenden title an und lass ingredients und steps leer. Erfinde nichts dazu.`;
+
+export type PhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
+
+/** Rezept von bis zu 4 Fotos (gedruckt oder handgeschrieben) auslesen. */
+export async function extractRecipeFromPhotos(
+  photos: { data: string; mediaType: PhotoMediaType }[],
+  note: string | null,
+): Promise<ExtractedRecipe> {
+  return await structured<ExtractedRecipe>({
+    system: PHOTO_PROMPT,
+    user: [
+      ...photos.map((photo) => ({
+        type: "image" as const,
+        source: { type: "base64" as const, media_type: photo.mediaType, data: photo.data },
+      })),
+      {
+        type: "text" as const,
+        text: note
+          ? `Lies das Rezept von ${photos.length > 1 ? "diesen Fotos" : "diesem Foto"} aus. Hinweis der Person: ${note}`
+          : `Lies das Rezept von ${photos.length > 1 ? "diesen Fotos" : "diesem Foto"} aus.`,
+      },
+    ],
+    schema: RECIPE_SCHEMA,
+    // Handschrift lesen lohnt etwas mehr Nachdenken
+    effort: "medium",
+  });
+}
+
 export async function extractRecipe(page: ScrapedPage, sharedText: string | null): Promise<ExtractedRecipe> {
   const parts = [
     `Plattform: ${page.platform}`,

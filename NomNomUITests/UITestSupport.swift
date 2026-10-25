@@ -15,14 +15,14 @@ class NomNomUITestCase: XCTestCase {
     }
 
     @MainActor
-    func launchFresh() -> XCUIApplication {
+    func launchFresh(extraEnvironment: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = [
+        app.launchEnvironment = extraEnvironment.merging([
             "NOMNOM_SUPABASE_URL": apiURL,
             "NOMNOM_SUPABASE_KEY": localKey,
             "NOMNOM_RESET_SESSION": "1",
             "NOMNOM_DISABLE_NOTIFICATIONS": "1",
-        ]
+        ]) { _, new in new }
         app.launch()
         XCTAssertTrue(app.buttons["Gemeinsam Essen finden"].waitForExistence(timeout: 10))
         return app
@@ -62,8 +62,8 @@ class NomNomUITestCase: XCTestCase {
 
     /// Kompletter Weg bis in die App mit eigenem, neuem Haushalt.
     @MainActor
-    func launchWithNewHousehold(name: String = "Alex") throws -> XCUIApplication {
-        let app = launchFresh()
+    func launchWithNewHousehold(name: String = "Alex", extraEnvironment: [String: String] = [:]) throws -> XCUIApplication {
+        let app = launchFresh(extraEnvironment: extraEnvironment)
         try signIn(app, email: "\(name.lowercased())-\(run)@nomnom.test")
         let field = app.textFields["Vorname"]
         field.tap()

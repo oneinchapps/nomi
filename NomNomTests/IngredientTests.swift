@@ -69,6 +69,12 @@ struct PluralUnitTests {
         #expect(QuantityFormatter.amount(3, unit: "Glas") == "3 Gläser")
         #expect(QuantityFormatter.amount(2, unit: "Bund") == "2 Bund")
     }
+
+    @Test func picksReadableSize() {
+        #expect(QuantityFormatter.amount(0.5, unit: "kg") == "500 g")
+        #expect(QuantityFormatter.amount(0.25, unit: "l") == "250 ml")
+        #expect(QuantityFormatter.amount(1500, unit: "g") == "1,5 kg")
+    }
 }
 
 struct ScalingTests {
