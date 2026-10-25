@@ -71,6 +71,70 @@ class NomNomUITestCase: XCTestCase {
         return app
     }
 
+    /// Rezept über den Editor anlegen; endet in der Rezeptsammlung.
+    @MainActor
+    func createRecipe(_ app: XCUIApplication, title: String, ingredients: String, steps: [String] = []) {
+        app.tabBars.buttons["Rezepte"].tap()
+        let firstRecipe = app.buttons["Erstes Rezept anlegen"]
+        if firstRecipe.waitForExistence(timeout: 5) {
+            firstRecipe.tap()
+        } else {
+            app.buttons["Rezept hinzufügen"].tap()
+            app.buttons["Von Hand anlegen"].tap()
+        }
+        let titleField = app.textFields["z. B. Halloumi-Tacos"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
+        titleField.tap()
+        titleField.typeText(title)
+        let ingredientsField = app.textViews["editor-ingredients"]
+        ingredientsField.tap()
+        ingredientsField.typeText(ingredients)
+        for (index, step) in steps.enumerated() {
+            if index > 0 { app.buttons["Schritt hinzufügen"].tap() }
+            let field = app.descendants(matching: .any)["step-\(index + 1)"]
+            field.tap()
+            field.typeText(step)
+        }
+        app.buttons["Sichern"].tap()
+        XCTAssertTrue(
+            app.buttons.containing(NSPredicate(format: "label CONTAINS %@", title)).firstMatch.waitForExistence(timeout: 10)
+        )
+    }
+
+    // MARK: - Zweite Person über die API (für Realtime-Tests)
+
+    struct APIUser {
+        let token: String
+    }
+
+    /// Meldet eine Person per Mail-Code an der lokalen Auth-API an.
+    func apiSignIn(email: String) async throws -> APIUser {
+        _ = try await api("POST", "/auth/v1/otp", body: ["email": email, "create_user": true])
+        let code = try fetchCode(for: email)
+        let session = try await api("POST", "/auth/v1/verify", body: ["type": "email", "email": email, "token": code])
+        return APIUser(token: try XCTUnwrap(session["access_token"] as? String))
+    }
+
+    @discardableResult
+    func api(_ method: String, _ path: String, body: Any? = nil, as user: APIUser? = nil) async throws -> [String: Any] {
+        var request = URLRequest(url: URL(string: apiURL + path)!)
+        request.httpMethod = method
+        request.setValue(localKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("return=representation", forHTTPHeaderField: "Prefer")
+        if let user { request.setValue("Bearer \(user.token)", forHTTPHeaderField: "Authorization") }
+        if let body { request.httpBody = try JSONSerialization.data(withJSONObject: body) }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else {
+            throw NSError(domain: "api", code: status, userInfo: [NSLocalizedDescriptionKey: String(data: data, encoding: .utf8) ?? ""])
+        }
+        let json = data.isEmpty ? nil : try JSONSerialization.jsonObject(with: data)
+        if let object = json as? [String: Any] { return object }
+        if let array = json as? [[String: Any]], let first = array.first { return first }
+        return [:]
+    }
+
     /// Holt den Code aus der neuesten Mail an diese Adresse in Mailpit.
     func fetchCode(for email: String) throws -> String {
         let deadline = Date.now.addingTimeInterval(15)

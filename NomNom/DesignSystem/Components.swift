@@ -63,6 +63,23 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
+/// Heller Pillen-Button mit Rand für Nebenaktionen („Einkaufen“, „Einplanen“).
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.bodySansMedium)
+            .foregroundStyle(Color.ink)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(Color.surface, in: .capsule)
+            .overlay { Capsule().strokeBorder(Color.hairline) }
+            .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+extension ButtonStyle where Self == SecondaryButtonStyle {
+    static var secondary: SecondaryButtonStyle { SecondaryButtonStyle() }
+}
+
 extension ButtonStyle where Self == PrimaryButtonStyle {
     static var primary: PrimaryButtonStyle { PrimaryButtonStyle() }
 }

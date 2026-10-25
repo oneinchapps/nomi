@@ -1,10 +1,15 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @Environment(AppModel.self) private var app
     @State private var recipes: RecipeStore
+    @State private var shopping: ShoppingStore
+    @State private var plan: MealPlanStore
 
-    init(householdId: UUID) {
+    init(householdId: UUID, userId: UUID) {
         _recipes = State(initialValue: RecipeStore(householdId: householdId))
+        _shopping = State(initialValue: ShoppingStore(householdId: householdId, userId: userId))
+        _plan = State(initialValue: MealPlanStore(householdId: householdId))
     }
 
     var body: some View {
@@ -26,26 +31,30 @@ struct MainTabView: View {
             }
             Tab("Einkauf", systemImage: "basket") {
                 TabRoot {
-                    ComingSoonView(
-                        eyebrow: "Gemeinsame Liste",
-                        title: "Einkauf",
-                        text: "Nach Abteilung sortiert, live abgehakt – ihr seht, was schon im Wagen liegt."
-                    )
+                    ShoppingListView()
                 }
             }
+            .badge(shopping.openItems.count)
             Tab("Woche", systemImage: "calendar") {
                 TabRoot {
-                    ComingSoonView(
-                        eyebrow: "Wochenplan",
-                        title: "Diese Woche",
-                        text: "Rezepte auf Tage legen, die Einkaufsliste füllt sich von selbst."
-                    )
+                    WeekPlanView()
                 }
             }
         }
         .environment(recipes)
+        .environment(shopping)
+        .environment(plan)
         .task { await recipes.load() }
         .task { await recipes.observeChanges() }
+        .task { await shopping.load() }
+        .task { await shopping.observeChanges() }
+        .task { await plan.load() }
+        .task { await plan.observeChanges() }
+        .task {
+            await observeTable("household_members", householdId: recipes.householdId) { [app] in
+                await app.loadHousehold()
+            }
+        }
     }
 }
 

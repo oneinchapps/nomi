@@ -15,9 +15,7 @@ struct Ingredient: Codable, Hashable, Sendable {
 
     /// „1 ½ EL“ – Menge und Einheit, leer bei „Salz nach Geschmack“.
     var amountText: String {
-        [quantity.map { QuantityFormatter.string(for: $0, unit: unit) }, unit]
-            .compactMap { $0 }
-            .joined(separator: " ")
+        QuantityFormatter.amount(quantity, unit: unit)
     }
 
     /// Zurück in eine Textzeile, wie man sie im Editor tippt.
@@ -180,6 +178,16 @@ enum IngredientParser {
 // MARK: - Mengen formatieren
 
 enum QuantityFormatter {
+    /// Menge mit Einheit; große Gramm-/Milliliter-Werte als kg/l („1500 g“ → „1,5 kg“).
+    static func amount(_ quantity: Double?, unit: String?) -> String {
+        guard let quantity else { return unit ?? "" }
+        var value = quantity
+        var unit = unit
+        if unit == "g", value >= 1000 { value /= 1000; unit = "kg" }
+        if unit == "ml", value >= 1000 { value /= 1000; unit = "l" }
+        return [string(for: value, unit: unit), unit].compactMap { $0 }.joined(separator: " ")
+    }
+
     /// Gramm & Co. werden sinnvoll gerundet, Stückzahlen und Löffel als Brüche gezeigt.
     static func string(for value: Double, unit: String?) -> String {
         switch unit {

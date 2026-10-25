@@ -9,6 +9,8 @@ struct RecipeDetailView: View {
     @State private var showsEditor = false
     @State private var confirmsDelete = false
     @State private var error: String?
+    @State private var showsAddToList = false
+    @State private var showsPlanDay = false
 
     var body: some View {
         if let recipe = store.recipe(id: recipeId) {
@@ -31,10 +33,18 @@ struct RecipeDetailView: View {
 
                 VStack(alignment: .leading, spacing: 28) {
                     header(recipe)
-                    ServingsStepper(servings: Binding(
-                        get: { currentServings },
-                        set: { servings = $0 }
-                    ))
+                    VStack(spacing: 10) {
+                        ServingsStepper(servings: Binding(
+                            get: { currentServings },
+                            set: { servings = $0 }
+                        ))
+                        HStack(spacing: 10) {
+                            Button("Einkaufen", systemImage: "basket") { showsAddToList = true }
+                                .disabled(recipe.ingredients.isEmpty)
+                            Button("Einplanen", systemImage: "calendar.badge.plus") { showsPlanDay = true }
+                        }
+                        .buttonStyle(.secondary)
+                    }
                     ingredients(recipe.scaledIngredients(for: currentServings))
                     if !recipe.steps.isEmpty {
                         steps(recipe.steps)
@@ -69,6 +79,12 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $showsEditor) {
             RecipeEditorView(recipe: recipe)
+        }
+        .sheet(isPresented: $showsAddToList) {
+            AddToListSheet(sources: [AddToListSheet.Source(recipe: recipe, servings: currentServings)])
+        }
+        .sheet(isPresented: $showsPlanDay) {
+            PlanDaySheet(recipe: recipe, servings: currentServings)
         }
         .confirmationDialog("„\(recipe.title)“ löschen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
             Button("Löschen", role: .destructive) {

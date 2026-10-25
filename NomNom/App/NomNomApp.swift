@@ -26,8 +26,8 @@ struct RootView: View {
             case .needsHousehold:
                 HouseholdSetupView()
             case .ready:
-                if let household = app.household {
-                    MainTabView(householdId: household.id)
+                if let household = app.household, let userId = app.userId {
+                    MainTabView(householdId: household.id, userId: userId)
                         .id(household.id)
                 }
             }

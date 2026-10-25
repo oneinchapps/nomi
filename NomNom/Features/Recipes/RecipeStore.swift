@@ -36,24 +36,11 @@ final class RecipeStore {
         hasLoaded = true
     }
 
-    /// Läuft, solange die Rezeptansicht existiert. Bei jeder Änderung wird neu geladen –
-    /// bei ein paar hundert Rezepten günstiger als einzelne Events zusammenzuführen.
+    /// Läuft, solange die App im Haushalt ist, und lädt bei Änderungen der anderen Person neu.
     func observeChanges() async {
-        let channel = supabase.channel("recipes-\(householdId)")
-        let changes = channel.postgresChange(
-            AnyAction.self,
-            table: "recipes",
-            filter: .eq("household_id", value: householdId)
-        )
-        do {
-            try await channel.subscribeWithError()
-        } catch {
-            return
+        await observeTable("recipes", householdId: householdId) { [weak self] in
+            await self?.load()
         }
-        for await _ in changes {
-            await load()
-        }
-        await supabase.removeChannel(channel)
     }
 
     @discardableResult
