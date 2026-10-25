@@ -22,6 +22,14 @@ Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
 - Lokal: `supabase start` (Ports 553xx, damit kein Konflikt mit anderen lokalen Projekten). Mails landen in Mailpit unter http://127.0.0.1:55324.
 - Neue Tabellen brauchen explizite `grant … to authenticated` und RLS über `public.is_member(household_id)`.
 
+## Rezept-Import
+- Edge Function `supabase/functions/import-recipe`: Seite laden (`scrape.ts`: JSON-LD, Open Graph, TikTok-oEmbed), Claude liest per JSON-Schema aus (`extract.ts`), Bild wird in `recipe-images` kopiert. Auth über `withSupabase({ auth: "user" })`, deshalb `verify_jwt = false` in config.toml.
+- Einheiten und Abteilungen im Schema müssen zu `IngredientParser.units` und `Aisle` in der App passen.
+- Secret `ANTHROPIC_API_KEY`: lokal in `supabase/functions/.env` (gitignored), live per `supabase secrets set --env-file supabase/functions/.env`.
+- Prüfen: `cd supabase/functions/import-recipe && deno check --config deno.json index.ts && deno test --config deno.json`
+- Lokal starten: `supabase functions serve import-recipe`
+- Teilen-Erweiterung `NomNomShare` nutzt Design-System, Modelle und Services der App mit (siehe project.yml) und teilt die Anmeldung über die Keychain-Gruppe `<Team>.de.gregorzoller.nomnom.shared`.
+
 ## Tests
 - `NomNomTests` (Swift Testing): Zutaten-Parser, Mengenformat, Skalierung, Abteilungs-Zuordnung
 - `NomNomUITests`: Onboarding mit zwei Personen und Rezept-Flow (anlegen, öffnen, Portionen skalieren). Gemeinsame Helfer stehen in `UITestSupport.swift`.

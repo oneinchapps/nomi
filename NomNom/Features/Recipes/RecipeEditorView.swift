@@ -4,6 +4,9 @@ import SwiftUI
 /// Anlegen und Bearbeiten. Zutaten und Schritte als Freitext, eine Zeile pro Eintrag.
 struct RecipeEditorView: View {
     let original: Recipe?
+    /// Vorbefüllter Entwurf (z. B. aus dem Import), der noch nicht gespeichert ist.
+    let isNew: Bool
+    let notice: String?
 
     @Environment(RecipeStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -25,8 +28,10 @@ struct RecipeEditorView: View {
 
     enum Field { case title, summary, minutes, ingredients, steps, source }
 
-    init(recipe: Recipe?) {
+    init(recipe: Recipe?, isNew: Bool = false, notice: String? = nil) {
         original = recipe
+        self.isNew = isNew || recipe == nil
+        self.notice = notice
         _title = State(initialValue: recipe?.title ?? "")
         _summary = State(initialValue: recipe?.summary ?? "")
         _minutes = State(initialValue: recipe?.totalMinutes.map(String.init) ?? "")
@@ -43,6 +48,14 @@ struct RecipeEditorView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
+                    if let notice {
+                        Label(notice, systemImage: "info.circle")
+                            .font(.captionSans)
+                            .foregroundStyle(Color.ink)
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.mist, in: .rect(cornerRadius: 14))
+                    }
                     photoPicker
 
                     field("Titel") {
@@ -96,7 +109,7 @@ struct RecipeEditorView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color.canvas.ignoresSafeArea())
-            .navigationTitle(original == nil ? "Neues Rezept" : "Bearbeiten")
+            .navigationTitle(isNew ? "Neues Rezept" : "Bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

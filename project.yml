@@ -29,6 +29,12 @@ targets:
     dependencies:
       - package: Supabase
         product: Supabase
+      - target: NomNomShare
+    entitlements:
+      path: NomNom/NomNom.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)de.gregorzoller.nomnom.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.gregorzoller.nomnom
@@ -55,10 +61,61 @@ targets:
         # Nur für `supabase start` auf 127.0.0.1 während der Entwicklung
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # Gemeinsame Anmeldung mit der Teilen-Erweiterung (siehe SupabaseEnvironment.keychainGroup)
+        KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomnom.shared
     scheme:
       testTargets:
         - NomNomTests
         - NomNomUITests
+
+  NomNomShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NomNomShare
+      # Geteilter Code: Design-System, Modelle, Supabase-Zugang und Import
+      - path: NomNom/DesignSystem
+      - path: NomNom/Models
+      - path: NomNom/Services
+      - path: NomNom/Resources/Fonts
+        buildPhase: resources
+    dependencies:
+      - package: Supabase
+        product: Supabase
+    entitlements:
+      path: NomNomShare/NomNomShare.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)de.gregorzoller.nomnom.shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.gregorzoller.nomnom.share
+        PRODUCT_NAME: NomNomShare
+        TARGETED_DEVICE_FAMILY: "1"
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: NomNomShare/Info.plist
+      properties:
+        CFBundleDisplayName: nomnom
+        CFBundleDevelopmentRegion: de
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomnom.shared
+        UIAppFonts:
+          - Fraunces-SemiBold.ttf
+          - Fraunces-Bold.ttf
+          - DMSans-Regular.ttf
+          - DMSans-Medium.ttf
+          - DMSans-SemiBold.ttf
+          - DMMono-Regular.ttf
+          - DMMono-Medium.ttf
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
 
   NomNomTests:
     type: bundle.unit-test

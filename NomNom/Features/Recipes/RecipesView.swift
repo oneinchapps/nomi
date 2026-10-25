@@ -4,6 +4,7 @@ struct RecipesView: View {
     @Environment(RecipeStore.self) private var store
     @State private var query = ""
     @State private var showsEditor = false
+    @State private var showsImport = false
 
     private var filtered: [Recipe] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -60,8 +61,9 @@ struct RecipesView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showsEditor = true
+                Menu {
+                    Button("Aus Link importieren", systemImage: "link") { showsImport = true }
+                    Button("Von Hand anlegen", systemImage: "square.and.pencil") { showsEditor = true }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -70,6 +72,9 @@ struct RecipesView: View {
         }
         .sheet(isPresented: $showsEditor) {
             RecipeEditorView(recipe: nil)
+        }
+        .sheet(isPresented: $showsImport) {
+            ImportLinkView()
         }
     }
 
@@ -96,13 +101,17 @@ struct RecipesView: View {
             Text("Noch keine Rezepte")
                 .font(.cardTitle)
                 .foregroundStyle(Color.ink)
-            Text("Legt euer erstes Lieblingsrezept an. Bald könnt ihr auch Links aus Instagram, TikTok und Blogs direkt teilen.")
+            Text("Teilt Rezepte aus Instagram, TikTok oder Blogs direkt an nomnom – oder legt euer Lieblingsrezept von Hand an.")
                 .font(.bodySans)
                 .foregroundStyle(Color.inkMuted)
                 .lineSpacing(3)
-            Button("Erstes Rezept anlegen") { showsEditor = true }
+            Button("Rezept aus Link") { showsImport = true }
                 .buttonStyle(.primary)
                 .padding(.top, 8)
+            Button("Erstes Rezept anlegen") { showsEditor = true }
+                .font(.bodySansMedium)
+                .foregroundStyle(Color.ink)
+                .frame(maxWidth: .infinity)
         }
         .padding(.top, 12)
     }

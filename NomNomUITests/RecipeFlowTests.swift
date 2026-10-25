@@ -52,6 +52,15 @@ final class RecipeFlowTests: NomNomUITestCase {
         XCTAssertTrue(row(app, "3 EL").exists)
         XCTAssertTrue(row(app, "16").exists)
         snapshot(app, "14-detail-scaled")
+
+        // Nach Neustart weiterhin angemeldet, Rezept noch da
+        let again = relaunchKeepingSession(app)
+        let recipesTab = again.tabBars.buttons["Rezepte"]
+        XCTAssertTrue(recipesTab.waitForExistence(timeout: 10), "Nach Neustart nicht mehr angemeldet")
+        recipesTab.tap()
+        XCTAssertTrue(
+            again.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Halloumi-Tacos")).firstMatch.waitForExistence(timeout: 10)
+        )
     }
 
     /// Zutatenzeilen sind für VoiceOver zusammengefasst („250 g, Halloumi“), daher Präfix-Suche.

@@ -118,6 +118,8 @@ extension Recipe {
             ("gemüse", "🥦"), ("shakshuka", "🍳"), ("ei", "🍳"), ("pfannkuchen", "🥞"), ("pancake", "🥞"),
             ("kuchen", "🍰"), ("brot", "🥖"), ("sandwich", "🥪"), ("lachs", "🐟"), ("fisch", "🐟"),
             ("garnele", "🍤"), ("hähnchen", "🍗"), ("huhn", "🍗"), ("steak", "🥩"), ("kartoffel", "🥔"),
+            ("roulade", "🥩"), ("braten", "🍖"), ("gulasch", "🍲"), ("schnitzel", "🍖"), ("knödel", "🥟"),
+            ("spätzle", "🍝"), ("flammkuchen", "🍕"), ("auflauf", "🥘"), ("gratin", "🥘"), ("quiche", "🥧"),
             ("falafel", "🧆"), ("halloumi", "🧀"), ("käse", "🧀"), ("dumpling", "🥟"), ("gyoza", "🥟"),
         ]
         return map.first { t.contains($0.0) }?.1 ?? "🍽️"

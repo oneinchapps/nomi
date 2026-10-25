@@ -27,6 +27,19 @@ class NomNomUITestCase: XCTestCase {
         return app
     }
 
+    /// Neustart ohne Abmelden – prüft, dass die Sitzung im (gemeinsamen) Keychain liegt.
+    @MainActor
+    func relaunchKeepingSession(_ app: XCUIApplication) -> XCUIApplication {
+        app.terminate()
+        let again = XCUIApplication()
+        again.launchEnvironment = [
+            "NOMNOM_SUPABASE_URL": apiURL,
+            "NOMNOM_SUPABASE_KEY": localKey,
+        ]
+        again.launch()
+        return again
+    }
+
     /// Welcome → E-Mail → Code. Endet auf der Haushalts-Einrichtung.
     @MainActor
     func signIn(_ app: XCUIApplication, email: String, screenshotPrefix: String? = nil) throws {

@@ -7,11 +7,20 @@ let supabase = SupabaseClient(
     supabaseURL: SupabaseEnvironment.url,
     supabaseKey: SupabaseEnvironment.key,
     options: SupabaseClientOptions(
-        auth: .init(emitLocalSessionAsInitialSession: true)
+        auth: .init(
+            // Gemeinsamer Keychain-Bereich, damit die Teilen-Erweiterung die Anmeldung der App mitnutzt
+            storage: KeychainLocalStorage(service: "nomnom.auth", accessGroup: SupabaseEnvironment.keychainGroup),
+            emitLocalSessionAsInitialSession: true
+        )
     )
 )
 
 enum SupabaseEnvironment {
+    /// „<TeamID>.de.gregorzoller.nomnom.shared“, aus der Info.plist, weil die Team-ID erst beim Signieren feststeht.
+    static var keychainGroup: String? {
+        (Bundle.main.object(forInfoDictionaryKey: "KeychainAccessGroup") as? String).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
     static var url: URL {
         #if DEBUG
         // UI-Tests und lokale Entwicklung zeigen per Umgebungsvariable auf `supabase start`
