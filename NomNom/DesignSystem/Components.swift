@@ -20,7 +20,7 @@ struct MetaLabel: View {
     }
 }
 
-/// Serifen-Headline mit enger Zeilenführung. Negatives `lineSpacing` greift in SwiftUI nicht,
+/// Große Headline mit enger Zeilenführung. Negatives `lineSpacing` greift in SwiftUI nicht,
 /// deshalb wird jede Zeile einzeln gesetzt.
 struct DisplayHeadline: View {
     let lines: [String]

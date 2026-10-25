@@ -42,11 +42,28 @@ extension UIColor {
 // MARK: - Typography
 
 extension Font {
-    /// Große Serifen-Headline, z. B. auf dem Willkommensscreen.
-    static let display = Font.custom("Fraunces144pt-Bold", size: 42, relativeTo: .largeTitle)
-    static let titleSerif = Font.custom("Fraunces144pt-Bold", size: 30, relativeTo: .title)
-    static let cardTitle = Font.custom("Fraunces144pt-Bold", size: 24, relativeTo: .title3)
-    static let logo = Font.custom("Fraunces144pt-Bold", size: 28, relativeTo: .title2)
+    /// Überschriften in Bricolage Grotesque. Ab 32 pt die Display-Variante (96-pt-Optik, ExtraBold),
+    /// darunter die Text-Variante (24-pt-Optik), die bei kleinen Größen besser lesbar ist.
+    static func heading(_ size: CGFloat, relativeTo style: Font.TextStyle, weight: HeadingWeight = .bold) -> Font {
+        let name = size >= 32 ? "BricolageGrotesque96pt-ExtraBold" : weight.postScriptName
+        return .custom(name, size: size, relativeTo: style)
+    }
+
+    enum HeadingWeight {
+        case semibold, bold
+        var postScriptName: String {
+            switch self {
+            case .semibold: "BricolageGrotesque24pt-SemiBold"
+            case .bold: "BricolageGrotesque24pt-Bold"
+            }
+        }
+    }
+
+    /// Große Headline, z. B. auf dem Willkommensscreen.
+    static let display = heading(42, relativeTo: .largeTitle)
+    static let titleHeading = heading(30, relativeTo: .title)
+    static let cardTitle = heading(23, relativeTo: .title3)
+    static let logo = Font.custom("BricolageGrotesque96pt-ExtraBold", size: 28, relativeTo: .title2)
 
     static let bodySans = Font.custom("DMSans-Regular", size: 17, relativeTo: .body)
     static let bodySansMedium = Font.custom("DMSans-Medium", size: 17, relativeTo: .body)

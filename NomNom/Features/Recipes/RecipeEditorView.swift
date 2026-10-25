@@ -67,7 +67,7 @@ struct RecipeEditorView: View {
 
                     field("Titel") {
                         TextField("z. B. Halloumi-Tacos", text: $title)
-                            .font(.custom("Fraunces144pt-SemiBold", size: 20, relativeTo: .title3))
+                            .font(.heading(20, relativeTo: .title3, weight: .semibold))
                             .focused($focus, equals: .title)
                             .fieldBackground(isFocused: focus == .title)
                     }
@@ -191,7 +191,7 @@ struct RecipeEditorView: View {
                 let index = steps.firstIndex { $0.id == step.id } ?? 0
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("\(index + 1)")
-                        .font(.custom("Fraunces144pt-Bold", size: 22, relativeTo: .title3))
+                        .font(.heading(22, relativeTo: .title3))
                         .foregroundStyle(Color.ink)
                         .frame(width: 22, alignment: .leading)
                     TextField("Was ist zu tun?", text: $step.text, axis: .vertical)

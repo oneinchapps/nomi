@@ -107,7 +107,7 @@ struct RecipeDetailView: View {
                 MetaLabel(Recipe.durationLabel(total) + sourceSuffix(recipe))
             }
             Text(recipe.title)
-                .font(.titleSerif)
+                .font(.titleHeading)
                 .tracking(-0.6)
                 .foregroundStyle(Color.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -183,7 +183,7 @@ struct StepCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             Text("\(number)")
-                .font(.custom("Fraunces144pt-Bold", size: 18, relativeTo: .headline))
+                .font(.heading(18, relativeTo: .headline))
                 .foregroundStyle(Color.ink)
                 .frame(width: 34, height: 34)
                 .background(Color.mist, in: .circle)

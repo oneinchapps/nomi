@@ -59,4 +59,4 @@ Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf and
 - `NomNom/Models/`
 
 ## Design
-Creme-Grund, Serifen-Headlines (Fraunces), Fließtext DM Sans, Metazeilen in DM Mono als Versalien („25 MIN · FÜR ZWEI“), dunkle Pillen-Buttons. Mehrzeilige Headlines mit `DisplayHeadline` setzen, weil negatives `lineSpacing` in SwiftUI nicht greift.
+Creme-Grund, Überschriften in Bricolage Grotesque (immer über `Font.heading(...)` bzw. `.display`/`.cardTitle`, nie direkt per Schriftname), Fließtext DM Sans, Metazeilen in DM Mono als Versalien („25 MIN · FÜR ZWEI“), dunkle Pillen-Buttons. Mehrzeilige Headlines mit `DisplayHeadline` setzen, weil negatives `lineSpacing` in SwiftUI nicht greift.

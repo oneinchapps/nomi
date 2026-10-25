@@ -68,7 +68,7 @@ struct TabRoot<Content: View>: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Text("nomnom")
-                            .font(.custom("Fraunces144pt-Bold", size: 22, relativeTo: .headline))
+                            .font(.heading(22, relativeTo: .headline))
                             .tracking(-0.6)
                             .foregroundStyle(Color.ink)
                             .fixedSize()

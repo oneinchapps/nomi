@@ -51,8 +51,9 @@ targets:
       properties:
         CFBundleDevelopmentRegion: de
         UIAppFonts:
-          - Fraunces-SemiBold.ttf
-          - Fraunces-Bold.ttf
+          - BricolageGrotesque-SemiBold.ttf
+          - BricolageGrotesque-Bold.ttf
+          - BricolageGrotesque-ExtraBold.ttf
           - DMSans-Regular.ttf
           - DMSans-Medium.ttf
           - DMSans-SemiBold.ttf
@@ -102,8 +103,9 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomnom.shared
         UIAppFonts:
-          - Fraunces-SemiBold.ttf
-          - Fraunces-Bold.ttf
+          - BricolageGrotesque-SemiBold.ttf
+          - BricolageGrotesque-Bold.ttf
+          - BricolageGrotesque-ExtraBold.ttf
           - DMSans-Regular.ttf
           - DMSans-Medium.ttf
           - DMSans-SemiBold.ttf

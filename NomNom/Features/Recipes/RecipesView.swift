@@ -130,7 +130,7 @@ struct RecipeTile: View {
                 MetaLabel(recipe.metaLine)
                     .lineLimit(1)
                 Text(recipe.title)
-                    .font(.custom("Fraunces144pt-Bold", size: 19, relativeTo: .headline))
+                    .font(.heading(19, relativeTo: .headline))
                     .foregroundStyle(Color.ink)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)

@@ -167,7 +167,7 @@ struct WeekPlanView: View {
                     .clipShape(.rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(recipe.title)
-                        .font(.custom("Fraunces144pt-Bold", size: 18, relativeTo: .headline))
+                        .font(.heading(18, relativeTo: .headline))
                         .foregroundStyle(Color.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -241,7 +241,7 @@ struct RecipePickerSheet: View {
                                 .clipShape(.rect(cornerRadius: 12))
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(recipe.title)
-                                    .font(.custom("Fraunces144pt-Bold", size: 17, relativeTo: .headline))
+                                    .font(.heading(17, relativeTo: .headline))
                                     .foregroundStyle(Color.ink)
                                     .lineLimit(2)
                                 if let minutes = recipe.totalMinutes {

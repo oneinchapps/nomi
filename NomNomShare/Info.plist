@@ -41,8 +41,9 @@
 	</dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Fraunces-SemiBold.ttf</string>
-		<string>Fraunces-Bold.ttf</string>
+		<string>BricolageGrotesque-SemiBold.ttf</string>
+		<string>BricolageGrotesque-Bold.ttf</string>
+		<string>BricolageGrotesque-ExtraBold.ttf</string>
 		<string>DMSans-Regular.ttf</string>
 		<string>DMSans-Medium.ttf</string>
 		<string>DMSans-SemiBold.ttf</string>
