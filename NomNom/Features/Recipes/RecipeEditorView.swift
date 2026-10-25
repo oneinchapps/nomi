@@ -32,7 +32,11 @@ struct RecipeEditorView: View {
         let id = UUID()
         var text: String
         var timerSeconds: Int?
+        /// Timer bewusst entfernt – dann beim Sichern nicht wieder aus dem Text erkennen
+        var timerRemoved = false
     }
+
+    private static let timerChoices = [1, 2, 3, 5, 8, 10, 12, 15, 20, 25, 30, 45, 60, 90, 120]
 
     init(recipe: Recipe?, isNew: Bool = false, notice: String? = nil) {
         original = recipe
@@ -194,14 +198,40 @@ struct RecipeEditorView: View {
                         .font(.heading(22, relativeTo: .title3))
                         .foregroundStyle(Color.ink)
                         .frame(width: 22, alignment: .leading)
-                    TextField("Was ist zu tun?", text: $step.text, axis: .vertical)
-                        .font(.bodySans)
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1...12)
-                        .focused($focus, equals: .step(step.id))
-                        .accessibilityIdentifier("step-\(index + 1)")
-                        .onChange(of: step.text) { _, _ in splitStep(step.id) }
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("Was ist zu tun?", text: $step.text, axis: .vertical)
+                            .font(.bodySans)
+                            .foregroundStyle(Color.ink)
+                            .lineLimit(1...12)
+                            .focused($focus, equals: .step(step.id))
+                            .accessibilityIdentifier("step-\(index + 1)")
+                            .onChange(of: step.text) { _, _ in splitStep(step.id) }
+                        if let seconds = step.timerSeconds ?? (step.timerRemoved ? nil : StepText.detectTimer(step.text)) {
+                            Label(Recipe.durationLabel(max(1, seconds / 60)), systemImage: "timer")
+                                .font(.captionSans)
+                                .foregroundStyle(Color.ink)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.mist, in: .capsule)
+                                .accessibilityLabel("Timer \(Recipe.durationLabel(max(1, seconds / 60)))")
+                        }
+                    }
                     Menu {
+                        Menu("Timer", systemImage: "timer") {
+                            ForEach(Self.timerChoices, id: \.self) { minutes in
+                                Button(Recipe.durationLabel(minutes)) {
+                                    step.timerSeconds = minutes * 60
+                                    step.timerRemoved = false
+                                }
+                            }
+                            if step.timerSeconds != nil {
+                                Divider()
+                                Button("Kein Timer", systemImage: "xmark", role: .destructive) {
+                                    step.timerSeconds = nil
+                                    step.timerRemoved = true
+                                }
+                            }
+                        }
                         Button("Nach oben", systemImage: "arrow.up") { moveStep(step.id, by: -1) }
                             .disabled(index == 0)
                         Button("Nach unten", systemImage: "arrow.down") { moveStep(step.id, by: 1) }
@@ -288,7 +318,12 @@ struct RecipeEditorView: View {
                 recipe.servings = servings
                 recipe.ingredients = parsedIngredients()
                 recipe.steps = steps
-                    .map { Recipe.Step(text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines), timerSeconds: $0.timerSeconds) }
+                    .map { draft in
+                        let text = draft.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        // Dauer aus dem Text übernehmen („10 Minuten köcheln“), außer der Timer wurde entfernt
+                        let timer = draft.timerSeconds ?? (draft.timerRemoved ? nil : StepText.detectTimer(text))
+                        return Recipe.Step(text: text, timerSeconds: timer)
+                    }
                     .filter { !$0.text.isEmpty }
                 recipe.sourceURL = normalizedURL(sourceURL)
 

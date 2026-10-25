@@ -61,6 +61,16 @@ struct QuantityFormatterTests {
     }
 }
 
+struct PluralUnitTests {
+    @Test func pluralizesUnitsAboveOne() {
+        #expect(QuantityFormatter.amount(2, unit: "Zehe") == "2 Zehen")
+        #expect(QuantityFormatter.amount(1, unit: "Zehe") == "1 Zehe")
+        #expect(QuantityFormatter.amount(0.5, unit: "Dose") == "½ Dose")
+        #expect(QuantityFormatter.amount(3, unit: "Glas") == "3 Gläser")
+        #expect(QuantityFormatter.amount(2, unit: "Bund") == "2 Bund")
+    }
+}
+
 struct ScalingTests {
     @Test func scalesFromTwoToFour() {
         let recipe = Recipe(

@@ -21,6 +21,7 @@ class NomNomUITestCase: XCTestCase {
             "NOMNOM_SUPABASE_URL": apiURL,
             "NOMNOM_SUPABASE_KEY": localKey,
             "NOMNOM_RESET_SESSION": "1",
+            "NOMNOM_DISABLE_NOTIFICATIONS": "1",
         ]
         app.launch()
         XCTAssertTrue(app.buttons["Gemeinsam Essen finden"].waitForExistence(timeout: 10))
@@ -35,6 +36,7 @@ class NomNomUITestCase: XCTestCase {
         again.launchEnvironment = [
             "NOMNOM_SUPABASE_URL": apiURL,
             "NOMNOM_SUPABASE_KEY": localKey,
+            "NOMNOM_DISABLE_NOTIFICATIONS": "1",
         ]
         again.launch()
         return again

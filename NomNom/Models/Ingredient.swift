@@ -185,8 +185,15 @@ enum QuantityFormatter {
         var unit = unit
         if unit == "g", value >= 1000 { value /= 1000; unit = "kg" }
         if unit == "ml", value >= 1000 { value /= 1000; unit = "l" }
-        return [string(for: value, unit: unit), unit].compactMap { $0 }.joined(separator: " ")
+        let shown = value > 1 ? unit.map { plurals[$0] ?? $0 } : unit
+        return [string(for: value, unit: unit), shown].compactMap { $0 }.joined(separator: " ")
     }
+
+    /// Einheiten im Plural, nur für die Anzeige („2 Zehen“). Gespeichert wird immer der Singular.
+    private static let plurals = [
+        "Zehe": "Zehen", "Scheibe": "Scheiben", "Dose": "Dosen", "Packung": "Packungen",
+        "Prise": "Prisen", "Tasse": "Tassen", "Glas": "Gläser",
+    ]
 
     /// Gramm & Co. werden sinnvoll gerundet, Stückzahlen und Löffel als Brüche gezeigt.
     static func string(for value: Double, unit: String?) -> String {

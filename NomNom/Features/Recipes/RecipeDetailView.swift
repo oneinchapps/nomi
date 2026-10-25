@@ -11,6 +11,7 @@ struct RecipeDetailView: View {
     @State private var error: String?
     @State private var showsAddToList = false
     @State private var showsPlanDay = false
+    @State private var isCooking = false
 
     var body: some View {
         if let recipe = store.recipe(id: recipeId) {
@@ -44,6 +45,10 @@ struct RecipeDetailView: View {
                             Button("Einplanen", systemImage: "calendar.badge.plus") { showsPlanDay = true }
                         }
                         .buttonStyle(.secondary)
+                        if !recipe.steps.isEmpty {
+                            Button("Jetzt kochen") { isCooking = true }
+                                .buttonStyle(.primary)
+                        }
                     }
                     ingredients(recipe.scaledIngredients(for: currentServings))
                     if !recipe.steps.isEmpty {
@@ -85,6 +90,9 @@ struct RecipeDetailView: View {
         }
         .sheet(isPresented: $showsPlanDay) {
             PlanDaySheet(recipe: recipe, servings: currentServings)
+        }
+        .fullScreenCover(isPresented: $isCooking) {
+            CookingModeView(recipe: recipe, servings: currentServings)
         }
         .confirmationDialog("„\(recipe.title)“ löschen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
             Button("Löschen", role: .destructive) {

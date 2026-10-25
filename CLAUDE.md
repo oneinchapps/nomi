@@ -36,6 +36,9 @@ Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
 - Antworten von nomnom (`user_id` null) schreibt nur die Function mit `supabaseAdmin`; Nutzer:innen dürfen per RLS nur als sie selbst schreiben.
 - Neue Tabellen haben auch für `service_role` keine Standardrechte – bei Bedarf gezielt `grant`.
 
+## Kochmodus
+`Features/Cooking`: Vollbild aus der Rezeptansicht, Bildschirm bleibt an. Timer laufen über einen Endzeitpunkt (`CookingTimers`), zusätzlich gibt es eine lokale Mitteilung für den Hintergrund. Timer kommen aus `Recipe.Step.timerSeconds` – beim Import/Ausarbeiten von Claude gesetzt, im Editor per Menü oder automatisch aus dem Text erkannt (`StepText.detectTimer`).
+
 ## Tests
 - `NomNomTests` (Swift Testing): Zutaten-Parser, Mengenformat, Skalierung, Abteilungs-Zuordnung
 - `NomNomUITests`: Onboarding mit zwei Personen und Rezept-Flow (anlegen, öffnen, Portionen skalieren). Gemeinsame Helfer stehen in `UITestSupport.swift`.
@@ -46,7 +49,7 @@ supabase start
 xcodebuild test -project NomNom.xcodeproj -scheme NomNom \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build
 ```
-Debug-Builds lesen `NOMNOM_SUPABASE_URL`, `NOMNOM_SUPABASE_KEY` und `NOMNOM_RESET_SESSION` aus der Umgebung.
+Debug-Builds lesen `NOMNOM_SUPABASE_URL`, `NOMNOM_SUPABASE_KEY`, `NOMNOM_RESET_SESSION` und `NOMNOM_DISABLE_NOTIFICATIONS` (keine Rückfrage nach Mitteilungen in UI-Tests) aus der Umgebung.
 
 ## Live-Sync
 Stores laden komplett neu, sobald sich etwas ändert (`observeTable` in `Services/Realtime.swift`). Delete-Events kommen in Supabase Realtime nicht bei gefilterten Abos an, deshalb hört `observeTable` zusätzlich ungefiltert auf Deletes. Neue Tabellen mit Live-Sync in die Publication `supabase_realtime` aufnehmen.
