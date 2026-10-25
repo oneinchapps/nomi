@@ -24,7 +24,8 @@ struct RootView: View {
             case .signedOut:
                 SignInFlow()
             case .needsHousehold:
-                HouseholdSetupView()
+                // NavigationStack nur für die Markenleiste (helle Statusleiste)
+                NavigationStack { HouseholdSetupView() }
             case .ready:
                 if let household = app.household, let userId = app.userId {
                     MainTabView(householdId: household.id, userId: userId)

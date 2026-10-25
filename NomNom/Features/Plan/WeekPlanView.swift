@@ -18,8 +18,8 @@ struct WeekPlanView: View {
 
     var body: some View {
         ScrollView {
+            header
             VStack(alignment: .leading, spacing: 22) {
-                header
                 ForEach(plan.days, id: \.self) { day in
                     daySection(day)
                 }
@@ -35,7 +35,7 @@ struct WeekPlanView: View {
                 InlineError(message: plan.error)
             }
             .padding(.horizontal, Metrics.gutter)
-            .padding(.top, 16)
+            .padding(.top, 20)
             .padding(.bottom, 32)
         }
         .background(Color.canvas.ignoresSafeArea())
@@ -62,7 +62,7 @@ struct WeekPlanView: View {
     // MARK: - Kopf
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        BrandHeader {
             MetaLabel("KW \(PlanCalendar.weekNumber(of: plan.weekStart)) · \(DayFormat.range(plan.days))", font: .eyebrow, tracking: 2.4)
             HStack(alignment: .firstTextBaseline) {
                 DisplayHeadline(lines: [weekTitle])
@@ -77,7 +77,6 @@ struct WeekPlanView: View {
                     withAnimation { plan.weekStart = PlanCalendar.startOfWeek(containing: .now) }
                 }
                 .font(.captionSans)
-                .foregroundStyle(Color.ink)
                 .underline()
             }
         }
@@ -102,10 +101,9 @@ struct WeekPlanView: View {
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.ink)
+                .foregroundStyle(Color.onBrand)
                 .frame(width: 40, height: 40)
-                .background(Color.surface, in: .circle)
-                .overlay { Circle().strokeBorder(Color.hairline) }
+                .background(Color.onBrand.opacity(0.18), in: .circle)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

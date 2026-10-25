@@ -17,22 +17,24 @@ struct WelcomeView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 18) {
-            Text("nomnom")
-                .font(.logo)
-                .tracking(-0.8)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-
-            RecipeCarousel(recipes: Recipe.samples)
-                .padding(.bottom, 56)
-        }
-        .padding(.top, 4)
-        .background(alignment: .top) {
-            CurvedBottom(depth: 44)
-                .fill(Color.mist)
-                .ignoresSafeArea(edges: .top)
-        }
+        RecipeCarousel(recipes: Recipe.samples)
+            .padding(.bottom, 56)
+            .background(alignment: .top) {
+                CurvedBottom(depth: 44)
+                    .fill(Color.brand)
+                    .padding(.top, -200)
+            }
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("nomnom")
+                        .font(.logo)
+                        .tracking(-0.8)
+                        .foregroundStyle(Color.onBrand)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                .sharedBackgroundVisibility(.hidden)
+            }
+            .brandNavigationBar()
     }
 
     private var copy: some View {

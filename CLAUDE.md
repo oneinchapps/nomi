@@ -3,7 +3,7 @@
 Persönliche iOS-App für zwei: Rezepte gemeinsam per KI-Chat und Swipe auswählen, Einkaufsliste, Wochenplan, Kochmodus. UI-Sprache Deutsch.
 
 ## Stack
-- SwiftUI, iOS 18+, Swift 6 (Default-Isolation `MainActor`)
+- SwiftUI, iOS 26+ (für Liquid-Glass-APIs wie `sharedBackgroundVisibility`), Swift 6 (Default-Isolation `MainActor`)
 - Projekt wird mit XcodeGen aus `project.yml` erzeugt; `NomNom.xcodeproj` ist nicht eingecheckt
 - Backend: Supabase (Postgres, Auth, Realtime, Edge Functions). Der Anthropic-Key liegt nur als Supabase-Secret vor, nie in der App
 
@@ -65,4 +65,5 @@ Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf and
 - `NomNom/Models/`
 
 ## Design
+Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Hauptscreen beginnt mit `BrandHeader` und nutzt `.brandNavigationBar()`: Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe (ein eigener Leisten-Hintergrund würde unter iOS 26 dunkler wirken). Toolbar-Elemente auf der Markenfarbe ohne Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`). Entwürfe und das Render-Skript fürs App-Icon liegen in `design/`.
 Creme-Grund, Überschriften in Bricolage Grotesque (immer über `Font.heading(...)` bzw. `.display`/`.cardTitle`, nie direkt per Schriftname), Fließtext DM Sans, Metazeilen in DM Mono als Versalien („25 MIN · FÜR ZWEI“), dunkle Pillen-Buttons. Mehrzeilige Headlines mit `DisplayHeadline` setzen, weil negatives `lineSpacing` in SwiftUI nicht greift.

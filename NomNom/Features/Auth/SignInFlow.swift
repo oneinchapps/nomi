@@ -13,7 +13,6 @@ struct SignInFlow: View {
     var body: some View {
         NavigationStack(path: $path) {
             WelcomeView { path.append(.email) }
-                .toolbarVisibility(.hidden, for: .navigationBar)
                 .navigationDestination(for: Step.self) { step in
                     switch step {
                     case .email:

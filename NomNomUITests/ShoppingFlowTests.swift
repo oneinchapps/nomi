@@ -104,6 +104,7 @@ final class ShoppingFlowTests: NomNomUITestCase {
         let shopWeek = app.buttons["Zutaten der Woche einkaufen"]
         XCTAssertTrue(shopWeek.waitForExistence(timeout: 5))
         while !shopWeek.isHittable { app.swipeUp() }
+        snapshot(app, "42-week-scrolled")
         shopWeek.tap()
         app.buttons["3 Zutaten hinzufügen"].tap()
 

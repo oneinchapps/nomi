@@ -4,6 +4,11 @@ import UIKit
 // MARK: - Colors
 
 extension Color {
+    /// Markenfarbe „Himbeere“: hinterlegt den Kopfbereich jedes Screens.
+    static let brand = Color(light: 0xCC335E, dark: 0xB8284F)
+    /// Schrift und Symbole auf der Markenfarbe (Kontrast ≥ 5:1).
+    static let onBrand = Color(light: 0xFFFFFF, dark: 0xFFFFFF)
+
     /// Warmer Papierton, Grundfläche aller Screens.
     static let canvas = Color(light: 0xF7F4EE, dark: 0x161816)
     /// Karten und erhöhte Flächen.

@@ -20,11 +20,11 @@ struct RecipesView: View {
 
     var body: some View {
         ScrollView {
+            BrandHeader {
+                MetaLabel(countLabel, font: .eyebrow, tracking: 2.4)
+                DisplayHeadline(lines: ["Rezepte"])
+            }
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 10) {
-                    MetaLabel(countLabel, font: .eyebrow, tracking: 2.4)
-                    DisplayHeadline(lines: ["Rezepte"])
-                }
 
                 if !store.hasLoaded {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
@@ -50,7 +50,7 @@ struct RecipesView: View {
                 }
             }
             .padding(.horizontal, Metrics.gutter)
-            .padding(.top, 16)
+            .padding(.top, 20)
             .padding(.bottom, 32)
         }
         .background(Color.canvas.ignoresSafeArea())
@@ -66,9 +66,14 @@ struct RecipesView: View {
                     Button("Von Hand anlegen", systemImage: "square.and.pencil") { showsEditor = true }
                 } label: {
                     Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.onBrand)
+                        .frame(width: 36, height: 36)
+                        .background(Color.onBrand.opacity(0.18), in: .circle)
                 }
                 .accessibilityLabel("Rezept hinzufügen")
             }
+            .sharedBackgroundVisibility(.hidden)
         }
         .sheet(isPresented: $showsEditor) {
             RecipeEditorView(recipe: nil)

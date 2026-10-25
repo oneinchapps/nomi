@@ -2,7 +2,7 @@ name: NomNom
 options:
   bundleIdPrefix: de.gregorzoller
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "26.0"
   developmentLanguage: de
   createIntermediateGroups: true
 

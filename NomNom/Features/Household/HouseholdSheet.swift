@@ -9,10 +9,9 @@ struct ProfileButton: View {
         Button { showsSheet = true } label: {
             Text(app.me?.initials ?? "?")
                 .font(.buttonSans)
-                .foregroundStyle(Color.ink)
+                .foregroundStyle(Color.onBrand)
                 .frame(width: 36, height: 36)
-                .background(Color.surface, in: .circle)
-                .overlay { Circle().strokeBorder(Color.hairline) }
+                .background(Color.onBrand.opacity(0.18), in: .circle)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Haushalt und Konto")

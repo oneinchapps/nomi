@@ -15,8 +15,8 @@ struct TodayView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
+                header
                 VStack(alignment: .leading, spacing: 18) {
-                    header
 
                     if app.partner == nil, let household = app.household {
                         InviteCard(code: household.inviteCode)
@@ -39,7 +39,7 @@ struct TodayView: View {
                     Color.clear.frame(height: 1).id("bottom")
                 }
                 .padding(.horizontal, Metrics.gutter)
-                .padding(.top, 16)
+                .padding(.top, 20)
                 .padding(.bottom, 16)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -61,13 +61,13 @@ struct TodayView: View {
     // MARK: - Bausteine
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        BrandHeader {
             MetaLabel("Abendessen, entschieden", font: .eyebrow, tracking: 2.4)
             DisplayHeadline(lines: ["Worauf habt ihr Lust?"])
             if decide.messages.isEmpty {
                 Text("Schreibt nomnom, worauf ihr Lust habt. Ihr swipet beide – mögt ihr dasselbe, ist es ein Match.")
                     .font(.bodySans)
-                    .foregroundStyle(Color.inkMuted)
+                    .foregroundStyle(Color.onBrand.opacity(0.9))
                     .lineSpacing(3)
             }
         }

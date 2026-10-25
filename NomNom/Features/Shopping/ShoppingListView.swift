@@ -11,6 +11,14 @@ struct ShoppingListView: View {
 
     var body: some View {
         List {
+            BrandHeader {
+                MetaLabel(shopping.openItems.isEmpty ? "Gemeinsame Liste" : "\(shopping.openItems.count) offen", font: .eyebrow, tracking: 2.4)
+                DisplayHeadline(lines: ["Einkauf"])
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+
             header
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.canvas)
@@ -66,13 +74,9 @@ struct ShoppingListView: View {
 
     // MARK: - Kopf
 
+    /// Eingabe und Kurzwahl unter dem Markenkopf.
     private var header: some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                MetaLabel(shopping.openItems.isEmpty ? "Gemeinsame Liste" : "\(shopping.openItems.count) offen", font: .eyebrow, tracking: 2.4)
-                DisplayHeadline(lines: ["Einkauf"])
-            }
-
             HStack(spacing: 10) {
                 TextField("Was fehlt? z. B. 2 l Milch", text: $newItem)
                     .submitLabel(.done)

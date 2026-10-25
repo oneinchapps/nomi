@@ -5,6 +5,7 @@ struct MetaLabel: View {
     let text: String
     var font: Font = .meta
     var tracking: CGFloat = 1.4
+    @Environment(\.onBrandSurface) private var onBrand
 
     init(_ text: String, font: Font = .meta, tracking: CGFloat = 1.4) {
         self.text = text
@@ -16,7 +17,59 @@ struct MetaLabel: View {
         Text(text.uppercased(with: Locale(identifier: "de_DE")))
             .font(font)
             .tracking(tracking)
-            .foregroundStyle(Color.inkMuted)
+            .foregroundStyle(onBrand ? Color.onBrand.opacity(0.85) : Color.inkMuted)
+    }
+}
+
+extension EnvironmentValues {
+    /// true innerhalb von BrandHeader – Texte schalten dann auf onBrand.
+    @Entry var onBrandSurface = false
+}
+
+/// Kopfbereich in Markenfarbe. Reicht nach oben unter die Navigationsleiste (die ebenfalls in Markenfarbe ist)
+/// und endet unten mit runden Ecken.
+struct BrandHeader<Content: View>: View {
+    var bottomPadding: CGFloat = 30
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            content
+        }
+        .environment(\.onBrandSurface, true)
+        .foregroundStyle(Color.onBrand)
+        .tint(Color.onBrand)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Metrics.gutter)
+        .padding(.top, 10)
+        .padding(.bottom, bottomPadding)
+        .background(alignment: .bottom) {
+            // Nach oben großzügig verlängert, damit beim Überscrollen keine Lücke entsteht
+            UnevenRoundedRectangle(bottomLeadingRadius: 32, bottomTrailingRadius: 32)
+                .fill(Color.brand)
+                .padding(.top, -1000)
+        }
+    }
+}
+
+extension View {
+    /// Kopfleiste in Markenfarbe mit heller Schrift und heller Statusleiste.
+    ///
+    /// Die Navigationsleiste selbst bleibt durchsichtig – ihr eigener Hintergrund bekommt unter iOS 26 eine
+    /// Material-Schicht und wirkt dann dunkler als der BrandHeader darunter. Stattdessen liegt eine
+    /// durchgehende Fläche in Markenfarbe über dem Bereich der Leiste, über die der Inhalt scrollt.
+    func brandNavigationBar() -> some View {
+        toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .scrollEdgeEffectHidden(true, for: .top)
+            .overlay(alignment: .top) {
+                GeometryReader { geo in
+                    Color.brand
+                        .frame(height: geo.safeAreaInsets.top)
+                        .offset(y: -geo.safeAreaInsets.top)
+                }
+                .allowsHitTesting(false)
+            }
     }
 }
 
@@ -24,6 +77,7 @@ struct MetaLabel: View {
 /// deshalb wird jede Zeile einzeln gesetzt.
 struct DisplayHeadline: View {
     let lines: [String]
+    @Environment(\.onBrandSurface) private var onBrand
 
     var body: some View {
         VStack(alignment: .leading, spacing: -10) {
@@ -31,7 +85,7 @@ struct DisplayHeadline: View {
                 Text(line)
                     .font(.display)
                     .tracking(-1)
-                    .foregroundStyle(Color.ink)
+                    .foregroundStyle(onBrand ? Color.onBrand : Color.ink)
             }
         }
         .accessibilityElement(children: .combine)

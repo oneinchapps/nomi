@@ -38,6 +38,7 @@ struct MainTabView: View {
                 }
             }
         }
+        .tint(Color.brand)
         .environment(recipes)
         .environment(shopping)
         .environment(plan)
@@ -68,16 +69,20 @@ struct TabRoot<Content: View>: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Text("nomnom")
-                            .font(.heading(22, relativeTo: .headline))
+                            .font(.logo)
                             .tracking(-0.6)
-                            .foregroundStyle(Color.ink)
+                            .foregroundStyle(Color.onBrand)
                             .fixedSize()
                     }
+                    // Ohne Glas-Kapsel: direkt weiß auf Himbeere
+                    .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .topBarTrailing) {
                         ProfileButton()
                     }
+                    .sharedBackgroundVisibility(.hidden)
                 }
-                .toolbarBackground(Color.canvas, for: .navigationBar)
+                .brandNavigationBar()
+                .tint(Color.ink)
         }
     }
 }

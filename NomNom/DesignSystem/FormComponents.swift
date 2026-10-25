@@ -49,22 +49,21 @@ struct FormScreen<Content: View, Footer: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            BrandHeader {
                 MetaLabel(eyebrow, font: .eyebrow, tracking: 2.4)
                 DisplayHeadline(lines: headline)
                 if let text {
                     Text(text)
                         .font(.bodySans)
-                        .foregroundStyle(Color.inkMuted)
+                        .foregroundStyle(Color.onBrand.opacity(0.9))
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                content
-                    .padding(.top, 18)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Metrics.gutter)
-            .padding(.top, 24)
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Metrics.gutter)
+                .padding(.top, 24)
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
@@ -74,6 +73,7 @@ struct FormScreen<Content: View, Footer: View>: View {
                 .background(Color.canvas)
         }
         .background(Color.canvas.ignoresSafeArea())
+        .brandNavigationBar()
     }
 }
 
