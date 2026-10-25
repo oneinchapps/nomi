@@ -61,18 +61,28 @@ struct MenuMatchCard: View {
                         .foregroundStyle(Color.inkMuted)
                         .multilineTextAlignment(.center)
                 } else {
-                    Button(planned ? "Für heute eingeplant" : "Ganzes Menü für heute einplanen",
-                           systemImage: planned ? "checkmark" : "calendar.badge.plus") {
-                        Task {
-                            // Gänge in Reihenfolge, der Gang steht als Hinweis am Eintrag
-                            for item in menuRecipes {
-                                await plan.add(item.recipe, on: .now, servings: 2, note: item.course)
+                    if planned {
+                        // Erledigt sieht erledigt aus: hell, mit Häkchen, ohne Pfeil
+                        Label("Für heute eingeplant", systemImage: "checkmark")
+                            .font(.bodySansMedium)
+                            .foregroundStyle(Color.ink)
+                            .frame(maxWidth: .infinity, minHeight: 58)
+                            .background(Color.surface, in: .rect(cornerRadius: Metrics.buttonRadius))
+                            .overlay { RoundedRectangle(cornerRadius: Metrics.buttonRadius).strokeBorder(Color.sage, lineWidth: 1.5) }
+                            .transition(.opacity)
+                    } else {
+                        // Kurz und ohne Symbol: der Haupt-Button hat schon seinen Pfeil
+                        Button("Für heute einplanen") {
+                            Task {
+                                // Gänge in Reihenfolge, der Gang steht als Hinweis am Eintrag
+                                for item in menuRecipes {
+                                    await plan.add(item.recipe, on: .now, servings: 2, note: item.course)
+                                }
+                                withAnimation { planned = true }
                             }
-                            withAnimation { planned = true }
                         }
+                        .buttonStyle(.primary)
                     }
-                    .buttonStyle(.primary)
-                    .disabled(planned)
                     Button("Alles einkaufen", systemImage: "basket") { showsAddToList = true }
                         .buttonStyle(.secondary)
                 }

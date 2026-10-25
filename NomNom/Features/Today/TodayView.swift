@@ -45,7 +45,8 @@ struct TodayView: View {
             .scrollDismissesKeyboard(.interactively)
             .background(Color.canvas.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) {
-                if decide.match == nil {
+                // Entschieden ist entschieden – neue Wünsche erst nach „Neue Runde“
+                if decide.match == nil && decide.menuMatch == nil {
                     inputBar
                 }
             }

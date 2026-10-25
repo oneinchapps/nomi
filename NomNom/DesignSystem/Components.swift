@@ -101,6 +101,9 @@ struct PrimaryButtonStyle: ButtonStyle {
         HStack {
             configuration.label
                 .font(.buttonSans)
+                // Haupt-Buttons immer einzeilig – lieber minimal kleiner als umbrechen
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             Spacer(minLength: 12)
             if showsArrow {
                 Image(systemName: "arrow.right")

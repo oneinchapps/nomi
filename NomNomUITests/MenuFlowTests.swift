@@ -58,12 +58,12 @@ final class MenuFlowTests: NomNomUITestCase {
         // Ideen ausarbeiten (parallel), dann alles für heute einplanen
         let expand = app.buttons.matching(NSPredicate(format: "label ENDSWITH 'ausarbeiten'")).firstMatch
         if expand.exists { expand.tap() }
-        let planAll = app.buttons["Ganzes Menü für heute einplanen"]
+        let planAll = app.buttons["Für heute einplanen"]
         XCTAssertTrue(planAll.waitForExistence(timeout: 120), "Ideen wurden nicht ausgearbeitet")
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'nicht ausarbeiten'")).firstMatch.exists,
                        "Fehlermeldung trotz erfolgreichem Ausarbeiten")
         planAll.tap()
-        XCTAssertTrue(app.buttons["Für heute eingeplant"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Für heute eingeplant"].waitForExistence(timeout: 5))
         snapshot(app, "83-menu-planned")
 
         // Im Wochenplan stehen alle drei Gänge, mit Gang als Hinweis
