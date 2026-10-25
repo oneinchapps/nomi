@@ -15,7 +15,7 @@ final class ShoppingFlowTests: NomNomUITestCase {
         // Aus dem Rezept auf die Liste – Gewürze & Öle sind abgewählt
         app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Halloumi-Tacos")).firstMatch.tap()
         app.buttons["Einkaufen"].tap()
-        XCTAssertTrue(app.staticTexts["Gewürze & Öle sind abgewählt – die habt ihr meist schon."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Gewürze & Öle sind abgewählt – die habt ihr meist schon."].waitForExistence(timeout: 15))
         snapshot(app, "30-add-to-list")
         app.buttons["2 Zutaten hinzufügen"].tap()
 

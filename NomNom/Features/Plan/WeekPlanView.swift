@@ -169,7 +169,8 @@ struct WeekPlanView: View {
                         .foregroundStyle(Color.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    MetaLabel([recipe.totalMinutes.map(Recipe.durationLabel), Recipe.servingsLabel(entry.servings)]
+                    // Bei Menüs steht der Gang vorne („VORSPEISE · 20 MIN · FÜR ZWEI“)
+                    MetaLabel([entry.note, recipe.totalMinutes.map(Recipe.durationLabel), Recipe.servingsLabel(entry.servings)]
                         .compactMap { $0 }.joined(separator: " · "))
                 }
                 Spacer(minLength: 0)

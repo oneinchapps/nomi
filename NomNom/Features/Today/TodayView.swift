@@ -55,6 +55,9 @@ struct TodayView: View {
             .navigationDestination(for: UUID.self) { id in
                 RecipeDetailView(recipeId: id)
             }
+            .onChange(of: app.members.count, initial: true) { _, count in
+                decide.memberCount = max(1, count)
+            }
         }
     }
 
@@ -102,15 +105,43 @@ struct TodayView: View {
 
     @ViewBuilder
     private var roundState: some View {
-        if let match = decide.match {
+        if let dishes = decide.menuMatch {
+            MenuMatchCard(dishes: dishes)
+        } else if let match = decide.match {
             MatchCard(candidate: match)
-        } else if !decide.myDeck.isEmpty {
+        } else {
+            if decide.menu.isMenu { courseProgress }
+            deckOrWaiting
+        }
+    }
+
+    @ViewBuilder
+    private var deckOrWaiting: some View {
+        if !decide.myDeck.isEmpty {
             SwipeDeck(deck: decide.myDeck, recipe: { recipes.recipe(id: $0) }) { candidate, liked in
                 Task { await decide.vote(candidate, liked: liked) }
             }
             .padding(.top, 6)
         } else if !decide.candidates.isEmpty && !decide.isThinking {
             waiting
+        }
+    }
+
+    /// „Vorspeise ✓ · Hauptgang · Dessert“ – welche Gänge schon entschieden sind.
+    private var courseProgress: some View {
+        let decided = decide.menu.decided
+        return FlowLayout(spacing: 8) {
+            ForEach(decide.menu.courses, id: \.self) { course in
+                let done = decided[course] != nil
+                Label(course, systemImage: done ? "checkmark.circle.fill" : "circle.dashed")
+                    .font(.captionSans)
+                    .foregroundStyle(done ? Color.onBrand : Color.ink)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(done ? Color.brand : Color.surface, in: .capsule)
+                    .overlay { Capsule().strokeBorder(done ? .clear : Color.hairline) }
+                    .accessibilityLabel("\(course): \(done ? "entschieden" : "offen")")
+            }
         }
     }
 
@@ -174,6 +205,12 @@ struct TodayView: View {
                     .focused($inputFocused)
                     .submitLabel(.send)
                     .onSubmit { send(input) }
+                    // Mehrzeilige Felder lösen bei „Senden“ kein onSubmit aus, sondern fügen einen Umbruch ein
+                    .onChange(of: input) { _, text in
+                        if text.contains(where: \.isNewline) {
+                            send(text.filter { !$0.isNewline })
+                        }
+                    }
                     .font(.bodySans)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 13)
@@ -205,6 +242,8 @@ struct TodayView: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !decide.isThinking else { return }
         input = ""
+        // Tastatur zu, damit die Karten sichtbar werden
+        inputFocused = false
         Task { await decide.send(trimmed) }
     }
 

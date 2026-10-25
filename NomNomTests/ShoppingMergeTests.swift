@@ -104,3 +104,42 @@ struct PlanCalendarTests {
         #expect(PlanCalendar.weekNumber(of: start) == 44)
     }
 }
+
+struct MenuStateTests {
+    let session = UUID(), household = UUID()
+    let alex = UUID(), sam = UUID()
+
+    func card(_ course: String?, _ position: Int) -> SessionCandidate {
+        SessionCandidate(id: UUID(), sessionId: session, recipeId: nil, aiRecipe: nil, reason: nil, course: course, position: position)
+    }
+
+    func like(_ card: SessionCandidate, by user: UUID, _ liked: Bool = true) -> SessionVote {
+        SessionVote(candidateId: card.id, sessionId: session, householdId: household, userId: user, liked: liked)
+    }
+
+    @Test func decidesCoursesAndShrinksTheDeck() {
+        let soup = card("Vorspeise", 0), salad = card("Vorspeise", 1)
+        let roast = card("Hauptgang", 2), risotto = card("Hauptgang", 3)
+        let state = MenuState(
+            courses: ["Vorspeise", "Hauptgang"],
+            candidates: [risotto, roast, salad, soup],
+            votes: [like(soup, by: alex), like(soup, by: sam), like(roast, by: alex)],
+            memberCount: 2
+        )
+        #expect(state.isMenu)
+        #expect(state.decided["Vorspeise"]?.id == soup.id)
+        #expect(state.decided["Hauptgang"] == nil)
+        // Vorspeise ist entschieden → Salat fällt raus; Alex hat Braten schon bewertet
+        #expect(state.deck(for: alex).map(\.id) == [risotto.id])
+        #expect(state.deck(for: sam).map(\.id) == [roast.id, risotto.id])
+        #expect(state.dishes.map(\.course) == ["Vorspeise"])
+    }
+
+    @Test func singleDishHasNoCourses() {
+        let a = card(nil, 0)
+        let state = MenuState(courses: [], candidates: [a], votes: [], memberCount: 2)
+        #expect(!state.isMenu)
+        #expect(state.decided.isEmpty)
+        #expect(state.deck(for: alex).count == 1)
+    }
+}

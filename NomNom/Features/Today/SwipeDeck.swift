@@ -142,14 +142,25 @@ struct CandidateCard: View {
                 .frame(maxWidth: .infinity)
                 .clipShape(.rect(cornerRadius: 18))
                 .overlay(alignment: .topLeading) {
-                    Text(recipe != nil ? "AUS EURER SAMMLUNG" : "IDEE VON NOMNOM")
-                        .font(.meta)
-                        .tracking(1.2)
-                        .foregroundStyle(Color.ink)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: .capsule)
-                        .padding(12)
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let course = candidate.course {
+                            Text(course.uppercased(with: Locale(identifier: "de_DE")))
+                                .font(.custom("DMMono-Medium", size: 12, relativeTo: .caption))
+                                .tracking(1.4)
+                                .foregroundStyle(Color.onBrand)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.brand, in: .capsule)
+                        }
+                        Text(recipe != nil ? "AUS EURER SAMMLUNG" : "IDEE VON NOMNOM")
+                            .font(.meta)
+                            .tracking(1.2)
+                            .foregroundStyle(Color.ink)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial, in: .capsule)
+                    }
+                    .padding(12)
                 }
             VStack(alignment: .leading, spacing: 8) {
                 if !meta.isEmpty { MetaLabel(meta) }

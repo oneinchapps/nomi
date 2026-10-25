@@ -67,6 +67,8 @@ final class DecideFlowTests: NomNomUITestCase {
         app.buttons["Rezept ausarbeiten"].tap()
         let view = app.buttons["Rezept ansehen"]
         XCTAssertTrue(view.waitForExistence(timeout: 90), "Rezept wurde nicht ausgearbeitet")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'nicht ausarbeiten'")).firstMatch.exists,
+                       "Fehlermeldung trotz erfolgreichem Ausarbeiten")
         snapshot(app, "53-match-expanded")
         view.tap()
         XCTAssertTrue(app.staticTexts["Zutaten"].waitForExistence(timeout: 5))

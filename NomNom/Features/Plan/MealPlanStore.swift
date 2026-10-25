@@ -58,8 +58,8 @@ final class MealPlanStore {
         }
     }
 
-    func add(_ recipe: Recipe, on day: Date, servings: Int) async {
-        let entry = MealPlanEntry(householdId: householdId, day: PlanCalendar.key(for: day), recipeId: recipe.id, servings: servings)
+    func add(_ recipe: Recipe, on day: Date, servings: Int, note: String? = nil) async {
+        let entry = MealPlanEntry(householdId: householdId, day: PlanCalendar.key(for: day), recipeId: recipe.id, servings: servings, note: note)
         if PlanCalendar.key(for: day) >= PlanCalendar.key(for: weekStart) && PlanCalendar.key(for: day) <= PlanCalendar.key(for: days.last!) {
             entries.append(entry)
         }

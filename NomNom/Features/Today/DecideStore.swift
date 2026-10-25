@@ -15,6 +15,8 @@ final class DecideStore {
     private(set) var isThinking = false
     private(set) var hasLoaded = false
     var error: String?
+    /// Für „alle mögen es“ – kommt aus AppModel.members
+    var memberCount = 1
 
     init(householdId: UUID, userId: UUID) {
         self.householdId = householdId
@@ -23,22 +25,27 @@ final class DecideStore {
 
     // MARK: - Abgeleitet
 
-    /// Meine noch nicht bewerteten Karten, in Vorschlagsreihenfolge.
-    var myDeck: [SessionCandidate] {
-        let voted = Set(votes.filter { $0.userId == userId }.map(\.candidateId))
-        return candidates.filter { !voted.contains($0.id) }.sorted { $0.position < $1.position }
+    var menu: MenuState {
+        MenuState(courses: session?.courses ?? [], candidates: candidates, votes: votes, memberCount: memberCount)
     }
 
+    /// Meine noch nicht bewerteten Karten – bei Menüs ohne schon entschiedene Gänge.
+    var myDeck: [SessionCandidate] { menu.deck(for: userId) }
+
+    /// Match für ein einzelnes Gericht (nicht bei Menüs)
     var match: SessionCandidate? {
-        guard session?.status == .matched, let id = session?.matchedCandidateId else { return nil }
+        guard session?.status == .matched, !menu.isMenu, let id = session?.matchedCandidateId else { return nil }
         return candidates.first { $0.id == id }
     }
 
-    /// Wie viele Karten eine andere Person noch vor sich hat.
-    func remaining(for member: UUID) -> Int {
-        let voted = Set(votes.filter { $0.userId == member }.map(\.candidateId))
-        return candidates.filter { !voted.contains($0.id) }.count
+    /// Fertiges Menü: alle Gänge entschieden
+    var menuMatch: [(course: String, candidate: SessionCandidate)]? {
+        guard session?.status == .matched, menu.isMenu else { return nil }
+        return menu.dishes
     }
+
+    /// Wie viele Karten eine andere Person noch vor sich hat.
+    func remaining(for member: UUID) -> Int { menu.deck(for: member).count }
 
     // MARK: - Laden
 

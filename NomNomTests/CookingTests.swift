@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import nomnom
 
@@ -70,5 +71,26 @@ struct StepScalingTests {
         let recipe = Recipe(title: "Test", servings: 2, steps: [Recipe.Step(text: "100 g Zucker einrühren", timerSeconds: 60)])
         #expect(recipe.scaledSteps(for: 4).first == Recipe.Step(text: "200 g Zucker einrühren", timerSeconds: 60))
         #expect(recipe.scaledSteps(for: 2).first?.text == "100 g Zucker einrühren")
+    }
+}
+
+struct FunctionDecodingTests {
+    @Test func decodesPostgresTimestamps() throws {
+        #expect(FunctionDecoding.date(from: "2026-10-25T21:14:33.123456+00:00") != nil)
+        #expect(FunctionDecoding.date(from: "2026-10-25T21:14:33+00:00") != nil)
+        #expect(FunctionDecoding.date(from: "2026-10-25T21:14:33.5Z") != nil)
+        #expect(FunctionDecoding.date(from: "gestern") == nil)
+    }
+
+    @Test func decodesSavedRecipeFromFunction() throws {
+        let json = """
+        {"recipe": {"id": "6F9619FF-8B86-D011-B42D-00C04FC964FF", "title": "Kürbis-Gnocchi", "source": "ai",
+          "servings": 2, "ingredients": [], "steps": [], "tags": [],
+          "created_at": "2026-10-26T09:14:33.123456+00:00", "updated_at": "2026-10-26T09:14:33.123456+00:00"}}
+        """
+        struct Response: Decodable { let recipe: Recipe }
+        let response = try FunctionDecoding.decoder.decode(Response.self, from: Data(json.utf8))
+        #expect(response.recipe.title == "Kürbis-Gnocchi")
+        #expect(response.recipe.createdAt != nil)
     }
 }
