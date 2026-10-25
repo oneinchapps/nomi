@@ -33,6 +33,11 @@ final class ImportFlowTests: NomNomUITestCase {
 
         save.tap()
         XCTAssertTrue(app.staticTexts["1 REZEPT"].waitForExistence(timeout: 15))
+        // Foto laden lassen, dann prüfen: Kachel bleibt im Bildschirm (Fotos dürfen das Raster nicht sprengen)
+        sleep(2)
+        let tile = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Rouladen")).firstMatch
+        XCTAssertGreaterThanOrEqual(tile.frame.minX, 0, "Kachel ragt links aus dem Bildschirm")
+        XCTAssertLessThanOrEqual(tile.frame.maxX, app.frame.maxX / 2 + 10, "Kachel ist breiter als ihre Spalte")
         snapshot(app, "23-imported-grid")
 
         app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Rouladen")).firstMatch.tap()

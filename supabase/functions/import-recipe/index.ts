@@ -90,7 +90,8 @@ export default {
     }
 
     // 3. Bild in den eigenen Speicher kopieren – Instagram/TikTok-Bildlinks laufen nach Tagen ab
-    const imageURL = page.imageURL ? await copyImage(ctx.supabase, householdId, page.imageURL) : null;
+    const copied = page.imageURL ? await copyImage(ctx.supabase, householdId, page.imageURL) : null;
+    const imageURL = copied ? reachableFromClient(copied, req) : null;
 
     const recipe = {
       id: crypto.randomUUID(),
@@ -123,6 +124,18 @@ export default {
 
 function error(status: number, message: string) {
   return Response.json({ error: message }, { status });
+}
+
+/// Lokal (`supabase start`) heißt der Storage-Host im Docker-Netz „kong“ – für Simulator und App
+/// unerreichbar. Dann die Adresse nehmen, unter der die Anfrage hereinkam. Live bleibt die URL unverändert.
+function reachableFromClient(publicURL: string, req: Request): string {
+  const url = new URL(publicURL);
+  const host = req.headers.get("x-forwarded-host");
+  if (url.hostname !== "kong" || !host) return publicURL;
+  url.protocol = (req.headers.get("x-forwarded-proto") ?? "http") + ":";
+  url.hostname = host;
+  url.port = req.headers.get("x-forwarded-port") ?? "";
+  return url.toString();
 }
 
 function firstURL(text: string | null): string | null {

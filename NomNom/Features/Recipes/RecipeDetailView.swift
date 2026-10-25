@@ -150,23 +150,55 @@ struct RecipeDetailView: View {
     }
 
     private func steps(_ steps: [Recipe.Step]) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 10) {
             SectionTitle("Zubereitung")
             ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                HStack(alignment: .firstTextBaseline, spacing: 16) {
-                    Text("\(index + 1)")
-                        .font(.custom("Fraunces144pt-Bold", size: 26, relativeTo: .title2))
-                        .foregroundStyle(Color.ink)
-                        .frame(width: 28, alignment: .leading)
-                    Text(step.text)
-                        .font(.bodySans)
-                        .foregroundStyle(Color.ink)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .accessibilityElement(children: .combine)
+                StepCard(number: index + 1, step: step)
             }
         }
+    }
+}
+
+/// Ein Zubereitungsschritt als eigener Block – Grundlage für den Kochmodus.
+struct StepCard: View {
+    let number: Int
+    let step: Recipe.Step
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Text("\(number)")
+                .font(.custom("Fraunces144pt-Bold", size: 18, relativeTo: .headline))
+                .foregroundStyle(Color.ink)
+                .frame(width: 34, height: 34)
+                .background(Color.mist, in: .circle)
+            VStack(alignment: .leading, spacing: 10) {
+                Text(step.text)
+                    .font(.bodySans)
+                    .foregroundStyle(Color.ink)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let seconds = step.timerSeconds, seconds > 0 {
+                    Label(Self.timerLabel(seconds), systemImage: "timer")
+                        .font(.custom("DMMono-Medium", size: 12, relativeTo: .caption))
+                        .foregroundStyle(Color.ink)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.mist, in: .capsule)
+                }
+            }
+            .padding(.top, 5)
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(Color.surface, in: .rect(cornerRadius: 18))
+        .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.hairline) }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Schritt \(number): \(step.text)")
+    }
+
+    static func timerLabel(_ seconds: Int) -> String {
+        let minutes = Int((Double(seconds) / 60).rounded())
+        return minutes >= 60 ? Recipe.durationLabel(minutes).uppercased() : "\(max(minutes, 1)) MIN"
     }
 }
 

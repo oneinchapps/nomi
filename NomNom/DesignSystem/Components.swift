@@ -97,11 +97,20 @@ struct RecipeCard: View {
 }
 
 /// Rezeptfoto, oder ein getönter Platzhalter mit Emoji, solange es keins gibt.
+/// Nimmt genau den angebotenen Platz ein – das Foto füllt ihn und wird beschnitten,
+/// statt mit seinem Seitenverhältnis das Layout aufzudrücken.
 struct RecipeImage: View {
     let recipe: Recipe
     var emojiSize: CGFloat = 72
 
     var body: some View {
+        Color.clear
+            .overlay { content }
+            .clipped()
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if let url = recipe.imageURL {
             AsyncImage(url: url) { phase in
                 if let image = phase.image {

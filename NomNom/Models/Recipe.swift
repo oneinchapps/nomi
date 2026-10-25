@@ -99,7 +99,7 @@ extension Recipe {
     static func durationLabel(_ minutes: Int) -> String {
         guard minutes >= 60 else { return "\(minutes) Min" }
         let h = minutes / 60, m = minutes % 60
-        return m == 0 ? "\(h) Std" : "\(h) Std \(m)"
+        return m == 0 ? "\(h) Std" : "\(h) Std \(m) Min"
     }
 
     static func servingsLabel(_ n: Int) -> String {
@@ -141,6 +141,23 @@ extension Recipe {
         guard targetServings != servings, servings > 0 else { return ingredients }
         let factor = Double(targetServings) / Double(servings)
         return ingredients.map { $0.scaled(by: factor) }
+    }
+}
+
+/// Aufteilen von Schritt-Text, der Zeilenumbrüche enthält (Return gedrückt oder mehrere Zeilen eingefügt).
+enum StepText {
+    /// `nil`, wenn nichts aufzuteilen ist. Sonst der bereinigte erste Teil und die weiteren Schritte;
+    /// ein Return am Ende ergibt einen leeren neuen Schritt zum Weiterschreiben.
+    static func split(_ text: String) -> (first: String, rest: [String])? {
+        guard text.contains(where: \.isNewline) else { return nil }
+        // Nummerierung aus Blogs entfernen („2. Zwiebeln schneiden“)
+        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.replacingOccurrences(of: #"^\d+[.)]\s+"#, with: "", options: .regularExpression) }
+        let first = lines[0]
+        var rest = lines.dropFirst().filter { !$0.isEmpty }
+        if rest.isEmpty { rest = [""] }
+        return (first, Array(rest))
     }
 }
 

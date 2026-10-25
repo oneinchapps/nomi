@@ -1,7 +1,7 @@
 import PhotosUI
 import SwiftUI
 
-/// Anlegen und Bearbeiten. Zutaten und Schritte als Freitext, eine Zeile pro Eintrag.
+/// Anlegen und Bearbeiten. Zutaten als Freitext (eine Zeile pro Zutat), Schritte als einzelne Blöcke.
 struct RecipeEditorView: View {
     let original: Recipe?
     /// Vorbefüllter Entwurf (z. B. aus dem Import), der noch nicht gespeichert ist.
@@ -16,7 +16,7 @@ struct RecipeEditorView: View {
     @State private var minutes: String
     @State private var servings: Int
     @State private var ingredientsText: String
-    @State private var stepsText: String
+    @State private var steps: [StepDraft]
     @State private var sourceURL: String
     @State private var imageURL: URL?
 
@@ -26,7 +26,13 @@ struct RecipeEditorView: View {
     @State private var error: String?
     @FocusState private var focus: Field?
 
-    enum Field { case title, summary, minutes, ingredients, steps, source }
+    enum Field: Hashable { case title, summary, minutes, ingredients, step(UUID), source }
+
+    struct StepDraft: Identifiable, Equatable {
+        let id = UUID()
+        var text: String
+        var timerSeconds: Int?
+    }
 
     init(recipe: Recipe?, isNew: Bool = false, notice: String? = nil) {
         original = recipe
@@ -37,7 +43,8 @@ struct RecipeEditorView: View {
         _minutes = State(initialValue: recipe?.totalMinutes.map(String.init) ?? "")
         _servings = State(initialValue: recipe?.servings ?? 2)
         _ingredientsText = State(initialValue: recipe?.ingredients.map(\.line).joined(separator: "\n") ?? "")
-        _stepsText = State(initialValue: recipe?.steps.map(\.text).joined(separator: "\n") ?? "")
+        let drafts = (recipe?.steps ?? []).map { StepDraft(text: $0.text, timerSeconds: $0.timerSeconds) }
+        _steps = State(initialValue: drafts.isEmpty ? [StepDraft(text: "")] : drafts)
         _sourceURL = State(initialValue: recipe?.sourceURL?.absoluteString ?? "")
         _imageURL = State(initialValue: recipe?.imageURL)
     }
@@ -90,8 +97,8 @@ struct RecipeEditorView: View {
                         textArea($ingredientsText, placeholder: "250 g Halloumi\n8 kleine Tortillas\n1 Avocado", field: .ingredients)
                     }
 
-                    field("Zubereitung", hint: "Ein Schritt pro Zeile") {
-                        textArea($stepsText, placeholder: "Halloumi in Scheiben schneiden und goldbraun braten.\nTortillas kurz in der Pfanne erwärmen.", field: .steps)
+                    field("Zubereitung", hint: "Return beginnt einen neuen Schritt. Eingefügter Text wird Zeile für Zeile aufgeteilt.") {
+                        stepsEditor
                     }
 
                     field("Quelle") {
@@ -176,6 +183,88 @@ struct RecipeEditorView: View {
             }
     }
 
+    // MARK: - Schritte
+
+    private var stepsEditor: some View {
+        VStack(spacing: 10) {
+            ForEach($steps) { $step in
+                let index = steps.firstIndex { $0.id == step.id } ?? 0
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("\(index + 1)")
+                        .font(.custom("Fraunces144pt-Bold", size: 22, relativeTo: .title3))
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 22, alignment: .leading)
+                    TextField("Was ist zu tun?", text: $step.text, axis: .vertical)
+                        .font(.bodySans)
+                        .foregroundStyle(Color.ink)
+                        .lineLimit(1...12)
+                        .focused($focus, equals: .step(step.id))
+                        .accessibilityIdentifier("step-\(index + 1)")
+                        .onChange(of: step.text) { _, _ in splitStep(step.id) }
+                    Menu {
+                        Button("Nach oben", systemImage: "arrow.up") { moveStep(step.id, by: -1) }
+                            .disabled(index == 0)
+                        Button("Nach unten", systemImage: "arrow.down") { moveStep(step.id, by: 1) }
+                            .disabled(index == steps.count - 1)
+                        Button("Löschen", systemImage: "trash", role: .destructive) { deleteStep(step.id) }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.inkMuted)
+                            .frame(width: 32, height: 32)
+                            .contentShape(.rect)
+                    }
+                    .accessibilityLabel("Schritt \(index + 1) bearbeiten")
+                }
+                .padding(.leading, 16)
+                .padding(.trailing, 6)
+                .padding(.vertical, 12)
+                .background(Color.surface, in: .rect(cornerRadius: 16))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(focus == .step(step.id) ? Color.ink : Color.hairline, lineWidth: focus == .step(step.id) ? 1.5 : 1)
+                }
+            }
+
+            Button {
+                let new = StepDraft(text: "")
+                steps.append(new)
+                focus = .step(new.id)
+            } label: {
+                Label("Schritt hinzufügen", systemImage: "plus")
+                    .font(.bodySansMedium)
+                    .foregroundStyle(Color.ink)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color.hairline, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                    }
+            }
+            .buttonStyle(.plain)
+        }
+        .animation(.smooth(duration: 0.25), value: steps.map(\.id))
+    }
+
+    /// Zeilenumbruch im Schritt (Return oder Einfügen) → in mehrere Schritte aufteilen.
+    private func splitStep(_ id: UUID) {
+        guard let index = steps.firstIndex(where: { $0.id == id }),
+              let parts = StepText.split(steps[index].text) else { return }
+        steps[index].text = parts.first
+        let newSteps = parts.rest.map { StepDraft(text: $0) }
+        steps.insert(contentsOf: newSteps, at: index + 1)
+        if let last = newSteps.last { focus = .step(last.id) }
+    }
+
+    private func moveStep(_ id: UUID, by offset: Int) {
+        guard let index = steps.firstIndex(where: { $0.id == id }), steps.indices.contains(index + offset) else { return }
+        steps.swapAt(index, index + offset)
+    }
+
+    private func deleteStep(_ id: UUID) {
+        steps.removeAll { $0.id == id }
+        if steps.isEmpty { steps = [StepDraft(text: "")] }
+    }
+
     // MARK: - Aktionen
 
     private func loadPhoto(_ item: PhotosPickerItem?) async {
@@ -198,14 +287,9 @@ struct RecipeEditorView: View {
                 recipe.totalMinutes = Int(minutes.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
                 recipe.servings = servings
                 recipe.ingredients = parsedIngredients()
-                recipe.steps = stepsText
-                    .split(whereSeparator: \.isNewline)
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
-                    .map { text in
-                        // Timer aus dem Original behalten, wenn der Text gleich geblieben ist
-                        original?.steps.first { $0.text == text } ?? Recipe.Step(text: text)
-                    }
+                recipe.steps = steps
+                    .map { Recipe.Step(text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines), timerSeconds: $0.timerSeconds) }
+                    .filter { !$0.text.isEmpty }
                 recipe.sourceURL = normalizedURL(sourceURL)
 
                 if let pickedImage {
@@ -249,7 +333,9 @@ private struct PhotoPickerLabel: View {
     var body: some View {
         ZStack {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                Color.clear.overlay {
+                    Image(uiImage: image).resizable().scaledToFill()
+                }
             } else if let imageURL {
                 RecipeImage(recipe: Recipe(title: title, imageURL: imageURL), emojiSize: 56)
             } else {

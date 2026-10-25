@@ -102,3 +102,34 @@ struct AisleTests {
         #expect(Aisle.guess(for: name) == aisle)
     }
 }
+
+struct StepTextTests {
+    @Test func noSplitWithoutNewline() {
+        #expect(StepText.split("Zwiebeln schneiden") == nil)
+    }
+
+    @Test func returnAtEndStartsEmptyStep() throws {
+        let parts = try #require(StepText.split("Zwiebeln schneiden\n"))
+        #expect(parts.first == "Zwiebeln schneiden")
+        #expect(parts.rest == [""])
+    }
+
+    @Test func pastedBlogStepsAreSplitAndUnnumbered() throws {
+        let parts = try #require(StepText.split("1. Ofen vorheizen.\n\n2. Gemüse schneiden.\n3) Alles backen."))
+        #expect(parts.first == "Ofen vorheizen.")
+        #expect(parts.rest == ["Gemüse schneiden.", "Alles backen."])
+    }
+
+    @Test func keepsNumbersThatArePartOfTheText() throws {
+        let parts = try #require(StepText.split("Teig ruhen lassen\n200 g Mehl unterheben"))
+        #expect(parts.rest == ["200 g Mehl unterheben"])
+    }
+}
+
+struct DurationLabelTests {
+    @Test func formatsHoursAndMinutes() {
+        #expect(Recipe.durationLabel(25) == "25 Min")
+        #expect(Recipe.durationLabel(60) == "1 Std")
+        #expect(Recipe.durationLabel(95) == "1 Std 35 Min")
+    }
+}

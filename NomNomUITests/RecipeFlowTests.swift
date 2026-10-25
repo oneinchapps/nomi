@@ -22,9 +22,14 @@ final class RecipeFlowTests: NomNomUITestCase {
         let ingredients = app.textViews["editor-ingredients"]
         ingredients.tap()
         ingredients.typeText("250 g Halloumi\n8 kleine Tortillas\n1 1/2 EL Olivenöl\nSalz")
-        let steps = app.textViews["editor-steps"]
-        steps.tap()
-        steps.typeText("Halloumi in Scheiben schneiden und goldbraun braten.\nTortillas erwärmen und belegen.")
+        // Schritte sind einzelne Blöcke
+        let step1 = app.descendants(matching: .any)["step-1"]
+        step1.tap()
+        step1.typeText("Halloumi in Scheiben schneiden und goldbraun braten.")
+        app.buttons["Schritt hinzufügen"].tap()
+        let step2 = app.descendants(matching: .any)["step-2"]
+        XCTAssertTrue(step2.waitForExistence(timeout: 3))
+        step2.typeText("Tortillas erwärmen und belegen.")
         snapshot(app, "11-editor")
 
         app.buttons["Sichern"].tap()
@@ -52,6 +57,13 @@ final class RecipeFlowTests: NomNomUITestCase {
         XCTAssertTrue(row(app, "3 EL").exists)
         XCTAssertTrue(row(app, "16").exists)
         snapshot(app, "14-detail-scaled")
+
+        // Schritte erscheinen als einzelne Blöcke
+        let secondStep = app.descendants(matching: .any)["Schritt 2: Tortillas erwärmen und belegen."]
+        app.swipeUp()
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Schritt 1:")).firstMatch.exists)
+        XCTAssertTrue(secondStep.exists)
+        snapshot(app, "15-detail-steps")
 
         // Nach Neustart weiterhin angemeldet, Rezept noch da
         let again = relaunchKeepingSession(app)
