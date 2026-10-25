@@ -42,6 +42,14 @@ xcodebuild test -project NomNom.xcodeproj -scheme NomNom \
 ```
 Debug-Builds lesen `NOMNOM_SUPABASE_URL`, `NOMNOM_SUPABASE_KEY` und `NOMNOM_RESET_SESSION` aus der Umgebung.
 
+## Live-Sync
+Stores laden komplett neu, sobald sich etwas ändert (`observeTable` in `Services/Realtime.swift`). Delete-Events kommen in Supabase Realtime nicht bei gefilterten Abos an, deshalb hört `observeTable` zusätzlich ungefiltert auf Deletes. Neue Tabellen mit Live-Sync in die Publication `supabase_realtime` aufnehmen.
+
+## UI-Test-Fallen
+- Die `TabView` hält verborgene Tabs im Accessibility-Baum. Ein `app.buttons[...]` kann deshalb eine unsichtbare Kachel aus einem anderen Tab treffen. Abfragen eingrenzen, z. B. `app.collectionViews.buttons`.
+- Zeilen-Buttons brauchen einen `Spacer`, sonst endet die Tippfläche am Textende.
+- In Sheets keine zufälligen IDs als Schlüssel für `@State` verwenden: Das Sheet wird bei jedem Neuzeichnen neu erzeugt, der State bleibt aber bestehen.
+
 ## Swift-6-Fallen
 Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf anderen Threads aufruft (z. B. `UIColor { traits in … }`), müssen `nonisolated`/`@Sendable` sein, sonst stürzt die App zur Laufzeit ab.
 
