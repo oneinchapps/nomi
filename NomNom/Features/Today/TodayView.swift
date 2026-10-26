@@ -66,8 +66,7 @@ struct TodayView: View {
 
     private var header: some View {
         BrandHeader {
-            MetaLabel("Abendessen, entschieden", font: .eyebrow, tracking: 2.4)
-            DisplayHeadline(lines: ["Worauf habt ihr Lust?"])
+            DisplayHeadline(lines: ["Was gibt es heute?"])
             if decide.messages.isEmpty {
                 Text("Schreibt nomnom, worauf ihr Lust habt. Ihr swipet beide – mögt ihr dasselbe, ist es ein Match.")
                     .font(.bodySans)

@@ -69,7 +69,7 @@ class NomNomUITestCase: XCTestCase {
         field.tap()
         field.typeText(name)
         app.buttons["Haushalt anlegen"].tap()
-        XCTAssertTrue(app.staticTexts["Worauf habt ihr Lust?"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Was gibt es heute?"].waitForExistence(timeout: 10))
         return app
     }
 

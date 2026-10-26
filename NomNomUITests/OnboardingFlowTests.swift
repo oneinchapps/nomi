@@ -37,7 +37,7 @@ final class OnboardingFlowTests: NomNomUITestCase {
         b.buttons["Beitreten"].tap()
 
         // B ist drin, der Einladungs-Hinweis verschwindet, beide stehen im Haushalt
-        XCTAssertTrue(b.staticTexts["Worauf habt ihr Lust?"].waitForExistence(timeout: 10))
+        XCTAssertTrue(b.staticTexts["Was gibt es heute?"].waitForExistence(timeout: 10))
         XCTAssertFalse(b.staticTexts["EINLADUNGSCODE"].exists)
         b.buttons["Haushalt und Konto"].tap()
         XCTAssertTrue(b.staticTexts["Alex"].waitForExistence(timeout: 5))
