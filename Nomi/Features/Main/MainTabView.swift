@@ -1,7 +1,15 @@
 import SwiftUI
 
+/// Welcher Tab offen ist – nomi springt damit in den passenden Bereich.
+@Observable
+final class AppNavigation {
+    var tab: AppTab = .nomi
+}
+
 struct MainTabView: View {
     @Environment(AppModel.self) private var app
+    @State private var navigation = AppNavigation()
+    @State private var assistant: AssistantStore
     @State private var recipes: RecipeStore
     @State private var shopping: ShoppingStore
     @State private var plan: MealPlanStore
@@ -9,6 +17,7 @@ struct MainTabView: View {
     @State private var cookingLog: CookingLogStore
 
     init(householdId: UUID, userId: UUID) {
+        _assistant = State(initialValue: AssistantStore(householdId: householdId, userId: userId))
         _decide = State(initialValue: DecideStore(householdId: householdId, userId: userId))
         _cookingLog = State(initialValue: CookingLogStore(householdId: householdId, userId: userId))
         _recipes = State(initialValue: RecipeStore(householdId: householdId))
@@ -17,35 +26,45 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        TabView {
-            Tab("Heute", systemImage: "fork.knife") {
+        @Bindable var navigation = navigation
+        TabView(selection: $navigation.tab) {
+            Tab("nomi", image: "TabNomi", value: AppTab.nomi) {
+                TabRoot {
+                    NomiView()
+                }
+            }
+            Tab("Heute", systemImage: "fork.knife", value: AppTab.today) {
                 TabRoot {
                     TodayView()
                 }
             }
-            Tab("Rezepte", systemImage: "book.closed") {
+            Tab("Rezepte", systemImage: "book.closed", value: AppTab.recipes) {
                 TabRoot {
                     RecipesView()
                 }
             }
-            Tab("Einkauf", systemImage: "basket") {
+            Tab("Einkauf", systemImage: "basket", value: AppTab.shopping) {
                 TabRoot {
                     ShoppingListView()
                 }
             }
             .badge(shopping.openItems.count)
-            Tab("Woche", systemImage: "calendar") {
+            Tab("Woche", systemImage: "calendar", value: AppTab.week) {
                 TabRoot {
                     WeekPlanView()
                 }
             }
         }
         .tint(Color.brand)
+        .environment(navigation)
+        .environment(assistant)
         .environment(recipes)
         .environment(shopping)
         .environment(plan)
         .environment(decide)
         .environment(cookingLog)
+        .task { await assistant.load() }
+        .task { await assistant.observeChanges() }
         .task { await recipes.load() }
         .task { await recipes.observeChanges() }
         .task { await shopping.load() }

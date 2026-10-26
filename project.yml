@@ -66,6 +66,8 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSCameraUsageDescription: nomi fotografiert Rezepte aus Kochbüchern oder von Karteikarten, um sie auszulesen.
+        NSMicrophoneUsageDescription: nomi hört zu, wenn du per Sprache mit nomi sprichst.
+        NSSpeechRecognitionUsageDescription: Damit nomi versteht, was du sagst. Die Erkennung läuft wenn möglich direkt auf deinem iPhone.
         # Gemeinsame Anmeldung mit der Teilen-Erweiterung (siehe SupabaseEnvironment.keychainGroup)
         KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomi.shared
     scheme:

@@ -10,11 +10,10 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "@anthropic-ai/sdk";
 import { withSupabase } from "@supabase/server";
-import { ClaudeError, type ExtractedRecipe, FULL_RECIPE_SCHEMA, structured } from "../_shared/recipe.ts";
+import { ClaudeError, structured } from "../_shared/recipe.ts";
+import { expandIdea } from "../_shared/expand.ts";
 import {
   type CandidateRow,
-  EXPAND_SYSTEM,
-  expandPrompt,
   type Idea,
   type MessageRow,
   type RecipeRow,
@@ -162,32 +161,7 @@ async function expand(supabase: Client, candidateId: string): Promise<Response> 
     return Response.json({ recipe });
   }
 
-  const idea = candidate.ai_recipe as Idea;
-  const full = await structured<Omit<ExtractedRecipe, "found_recipe">>({
-    system: EXPAND_SYSTEM,
-    user: expandPrompt(idea, 2),
-    schema: FULL_RECIPE_SCHEMA,
-    effort: "medium",
-  });
-
-  const recipe = {
-    id: crypto.randomUUID(),
-    household_id: candidate.household_id,
-    title: full.title.trim() || idea.title,
-    summary: full.summary ?? idea.summary,
-    source: "ai",
-    source_url: null,
-    image_url: null,
-    total_minutes: full.total_minutes && full.total_minutes > 0 ? full.total_minutes : idea.total_minutes,
-    servings: full.servings > 0 ? full.servings : 2,
-    ingredients: full.ingredients,
-    steps: full.steps,
-    tags: full.tags,
-    dish_type: full.dish_type,
-    diet: full.diet,
-  };
-  const { data: saved, error: insertError } = await supabase.from("recipes").insert(recipe).select().single();
-  if (insertError) throw insertError;
+  const saved = await expandIdea(supabase, candidate.household_id, candidate.ai_recipe as Idea, 2);
 
   const { error: linkError } = await supabase
     .from("session_candidates").update({ recipe_id: saved.id, ai_recipe: null }).eq("id", candidateId);

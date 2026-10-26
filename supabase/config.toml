@@ -446,3 +446,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/invite/deno.json"
 entrypoint = "./functions/invite/index.ts"
+
+[functions.assistant]
+enabled = true
+# Auth übernimmt withSupabase({ auth: "user" }) in der Function
+verify_jwt = false
+import_map = "./functions/assistant/deno.json"
+entrypoint = "./functions/assistant/index.ts"

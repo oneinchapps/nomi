@@ -1,14 +1,13 @@
 import SwiftUI
 
-/// Heute-Tab: mit nomi chatten, Vorschläge swipen, gemeinsames Match.
+/// Heute-Tab: das heutige Essen. Vorschläge holen, dann allein festlegen („Das nehmen wir“)
+/// oder gemeinsam swipen bis zum Match. Freie Wünsche gehen über nomi, das hierher zurückspringt.
 struct TodayView: View {
     @Environment(DecideStore.self) private var decide
     @Environment(RecipeStore.self) private var recipes
     @Environment(MealPlanStore.self) private var plan
     @Environment(AppModel.self) private var app
-
-    @State private var input = ""
-    @FocusState private var inputFocused: Bool
+    @Environment(AppNavigation.self) private var navigation
 
     private let quickPrompts = ["Was Schnelles", "Vegetarisch", "Comfort Food", "Was Neues ausprobieren", "Überrasch uns"]
 
@@ -24,8 +23,11 @@ struct TodayView: View {
 
                     plannedToday
 
-                    ForEach(decide.messages) { message in
-                        MessageBubble(message: message, isMe: message.userId == app.userId, author: author(of: message))
+                    // Ohne Karten (noch keine Runde, oder sie ist abgebrochen) geht es mit einem Wunsch los
+                    if decide.candidates.isEmpty && !decide.isThinking {
+                        start
+                    } else {
+                        roundIntro
                     }
 
                     if decide.isThinking {
@@ -42,14 +44,7 @@ struct TodayView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 16)
             }
-            .scrollDismissesKeyboard(.interactively)
             .background(Color.canvas.ignoresSafeArea())
-            .safeAreaInset(edge: .bottom) {
-                // Entschieden ist entschieden – neue Wünsche erst nach „Neue Runde“
-                if decide.match == nil && decide.menuMatch == nil {
-                    inputBar
-                }
-            }
             .onChange(of: decide.messages.count) { scrollDown(proxy) }
             .onChange(of: decide.isThinking) { scrollDown(proxy) }
             .onChange(of: decide.candidates.count) { scrollDown(proxy) }
@@ -67,8 +62,8 @@ struct TodayView: View {
     private var header: some View {
         BrandHeader {
             DisplayHeadline(lines: ["Was gibt es heute?"])
-            if decide.messages.isEmpty {
-                Text("Schreibt nomi, worauf ihr Lust habt. Ihr swipet beide – mögt ihr dasselbe, ist es ein Match.")
+            if decide.candidates.isEmpty {
+                Text("Holt euch Vorschläge und legt allein fest – oder swipet beide, bis ihr ein Match habt.")
                     .font(.bodySans)
                     .foregroundStyle(Color.onBrand.opacity(0.9))
                     .lineSpacing(3)
@@ -79,7 +74,7 @@ struct TodayView: View {
     @ViewBuilder
     private var plannedToday: some View {
         let today = plan.entries(on: .now).compactMap { recipes.recipe(id: $0.recipeId) }
-        if let first = today.first, decide.messages.isEmpty {
+        if let first = today.first {
             NavigationLink(value: first.id) {
                 HStack(spacing: 14) {
                     RecipeImage(recipe: first)
@@ -118,9 +113,12 @@ struct TodayView: View {
     @ViewBuilder
     private var deckOrWaiting: some View {
         if !decide.myDeck.isEmpty {
-            SwipeDeck(deck: decide.myDeck, recipe: { recipes.recipe(id: $0) }) { candidate, liked in
-                Task { await decide.vote(candidate, liked: liked) }
-            }
+            SwipeDeck(
+                deck: decide.myDeck,
+                recipe: { recipes.recipe(id: $0) },
+                onVote: { candidate, liked in Task { await decide.vote(candidate, liked: liked) } },
+                onDecide: { candidate in Task { await decide.decideAlone(candidate) } }
+            )
             .padding(.top, 6)
         } else if !decide.candidates.isEmpty && !decide.isThinking {
             waiting
@@ -180,77 +178,42 @@ struct TodayView: View {
         .overlay { RoundedRectangle(cornerRadius: Metrics.cardRadius).strokeBorder(Color.hairline) }
     }
 
-    private var inputBar: some View {
-        VStack(spacing: 10) {
-            if decide.messages.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(quickPrompts, id: \.self) { prompt in
-                            Button(prompt) { send(prompt) }
-                                .font(.captionSans)
-                                .foregroundStyle(Color.ink)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.mist, in: .capsule)
-                                .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, Metrics.gutter)
+    /// Noch keine Runde: Wunsch antippen oder mit nomi besprechen
+    private var start: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MetaLabel("Worauf habt ihr Lust?")
+            FlowLayout(spacing: 8) {
+                ForEach(quickPrompts, id: \.self) { prompt in
+                    Button(prompt) { Task { await decide.send(prompt) } }
+                        .font(.captionSans)
+                        .foregroundStyle(Color.ink)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.mist, in: .capsule)
+                        .buttonStyle(.plain)
                 }
-                .scrollIndicators(.hidden)
             }
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField("Worauf habt ihr Lust?", text: $input, axis: .vertical)
-                    .lineLimit(1...4)
-                    .focused($inputFocused)
-                    .submitLabel(.send)
-                    .onSubmit { send(input) }
-                    // Mehrzeilige Felder lösen bei „Senden“ kein onSubmit aus, sondern fügen einen Umbruch ein
-                    .onChange(of: input) { _, text in
-                        if text.contains(where: \.isNewline) {
-                            send(text.filter { !$0.isNewline })
-                        }
-                    }
-                    .font(.bodySans)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 13)
-                    .background(Color.surface, in: .rect(cornerRadius: 22))
-                    .overlay { RoundedRectangle(cornerRadius: 22).strokeBorder(inputFocused ? Color.ink : Color.hairline) }
-                Button {
-                    send(input)
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color.canvas)
-                        .frame(width: 46, height: 46)
-                        .background(Color.ink, in: .circle)
-                }
-                .buttonStyle(.plain)
-                .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || decide.isThinking)
-                .opacity(decide.isThinking ? 0.4 : 1)
-                .accessibilityLabel("Senden")
+            Button("Eigener Wunsch? Frag nomi", systemImage: "bubble.left.and.text.bubble.right") {
+                navigation.tab = .nomi
             }
-            .padding(.horizontal, Metrics.gutter)
+            .font(.bodySansMedium)
+            .foregroundStyle(Color.ink)
+            .padding(.top, 4)
         }
-        .padding(.vertical, 10)
-        .background(Color.canvas.opacity(0.96))
+    }
+
+    /// Laufende Runde: worum es geht und was nomi dazu meint
+    @ViewBuilder
+    private var roundIntro: some View {
+        if let wish = decide.messages.last(where: { $0.userId != nil }) {
+            MetaLabel("Wunsch: \(wish.content)")
+        }
+        if let reply = decide.messages.last(where: { $0.userId == nil }) {
+            MessageBubble(message: reply, isMe: false, author: "nomi")
+        }
     }
 
     // MARK: - Helfer
-
-    private func send(_ text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !decide.isThinking else { return }
-        input = ""
-        // Tastatur zu, damit die Karten sichtbar werden
-        inputFocused = false
-        Task { await decide.send(trimmed) }
-    }
-
-    private func author(of message: ChatMessage) -> String {
-        guard let id = message.userId else { return "nomi" }
-        return app.members.first { $0.userId == id }?.displayName ?? "Jemand"
-    }
 
     private func scrollDown(_ proxy: ScrollViewProxy) {
         withAnimation(.smooth) { proxy.scrollTo("bottom", anchor: .bottom) }

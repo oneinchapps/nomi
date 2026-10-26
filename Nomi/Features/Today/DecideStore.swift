@@ -44,6 +44,16 @@ final class DecideStore {
         return menu.dishes
     }
 
+    /// „Ihr habt ein Match“ – oder wer allein festgelegt hat
+    func decisionLabel(members: [HouseholdMember], menu: Bool = false) -> String {
+        guard let decidedBy = session?.decidedBy, members.count > 1 else {
+            return menu ? "Ihr habt ein Menü" : "Ihr habt ein Match"
+        }
+        if decidedBy == userId { return "Du hast entschieden" }
+        let name = members.first { $0.userId == decidedBy }?.displayName ?? "Jemand"
+        return "\(name) hat entschieden"
+    }
+
     /// Wie viele Karten eine andere Person noch vor sich hat.
     func remaining(for member: UUID) -> Int { menu.deck(for: member).count }
 
@@ -127,6 +137,23 @@ final class DecideStore {
             self.error = userMessage(for: error)
             await load()
         }
+    }
+
+    /// Allein für den Haushalt festlegen – ohne Match. Danach kann jede:r mit „Neue Runde“ umentscheiden.
+    func decideAlone(_ candidate: SessionCandidate) async {
+        do {
+            try await supabase.rpc("decide_alone", params: ["candidate": candidate.id]).execute()
+            error = nil
+        } catch {
+            self.error = userMessage(for: error)
+        }
+        await load()
+    }
+
+    /// Von nomi aus: frische Runde fürs heutige Essen, mit dem Wunsch als erste Nachricht.
+    func startRound(wish: String?) async {
+        if session?.status == .matched { await newRound() }
+        await send(wish)
     }
 
     /// Macht aus der gematchten Idee ein Rezept in der Sammlung.

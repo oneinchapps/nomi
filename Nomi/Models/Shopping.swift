@@ -96,6 +96,26 @@ struct StapleItem: Codable, Identifiable, Hashable, Sendable {
 // MARK: - Zusammenführen
 
 /// Neue Zutaten in eine bestehende Liste einsortieren: Gleiches wird addiert statt doppelt geführt.
+/// Was ein `ShoppingStore.add` verändert hat – genug, um es rückgängig zu machen.
+struct ShoppingChange: Codable, Hashable, Sendable {
+    var insertedIds: [UUID] = []
+    /// Stand der zusammengeführten Einträge vor der Änderung
+    var previous: [ShoppingItem] = []
+
+    var isEmpty: Bool { insertedIds.isEmpty && previous.isEmpty }
+
+    mutating func append(_ other: ShoppingChange) {
+        insertedIds += other.insertedIds
+        // Beim zweiten Zusammenführen desselben Eintrags zählt der allererste Stand
+        previous += other.previous.filter { old in !previous.contains { $0.id == old.id } && !insertedIds.contains(old.id) }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case insertedIds = "inserted_ids"
+        case previous
+    }
+}
+
 enum ShoppingMerge {
     struct Result: Equatable {
         var updates: [ShoppingItem] = []
@@ -227,5 +247,12 @@ enum PlanCalendar {
 
     static func weekNumber(of date: Date) -> Int {
         calendar.component(.weekOfYear, from: date)
+    }
+
+    /// „2026-10-27“ → Mittag dieses Tages in lokaler Zeit; nil bei ungültigem Format
+    static func date(forKey key: String) -> Date? {
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12))
     }
 }

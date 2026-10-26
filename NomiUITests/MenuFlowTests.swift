@@ -1,6 +1,7 @@
 import XCTest
 
-/// Mehrgängiges Menü aus dem Chat. Braucht `supabase functions serve` mit ANTHROPIC_API_KEY.
+/// Mehrgängiges Menü: Wunsch an nomi, nomi springt in den Heute-Tab, dort wird swipet.
+/// Braucht `supabase functions serve` mit ANTHROPIC_API_KEY.
 final class MenuFlowTests: NomiUITestCase {
     @MainActor
     func testThreeCourseMenuFromChat() async throws {
@@ -11,12 +12,13 @@ final class MenuFlowTests: NomiUITestCase {
         let household = try await api("POST", "/rest/v1/rpc/join_household", body: ["code": codeText.label, "display_name": "Sam"], as: sam)
         let householdId = try XCTUnwrap(household["id"] as? String)
 
-        // Menüwunsch im Chat
-        let input = app.textFields["Worauf habt ihr Lust?"]
+        // Menüwunsch an nomi – nomi übergibt an den Heute-Tab
+        app.tabBars.buttons["nomi"].tap()
+        let input = app.textFields["Frag nomi"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         input.tap()
         // Eingabetaste schickt ab (die Tastatur hat selbst eine „Senden“-Taste, daher nicht über den Button)
-        input.typeText("Drei-Gänge-Menü für heute Abend\n")
+        input.typeText("Wir wollen heute Abend ein Drei-Gänge-Menü essen\n")
 
         let like = app.buttons["Lecker"]
         XCTAssertTrue(like.waitForExistence(timeout: 90), "Keine Vorschläge")

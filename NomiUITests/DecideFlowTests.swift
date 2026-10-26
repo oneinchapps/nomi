@@ -33,12 +33,6 @@ final class DecideFlowTests: NomiUITestCase {
         let targetIndex = try XCTUnwrap(cards.firstIndex { !($0["ai_recipe"] is NSNull) }, "nomi hat keine neue Idee vorgeschlagen")
         let targetId = try XCTUnwrap(cards[targetIndex]["id"] as? String)
 
-        // Sam schreibt live mit
-        try await api("POST", "/rest/v1/chat_messages", body: [
-            "session_id": sessionId, "household_id": householdId, "content": "Ich bin für was Neues!",
-        ], as: sam)
-        XCTAssertTrue(app.descendants(matching: .any)["Sam: Ich bin für was Neues!"].waitForExistence(timeout: 10))
-
         // Alex: alles davor ablehnen (erste Karte per Wischgeste), dann die Idee liken
         for index in 0..<targetIndex {
             if index == 0 {

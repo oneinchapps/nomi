@@ -1,6 +1,9 @@
 // Prompt-Bausteine für „Was essen wir heute?“. Reine Funktionen ohne Netzwerk – damit testbar.
 
 import { CATEGORY_RULES, nullable } from "../_shared/recipe.ts";
+import type { Idea } from "../_shared/expand.ts";
+
+export type { Idea };
 
 export interface RecipeRow {
   id: string;
@@ -29,13 +32,6 @@ export interface VoteRow {
   liked: boolean;
 }
 
-export interface Idea {
-  title: string;
-  summary: string;
-  total_minutes: number | null;
-  tags: string[];
-  emoji: string;
-}
 
 export interface Suggestion {
   recipe_id: string | null;
@@ -205,22 +201,4 @@ export function sessionCourses(existing: string[] | null, proposed: string[] | n
   if (existing?.length) return existing;
   const cleaned = [...new Set((proposed ?? []).map((c) => c.trim()).filter(Boolean))];
   return cleaned.length >= 2 ? cleaned : null;
-}
-
-export const EXPAND_SYSTEM = `Du schreibst vollständige, alltagstaugliche Rezepte für eine deutschsprachige Koch-App eines Zwei-Personen-Haushalts.
-
-- Alles auf Deutsch, Du-Form in den Schritten.
-- Zutaten aus einem deutschen Supermarkt, Mengen als Zahl für die angegebene Portionenzahl. Ohne Mengenangabe (Salz, Pfeffer) sind quantity und unit null. Zusätze wie "fein gehackt" gehören in note. Ordne jede Zutat der Supermarkt-Abteilung zu.
-- steps: klare, einzelne Arbeitsschritte. Nennt ein Schritt eine Dauer, setz timer_seconds.
-- tags: 2 bis 4 kurze Schlagworte.
-${CATEGORY_RULES}
-- Bleib bei der Idee: Titel und Charakter des Gerichts übernehmen, realistische Gesamtzeit.`;
-
-export function expandPrompt(idea: Idea, servings: number): string {
-  return `Arbeite diese Idee zu einem vollständigen Rezept für ${servings} Portionen aus:
-
-Titel: ${idea.title}
-Beschreibung: ${idea.summary}
-Ungefähre Zeit: ${idea.total_minutes ? `${idea.total_minutes} Minuten` : "offen"}
-Schlagworte: ${idea.tags.join(", ")}`;
 }

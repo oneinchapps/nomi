@@ -83,11 +83,27 @@ final class ShoppingStore {
     }
 
     /// Fügt Zutaten hinzu und führt sie mit vorhandenen offenen Einträgen zusammen.
-    func add(_ ingredients: [Ingredient], recipeId: UUID?) async {
+    @discardableResult
+    func add(_ ingredients: [Ingredient], recipeId: UUID?) async -> ShoppingChange {
         let result = ShoppingMerge.merge(ingredients, recipeId: recipeId, into: items, householdId: householdId)
-        guard !result.inserts.isEmpty || !result.updates.isEmpty else { return }
+        guard !result.inserts.isEmpty || !result.updates.isEmpty else { return ShoppingChange() }
+        let previous = result.updates.compactMap { update in items.first { $0.id == update.id } }
         apply(result.updates + result.inserts)
         await write { try await supabase.from("shopping_items").upsert(result.updates + result.inserts).execute() }
+        return ShoppingChange(insertedIds: result.inserts.map(\.id), previous: previous)
+    }
+
+    /// Macht eine Änderung rückgängig: Neue Einträge verschwinden, zusammengeführte bekommen ihre alte Menge.
+    /// Was inzwischen abgehakt wurde, bleibt, wie es ist.
+    func revert(_ change: ShoppingChange) async {
+        let removable = change.insertedIds.filter { id in items.first { $0.id == id }?.checked != true }
+        let restore = change.previous.filter { old in items.first { $0.id == old.id }?.checked != true }
+        items.removeAll { removable.contains($0.id) }
+        apply(restore)
+        await write {
+            if !removable.isEmpty { try await supabase.from("shopping_items").delete().in("id", values: removable).execute() }
+            if !restore.isEmpty { try await supabase.from("shopping_items").upsert(restore).execute() }
+        }
     }
 
     func toggle(_ item: ShoppingItem) async {

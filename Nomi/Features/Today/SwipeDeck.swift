@@ -1,10 +1,12 @@
 import SwiftUI
 
 /// Kartenstapel: rechts wischen = lecker, links = nö. Buttons darunter für alle, die nicht wischen wollen.
+/// „Das nehmen wir“ legt die oberste Karte allein für den Haushalt fest – ohne auf ein Match zu warten.
 struct SwipeDeck: View {
     let deck: [SessionCandidate]
     let recipe: (UUID) -> Recipe?
     let onVote: (SessionCandidate, Bool) -> Void
+    let onDecide: (SessionCandidate) -> Void
 
     @State private var drag: CGSize = .zero
     @State private var leaving: (id: UUID, liked: Bool)?
@@ -21,11 +23,12 @@ struct SwipeDeck: View {
             .frame(height: 430)
             .frame(maxWidth: .infinity)
 
-            HStack(spacing: 28) {
+            HStack(spacing: 16) {
                 voteButton(liked: false)
-                MetaLabel(deck.count == 1 ? "Letzte Karte" : "\(deck.count) Karten")
+                decideButton
                 voteButton(liked: true)
             }
+            MetaLabel(deck.count == 1 ? "Letzte Karte" : "\(deck.count) Karten")
         }
     }
 
@@ -59,6 +62,7 @@ struct SwipeDeck: View {
             .accessibilityHidden(!isTop)
             .accessibilityAction(named: "Lecker") { commit(candidate, liked: true) }
             .accessibilityAction(named: "Nein danke") { commit(candidate, liked: false) }
+            .accessibilityAction(named: "Das nehmen wir") { onDecide(candidate) }
     }
 
     private func stamp(_ text: String, color: Color, visible: Bool, angle: Double) -> some View {
@@ -105,6 +109,24 @@ struct SwipeDeck: View {
         .buttonStyle(.plain)
         .disabled(deck.isEmpty || leaving != nil)
         .accessibilityLabel(liked ? "Lecker" : "Nein danke")
+    }
+
+    private var decideButton: some View {
+        Button {
+            if let top = deck.first { onDecide(top) }
+        } label: {
+            Label("Das nehmen wir", systemImage: "checkmark")
+                .font(.buttonSans)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .foregroundStyle(Color.canvas)
+                .padding(.horizontal, 18)
+                .frame(height: 54)
+                .background(Color.ink, in: .capsule)
+        }
+        .buttonStyle(.plain)
+        .disabled(deck.isEmpty || leaving != nil)
+        .accessibilityHint("Legt das Gericht für euch fest, ohne auf ein Match zu warten")
     }
 
     private func commit(_ candidate: SessionCandidate, liked: Bool) {

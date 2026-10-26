@@ -71,6 +71,10 @@ class NomiUITestCase: XCTestCase {
         field.tap()
         field.typeText(name)
         app.buttons["Haushalt anlegen"].tap()
+        // Die App startet im nomi-Tab; die meisten Tests beginnen im Heute-Tab
+        let today = app.tabBars.buttons["Heute"]
+        XCTAssertTrue(today.waitForExistence(timeout: 10))
+        today.tap()
         XCTAssertTrue(app.staticTexts["Was gibt es heute?"].waitForExistence(timeout: 10))
         return app
     }

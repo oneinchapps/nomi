@@ -5,6 +5,7 @@ struct MenuMatchCard: View {
     let dishes: [(course: String, candidate: SessionCandidate)]
 
     @Environment(DecideStore.self) private var decide
+    @Environment(AppModel.self) private var app
     @Environment(RecipeStore.self) private var recipes
     @Environment(MealPlanStore.self) private var plan
 
@@ -34,7 +35,7 @@ struct MenuMatchCard: View {
                 ReactionIllustration(reaction: .jubel)
                     .frame(width: 76, height: 76)
                     .scaleEffect(appeared ? 1 : 0.3)
-                MetaLabel("Ihr habt ein Menü", font: .eyebrow, tracking: 2.4)
+                MetaLabel(decide.decisionLabel(members: app.members, menu: true), font: .eyebrow, tracking: 2.4)
                 Text("Euer Menü")
                     .font(.display)
                     .tracking(-1)

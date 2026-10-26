@@ -58,12 +58,14 @@ final class MealPlanStore {
         }
     }
 
-    func add(_ recipe: Recipe, on day: Date, servings: Int, note: String? = nil) async {
+    @discardableResult
+    func add(_ recipe: Recipe, on day: Date, servings: Int, note: String? = nil) async -> MealPlanEntry {
         let entry = MealPlanEntry(householdId: householdId, day: PlanCalendar.key(for: day), recipeId: recipe.id, servings: servings, note: note)
         if PlanCalendar.key(for: day) >= PlanCalendar.key(for: weekStart) && PlanCalendar.key(for: day) <= PlanCalendar.key(for: days.last!) {
             entries.append(entry)
         }
         await write { try await supabase.from("meal_plan_entries").insert(entry).execute() }
+        return entry
     }
 
     func setServings(_ servings: Int, for entry: MealPlanEntry) async {
@@ -75,8 +77,13 @@ final class MealPlanStore {
     }
 
     func remove(_ entry: MealPlanEntry) async {
-        entries.removeAll { $0.id == entry.id }
-        await write { try await supabase.from("meal_plan_entries").delete().eq("id", value: entry.id).execute() }
+        await remove(ids: [entry.id])
+    }
+
+    func remove(ids: [UUID]) async {
+        guard !ids.isEmpty else { return }
+        entries.removeAll { ids.contains($0.id) }
+        await write { try await supabase.from("meal_plan_entries").delete().in("id", values: ids).execute() }
     }
 
     private func write(_ operation: () async throws -> Void) async {

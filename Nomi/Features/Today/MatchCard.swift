@@ -5,6 +5,7 @@ struct MatchCard: View {
     let candidate: SessionCandidate
 
     @Environment(DecideStore.self) private var decide
+    @Environment(AppModel.self) private var app
     @Environment(RecipeStore.self) private var recipes
     @Environment(MealPlanStore.self) private var plan
 
@@ -22,7 +23,7 @@ struct MatchCard: View {
                 ReactionIllustration(reaction: .jubel)
                     .frame(width: 76, height: 76)
                     .scaleEffect(appeared ? 1 : 0.3)
-                MetaLabel("Ihr habt ein Match", font: .eyebrow, tracking: 2.4)
+                MetaLabel(decide.decisionLabel(members: app.members), font: .eyebrow, tracking: 2.4)
                 Text("Heute gibt's")
                     .font(.display)
                     .tracking(-1)

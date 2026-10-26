@@ -1,6 +1,6 @@
 # nomi
 
-Persönliche iOS-App für zwei: Rezepte gemeinsam per KI-Chat und Swipe auswählen, Einkaufsliste, Wochenplan, Kochmodus. UI-Sprache Deutsch.
+Persönliche iOS-App für zwei: nomi als Assistent für alles rund ums Essen (Text und Sprache), heutiges Essen allein festlegen oder gemeinsam per Swipe, Einkaufsliste, Wochenplan, Kochmodus. UI-Sprache Deutsch.
 
 Die App hieß früher „nomnom“ und darf so nicht mehr heißen. Überall sichtbar und im Code heißt sie „nomi“. Nur diese Namen bleiben bewusst „nomnom“: der Repo-Ordner, die lokale Supabase-`project_id` (Docker-Container und Daten hängen daran) und Kommentare in schon eingespielten Migrationen.
 
@@ -38,9 +38,34 @@ Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
 - Neues Handy: `create_invite(member)` erzeugt einen Anmeldecode für ein bestehendes Mitglied. Das geht nur für Konten ohne echte Mailadresse (`is_invited_account`).
 - `join_household` nimmt Einmal-Codes und den alten 6-stelligen Haushalts-Code an. Das ist der Weg für Leute, die per E-Mail angemeldet sind.
 
-## Gemeinsam entscheiden (Heute-Tab)
+## nomi-Tab (Assistent)
+Erster Tab. Ein gemeinsamer Verlauf pro Haushalt in `assistant_messages`, live für beide.
+
+**Edge Function `supabase/functions/assistant`:**
+- Sie speichert die Nachricht der Person und liest Sammlung, Kochhistorie, Wochenplan, Einkaufsliste und Verlauf.
+- Claude antwortet strukturiert mit `reply` plus Aktionen: `plan`, `shopping`, `today`, `navigate`.
+- Prompt, Schema und Prüfung der Aktionen (`validActions`) liegen in `prompt.ts` und sind getestet.
+- Neue Gerichte im Plan werden per `_shared/expand.ts` gleich ausgearbeitet und gespeichert. decide nutzt dasselbe Modul.
+
+**Aktionen führt die App der fragenden Person aus** (`AssistantStore.execute`):
+- Sie nutzt dieselbe Logik wie beim Antippen, darunter `ShoppingMerge`.
+- Was angelegt oder geändert wurde, landet in `result`: Plan-IDs und `ShoppingChange` mit den vorherigen Ständen. Daraus macht „Rückgängig“ alles rückgängig.
+- Mitglieder dürfen nur die Spalte `result` ändern.
+
+**Navigation:**
+- `AppNavigation.tab` wechselt nach der Antwort in den passenden Tab.
+- `today` startet im Heute-Tab eine Runde mit dem Wunsch (`DecideStore.startRound`).
+
+**Sprache:**
+- `VoiceInput` nutzt `SFSpeechRecognizer` für de-DE, wenn möglich auf dem Gerät. Eine Pause von 1,6 s beendet die Aufnahme.
+- `Speaker` liest Antworten auf gesprochene Fragen mit der besten deutschen Stimme vor. Das lässt sich im Toolbar-Knopf abschalten.
+- Audio-Callbacks laufen in der `nonisolated` Klasse `RecognitionSession`.
+
+## Heute-Tab (heutiges Essen)
 - Edge Function `supabase/functions/decide`: `suggest` (Chat + Sammlung + bisherige Stimmen → 5 Karten, Antwort von nomi) und `expand` (Idee → vollständiges Rezept in der Sammlung). Prompts in `suggest.ts`, gemeinsames Rezeptschema und Claude-Aufruf in `supabase/functions/_shared/recipe.ts`.
 - Match entsteht per Trigger `check_match`, sobald alle Mitglieder dieselbe Karte mögen.
+- „Das nehmen wir“ legt allein fest: Die RPC `decide_alone` stimmt im Namen aller Mitglieder für die Karte und setzt `decided_by`. Dadurch greift dieselbe Match-Logik, auch für Menüs.
+- Der Heute-Tab hat keinen eigenen Chat mehr, nur Wunsch-Chips. Freie Wünsche laufen über nomi.
 - Antworten von nomi (`user_id` null) schreibt nur die Function mit `supabaseAdmin`; Nutzer:innen dürfen per RLS nur als sie selbst schreiben.
 - Neue Tabellen haben auch für `service_role` keine Standardrechte – bei Bedarf gezielt `grant`.
 

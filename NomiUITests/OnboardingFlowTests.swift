@@ -42,7 +42,7 @@ final class OnboardingFlowTests: NomiUITestCase {
         snapshot(b, "06-invite")
         b.buttons["Los geht's"].tap()
 
-        XCTAssertTrue(b.staticTexts["Was gibt es heute?"].waitForExistence(timeout: 15))
+        XCTAssertTrue(b.staticTexts["Hallo Sam!"].waitForExistence(timeout: 15), "Nach dem Einlösen sollte nomi begrüßen")
         XCTAssertFalse(b.staticTexts["EINLADUNG"].exists, "Zu zweit braucht es keine Einladung mehr")
         b.buttons["Haushalt und Konto"].tap()
         XCTAssertTrue(b.staticTexts["Alex"].waitForExistence(timeout: 5))
@@ -60,7 +60,7 @@ final class OnboardingFlowTests: NomiUITestCase {
         b.buttons["Abmelden"].tap()
         XCTAssertTrue(b.buttons["Ich habe eine Einladung"].waitForExistence(timeout: 10))
         try redeem(b, name: "Sam", code: reloginCode)
-        XCTAssertTrue(b.staticTexts["Was gibt es heute?"].waitForExistence(timeout: 15))
+        XCTAssertTrue(b.staticTexts["Hallo Sam!"].waitForExistence(timeout: 15), "Nach dem Einlösen sollte nomi begrüßen")
         b.buttons["Haushalt und Konto"].tap()
         XCTAssertTrue(b.staticTexts["Alex"].waitForExistence(timeout: 5))
         XCTAssertEqual(b.staticTexts.matching(identifier: "Sam").count, 1, "Dasselbe Konto, kein zweites Mitglied")
