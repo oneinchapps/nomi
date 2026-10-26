@@ -1,6 +1,6 @@
 // Prompt-Bausteine für „Was essen wir heute?“. Reine Funktionen ohne Netzwerk – damit testbar.
 
-import { nullable } from "../_shared/recipe.ts";
+import { CATEGORY_RULES, nullable } from "../_shared/recipe.ts";
 
 export interface RecipeRow {
   id: string;
@@ -213,6 +213,7 @@ export const EXPAND_SYSTEM = `Du schreibst vollständige, alltagstaugliche Rezep
 - Zutaten aus einem deutschen Supermarkt, Mengen als Zahl für die angegebene Portionenzahl. Ohne Mengenangabe (Salz, Pfeffer) sind quantity und unit null. Zusätze wie "fein gehackt" gehören in note. Ordne jede Zutat der Supermarkt-Abteilung zu.
 - steps: klare, einzelne Arbeitsschritte. Nennt ein Schritt eine Dauer, setz timer_seconds.
 - tags: 2 bis 4 kurze Schlagworte.
+${CATEGORY_RULES}
 - Bleib bei der Idee: Titel und Charakter des Gerichts übernehmen, realistische Gesamtzeit.`;
 
 export function expandPrompt(idea: Idea, servings: number): string {

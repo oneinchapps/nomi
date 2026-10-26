@@ -109,6 +109,8 @@ export default {
       ingredients: extracted.ingredients,
       steps: extracted.steps,
       tags: extracted.tags,
+      dish_type: extracted.dish_type,
+      diet: extracted.diet,
     };
 
     let saved = false;

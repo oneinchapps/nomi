@@ -6,9 +6,11 @@ struct MainTabView: View {
     @State private var shopping: ShoppingStore
     @State private var plan: MealPlanStore
     @State private var decide: DecideStore
+    @State private var cookingLog: CookingLogStore
 
     init(householdId: UUID, userId: UUID) {
         _decide = State(initialValue: DecideStore(householdId: householdId, userId: userId))
+        _cookingLog = State(initialValue: CookingLogStore(householdId: householdId, userId: userId))
         _recipes = State(initialValue: RecipeStore(householdId: householdId))
         _shopping = State(initialValue: ShoppingStore(householdId: householdId, userId: userId))
         _plan = State(initialValue: MealPlanStore(householdId: householdId))
@@ -43,6 +45,7 @@ struct MainTabView: View {
         .environment(shopping)
         .environment(plan)
         .environment(decide)
+        .environment(cookingLog)
         .task { await recipes.load() }
         .task { await recipes.observeChanges() }
         .task { await shopping.load() }
@@ -51,6 +54,8 @@ struct MainTabView: View {
         .task { await plan.observeChanges() }
         .task { await decide.load() }
         .task { await decide.observeChanges() }
+        .task { await cookingLog.load() }
+        .task { await cookingLog.observeChanges() }
         .task {
             await observeTable("household_members", householdId: recipes.householdId) { [app] in
                 await app.loadHousehold()

@@ -5,6 +5,9 @@ struct CookingModeView: View {
     let recipe: Recipe
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(CookingLogStore.self) private var log
+    /// Pro Kochmodus-Sitzung nur einmal eintragen
+    @State private var logged = false
     /// Startet mit der Portionenzahl aus der Rezeptansicht, lässt sich in der Vorbereitung ändern.
     @State private var servings: Int
     @State private var page = 0
@@ -151,8 +154,15 @@ struct CookingModeView: View {
                     .frame(maxWidth: 140)
             }
             if page < lastPage {
-                Button(page == 0 ? "Los geht's" : "Weiter") { withAnimation { page += 1 } }
-                    .buttonStyle(.primary)
+                Button(page == 0 ? "Los geht's" : "Weiter") {
+                    if page == 0 && !logged {
+                        // Ab hier wird wirklich gekocht – nicht schon beim bloßen Reinschauen
+                        logged = true
+                        Task { await log.logCooking(recipe, servings: servings) }
+                    }
+                    withAnimation { page += 1 }
+                }
+                .buttonStyle(.primary)
             } else {
                 Button("Fertig") { dismiss() }
                     .buttonStyle(.primary)

@@ -183,6 +183,8 @@ async function expand(supabase: Client, candidateId: string): Promise<Response> 
     ingredients: full.ingredients,
     steps: full.steps,
     tags: full.tags,
+    dish_type: full.dish_type,
+    diet: full.diet,
   };
   const { data: saved, error: insertError } = await supabase.from("recipes").insert(recipe).select().single();
   if (insertError) throw insertError;

@@ -13,6 +13,8 @@ struct Recipe: Codable, Identifiable, Hashable, Sendable {
     var ingredients: [Ingredient]
     var steps: [Step]
     var tags: [String]
+    var dishType: DishType?
+    var diet: Diet?
     var createdAt: Date?
 
     enum Source: String, Codable, Sendable {
@@ -30,7 +32,8 @@ struct Recipe: Codable, Identifiable, Hashable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, summary, source, servings, ingredients, steps, tags
+        case id, title, summary, source, servings, ingredients, steps, tags, diet
+        case dishType = "dish_type"
         case householdId = "household_id"
         case sourceURL = "source_url"
         case imageURL = "image_url"
@@ -51,6 +54,8 @@ struct Recipe: Codable, Identifiable, Hashable, Sendable {
         ingredients: [Ingredient] = [],
         steps: [Step] = [],
         tags: [String] = [],
+        dishType: DishType? = nil,
+        diet: Diet? = nil,
         createdAt: Date? = nil
     ) {
         self.id = id
@@ -65,6 +70,8 @@ struct Recipe: Codable, Identifiable, Hashable, Sendable {
         self.ingredients = ingredients
         self.steps = steps
         self.tags = tags
+        self.dishType = dishType
+        self.diet = diet
         self.createdAt = createdAt
     }
 
@@ -83,6 +90,81 @@ struct Recipe: Codable, Identifiable, Hashable, Sendable {
         try c.encode(ingredients, forKey: .ingredients)
         try c.encode(steps, forKey: .steps)
         try c.encode(tags, forKey: .tags)
+        try c.encode(dishType, forKey: .dishType)
+        try c.encode(diet, forKey: .diet)
+    }
+}
+
+// MARK: - Kategorien
+
+/// Art des Gerichts – entspricht dem Check-Constraint recipes.dish_type.
+enum DishType: String, Codable, CaseIterable, Sendable {
+    case vorspeise, suppe, salat, hauptgericht, beilage, dessert, backen, snack, getraenk
+
+    var title: String {
+        switch self {
+        case .vorspeise: "Vorspeise"
+        case .suppe: "Suppe"
+        case .salat: "Salat"
+        case .hauptgericht: "Hauptgericht"
+        case .beilage: "Beilage"
+        case .dessert: "Dessert"
+        case .backen: "Backen"
+        case .snack: "Snack"
+        case .getraenk: "Getränk"
+        }
+    }
+
+    /// Mehrzahl für Kacheln („Suppen“, „Desserts“)
+    var plural: String {
+        switch self {
+        case .vorspeise: "Vorspeisen"
+        case .suppe: "Suppen"
+        case .salat: "Salate"
+        case .hauptgericht: "Hauptgerichte"
+        case .beilage: "Beilagen"
+        case .dessert: "Desserts"
+        case .backen: "Backen"
+        case .snack: "Snacks"
+        case .getraenk: "Getränke"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .vorspeise: "🥟"
+        case .suppe: "🍲"
+        case .salat: "🥗"
+        case .hauptgericht: "🍽️"
+        case .beilage: "🥔"
+        case .dessert: "🍰"
+        case .backen: "🧁"
+        case .snack: "🍢"
+        case .getraenk: "🍹"
+        }
+    }
+}
+
+/// Ernährung – entspricht dem Check-Constraint recipes.diet.
+enum Diet: String, Codable, CaseIterable, Sendable {
+    case fleisch, fisch, vegetarisch, vegan
+
+    var title: String {
+        switch self {
+        case .fleisch: "Fleisch"
+        case .fisch: "Fisch"
+        case .vegetarisch: "Vegetarisch"
+        case .vegan: "Vegan"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .fleisch: "🥩"
+        case .fisch: "🐟"
+        case .vegetarisch: "🥦"
+        case .vegan: "🌱"
+        }
     }
 }
 

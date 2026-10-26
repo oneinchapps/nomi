@@ -4,6 +4,7 @@ struct RecipeDetailView: View {
     let recipeId: UUID
 
     @Environment(RecipeStore.self) private var store
+    @Environment(CookingLogStore.self) private var log
     @Environment(\.dismiss) private var dismiss
     @State private var servings: Int?
     @State private var showsEditor = false
@@ -120,16 +121,38 @@ struct RecipeDetailView: View {
                 .foregroundStyle(Color.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
+            cookedLine(recipe)
             if let summary = recipe.summary, !summary.isEmpty {
                 Text(summary)
                     .font(.bodySans)
                     .foregroundStyle(Color.inkMuted)
                     .lineSpacing(3)
             }
-            if !recipe.tags.isEmpty {
-                FlowTags(tags: recipe.tags)
+            let categories = [recipe.dishType.map { "\($0.emoji) \($0.title)" }, recipe.diet.map { "\($0.emoji) \($0.title)" }].compactMap { $0 }
+            if !categories.isEmpty || !recipe.tags.isEmpty {
+                FlowTags(tags: categories + recipe.tags.filter { tag in
+                    // Doppelte vermeiden („vegetarisch“ als Tag und als Kategorie)
+                    !categories.contains { $0.localizedCaseInsensitiveContains(tag) }
+                })
             }
         }
+    }
+
+    /// „Zuletzt gekocht vor 3 Wochen · 5× gekocht“
+    @ViewBuilder
+    private func cookedLine(_ recipe: Recipe) -> some View {
+        let times = log.timesCooked(recipe.id)
+        Label {
+            if let last = log.lastCooked(recipe.id) {
+                Text("Zuletzt gekocht \(CookingHistory.relative(last))" + (times > 1 ? " · \(times)× gekocht" : ""))
+            } else {
+                Text("Noch nie gekocht")
+            }
+        } icon: {
+            Image(systemName: "frying.pan")
+        }
+        .font(.captionSans)
+        .foregroundStyle(Color.inkMuted)
     }
 
     private func sourceSuffix(_ recipe: Recipe) -> String {

@@ -15,6 +15,8 @@ struct RecipeEditorView: View {
     @State private var summary: String
     @State private var minutes: String
     @State private var servings: Int
+    @State private var dishType: DishType?
+    @State private var diet: Diet?
     @State private var ingredientsText: String
     @State private var steps: [StepDraft]
     @State private var sourceURL: String
@@ -46,6 +48,8 @@ struct RecipeEditorView: View {
         _summary = State(initialValue: recipe?.summary ?? "")
         _minutes = State(initialValue: recipe?.totalMinutes.map(String.init) ?? "")
         _servings = State(initialValue: recipe?.servings ?? 2)
+        _dishType = State(initialValue: recipe?.dishType)
+        _diet = State(initialValue: recipe?.diet)
         _ingredientsText = State(initialValue: recipe?.ingredients.map(\.line).joined(separator: "\n") ?? "")
         let drafts = (recipe?.steps ?? []).map { StepDraft(text: $0.text, timerSeconds: $0.timerSeconds) }
         _steps = State(initialValue: drafts.isEmpty ? [StepDraft(text: "")] : drafts)
@@ -82,6 +86,15 @@ struct RecipeEditorView: View {
                             .focused($focus, equals: .summary)
                             .padding(.vertical, 16)
                             .fieldBackground(isFocused: focus == .summary)
+                    }
+
+                    HStack(alignment: .top, spacing: 12) {
+                        field("Art") {
+                            categoryMenu(selection: $dishType, options: DishType.allCases, title: \.title, emoji: \.emoji)
+                        }
+                        field("Ernährung") {
+                            categoryMenu(selection: $diet, options: Diet.allCases, title: \.title, emoji: \.emoji)
+                        }
                     }
 
                     HStack(alignment: .top, spacing: 12) {
@@ -185,6 +198,33 @@ struct RecipeEditorView: View {
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(focus == field ? Color.ink : Color.hairline, lineWidth: focus == field ? 1.5 : 1)
             }
+    }
+
+    /// Auswahlfeld für eine Kategorie im Stil der übrigen Felder
+    private func categoryMenu<Option: Hashable>(
+        selection: Binding<Option?>,
+        options: [Option],
+        title: KeyPath<Option, String>,
+        emoji: KeyPath<Option, String>
+    ) -> some View {
+        Menu {
+            Button("Keine Angabe") { selection.wrappedValue = nil }
+            Divider()
+            ForEach(options, id: \.self) { option in
+                Button("\(option[keyPath: emoji]) \(option[keyPath: title])") { selection.wrappedValue = option }
+            }
+        } label: {
+            HStack {
+                Text(selection.wrappedValue.map { "\($0[keyPath: emoji]) \($0[keyPath: title])" } ?? "Wählen")
+                    .foregroundStyle(selection.wrappedValue == nil ? Color.inkMuted : Color.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.inkMuted)
+            }
+            .fieldBackground()
+        }
     }
 
     // MARK: - Schritte
@@ -316,6 +356,8 @@ struct RecipeEditorView: View {
                 recipe.summary = summary.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
                 recipe.totalMinutes = Int(minutes.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil }
                 recipe.servings = servings
+                recipe.dishType = dishType
+                recipe.diet = diet
                 recipe.ingredients = parsedIngredients()
                 recipe.steps = steps
                     .map { draft in

@@ -14,6 +14,16 @@ export const UNITS = [
   "Dose", "Packung", "Zehe", "Scheibe", "Becher", "Tasse", "Glas", "Handvoll",
 ] as const;
 
+// Feste Kategorien – müssen zu den Check-Constraints in public.recipes und zu DishType/Diet in der App passen
+export const DISH_TYPES = [
+  "vorspeise", "suppe", "salat", "hauptgericht", "beilage", "dessert", "backen", "snack", "getraenk",
+] as const;
+export const DIETS = ["fleisch", "fisch", "vegetarisch", "vegan"] as const;
+
+/** Prompt-Baustein, damit alle Functions gleich kategorisieren. */
+export const CATEGORY_RULES = `- dish_type: Art des Gerichts – vorspeise, suppe, salat, hauptgericht, beilage, dessert, backen (Kuchen, Brot, Muffins, Gebäck), snack (Fingerfood, Häppchen) oder getraenk. Eine Suppe als Hauptmahlzeit ist trotzdem suppe.
+- diet: fleisch (auch mit Speck, Wurst, Geflügel oder Fleischbrühe), fisch (Fisch oder Meeresfrüchte, ohne Fleisch), vegetarisch (ohne Fleisch und Fisch, mit Ei/Milch/Honig) oder vegan (gar keine tierischen Zutaten). Süßes ohne Fleisch ist vegetarisch oder vegan.`;
+
 export interface ExtractedRecipe {
   found_recipe: boolean;
   title: string;
@@ -29,6 +39,8 @@ export interface ExtractedRecipe {
   }[];
   steps: { text: string; timer_seconds: number | null }[];
   tags: string[];
+  dish_type: (typeof DISH_TYPES)[number] | null;
+  diet: (typeof DIETS)[number] | null;
 }
 
 export const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: "null" }] });
@@ -36,7 +48,7 @@ export const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, 
 export const RECIPE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["found_recipe", "title", "summary", "total_minutes", "servings", "ingredients", "steps", "tags"],
+  required: ["found_recipe", "title", "summary", "total_minutes", "servings", "ingredients", "steps", "tags", "dish_type", "diet"],
   properties: {
     found_recipe: { type: "boolean" },
     title: { type: "string" },
@@ -71,6 +83,8 @@ export const RECIPE_SCHEMA = {
       },
     },
     tags: { type: "array", items: { type: "string" } },
+    dish_type: nullable({ type: "string", enum: [...DISH_TYPES] }),
+    diet: nullable({ type: "string", enum: [...DIETS] }),
   },
 };
 

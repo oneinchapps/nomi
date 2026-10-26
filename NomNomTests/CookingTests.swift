@@ -94,3 +94,57 @@ struct FunctionDecodingTests {
         #expect(response.recipe.createdAt != nil)
     }
 }
+
+struct RecipeFilterTests {
+    let dal = Recipe(title: "Linsen-Dal", totalMinutes: 25, dishType: .hauptgericht, diet: .vegan)
+    let roulade = Recipe(title: "Rouladen", totalMinutes: 180, dishType: .hauptgericht, diet: .fleisch)
+    let schmarrn = Recipe(title: "Kaiserschmarrn", totalMinutes: 30, dishType: .dessert, diet: .vegetarisch)
+
+    @Test func veganCountsAsVegetarian() {
+        #expect(RecipeFilter.diet(.vegetarisch).matches(dal, lastCooked: nil))
+        #expect(RecipeFilter.diet(.vegetarisch).matches(schmarrn, lastCooked: nil))
+        #expect(!RecipeFilter.diet(.vegetarisch).matches(roulade, lastCooked: nil))
+        #expect(!RecipeFilter.diet(.vegan).matches(schmarrn, lastCooked: nil))
+    }
+
+    @Test func quickAndDishType() {
+        #expect(RecipeFilter.quick.matches(schmarrn, lastCooked: nil))
+        #expect(!RecipeFilter.quick.matches(roulade, lastCooked: nil))
+        #expect(!RecipeFilter.quick.matches(Recipe(title: "ohne Zeit"), lastCooked: nil))
+        #expect(RecipeFilter.dishType(.dessert).matches(schmarrn, lastCooked: nil))
+    }
+
+    @Test func longNotCooked() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let calendar = PlanCalendar.calendar
+        #expect(RecipeFilter.longNotCooked.matches(dal, lastCooked: nil, now: now), "Noch nie gekocht zählt")
+        #expect(RecipeFilter.longNotCooked.matches(dal, lastCooked: calendar.date(byAdding: .day, value: -45, to: now), now: now))
+        #expect(!RecipeFilter.longNotCooked.matches(dal, lastCooked: calendar.date(byAdding: .day, value: -5, to: now), now: now))
+    }
+
+    @Test func recipeDecodesCategories() throws {
+        let json = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","title":"Dal","source":"web","servings":2,"ingredients":[],"steps":[],"tags":[],"dish_type":"hauptgericht","diet":"vegan"}"#
+        let recipe = try JSONDecoder().decode(Recipe.self, from: Data(json.utf8))
+        #expect(recipe.dishType == .hauptgericht)
+        #expect(recipe.diet == .vegan)
+    }
+}
+
+struct CookingHistoryTests {
+    @Test func relativeLabels() {
+        let calendar = PlanCalendar.calendar
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let ago = { (days: Int) in calendar.date(byAdding: .day, value: -days, to: now)! }
+        #expect(CookingHistory.relative(ago(0), now: now) == "heute")
+        #expect(CookingHistory.relative(ago(1), now: now) == "gestern")
+        #expect(CookingHistory.relative(ago(5), now: now) == "vor 5 Tagen")
+        #expect(CookingHistory.relative(ago(21), now: now) == "vor 3 Wochen")
+        #expect(CookingHistory.relative(ago(100), now: now) == "vor 3 Monaten")
+        #expect(CookingHistory.relative(ago(400), now: now) == "vor über einem Jahr")
+    }
+
+    @Test func parsesPostgresDate() {
+        let date = CookingHistory.date(from: "2026-10-26")
+        #expect(date.map(PlanCalendar.key(for:)) == "2026-10-26")
+    }
+}
