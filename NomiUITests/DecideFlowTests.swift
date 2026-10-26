@@ -86,6 +86,6 @@ final class DecideFlowTests: NomiUITestCase {
 
         // Das neue Rezept liegt in der Sammlung
         app.tabBars.buttons["Rezepte"].tap()
-        XCTAssertTrue(app.staticTexts["2 REZEPTE"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["2 Rezepte"].waitForExistence(timeout: 5))
     }
 }

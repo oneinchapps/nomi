@@ -82,7 +82,7 @@ export function parsePage(html: string, url: URL, platform: Platform): ScrapedPa
     platform,
     title: meta(html, "og:title") ?? tagText(html, "title"),
     description: meta(html, "og:description") ?? meta(html, "description"),
-    imageURL: absolute(recipeImage(recipeJSON) ?? meta(html, "og:image"), url),
+    imageURL: withoutPlaceholder(absolute(recipeImage(recipeJSON) ?? meta(html, "og:image"), url)),
     recipeJSON,
     text: recipeJSON ? null : visibleText(html).slice(0, MAX_TEXT_CHARS),
   };
@@ -193,6 +193,13 @@ function recipeImage(recipe: unknown): string | null {
     return null;
   };
   return pick(image);
+}
+
+/** Seiten ohne Rezeptfoto liefern oft ein Platzhalterbild (Chefkoch: grünes „C“) – lieber gar kein Bild. */
+const PLACEHOLDER_IMAGE = /placeholder|default[-_]?(image|img)|no[-_]?image/i;
+
+function withoutPlaceholder(src: string | null): string | null {
+  return src && PLACEHOLDER_IMAGE.test(src) ? null : src;
 }
 
 function absolute(src: string | null, base: URL): string | null {

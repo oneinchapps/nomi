@@ -32,7 +32,7 @@ final class ImportFlowTests: NomiUITestCase {
         snapshot(app, "22-import-editor")
 
         save.tap()
-        XCTAssertTrue(app.staticTexts["1 REZEPT"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["1 Rezept"].waitForExistence(timeout: 15))
         // Foto laden lassen, dann prüfen: Kachel bleibt im Bildschirm (Fotos dürfen das Raster nicht sprengen)
         sleep(2)
         let tile = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Rouladen")).firstMatch

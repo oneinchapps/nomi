@@ -6,6 +6,8 @@ struct RecipesView: View {
     @Environment(CookingLogStore.self) private var log
     @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
+    @State private var showsSearch = false
+    @FocusState private var searchFocused: Bool
     @State private var filter: RecipeFilter?
     @State private var showsEditor = false
     @State private var showsImport = false
@@ -42,9 +44,17 @@ struct RecipesView: View {
 
     var body: some View {
         ScrollView {
-            BrandHeader {
-                MetaLabel(countLabel, font: .eyebrow, tracking: 2.4)
-                DisplayHeadline(lines: [filter.map(\.title) ?? "Rezepte"])
+            BrandHeader(bottomPadding: 22) {
+                if showsSearch {
+                    searchField
+                } else {
+                    HStack(spacing: 12) {
+                        DisplayHeadline(lines: [filter.map(\.title) ?? "Rezepte"])
+                        if store.hasLoaded, recipeCount > 0 {
+                            CountBadge(count: recipeCount)
+                        }
+                    }
+                }
             }
             VStack(alignment: .leading, spacing: 28) {
                 if !store.hasLoaded {
@@ -67,7 +77,6 @@ struct RecipesView: View {
         }
         .background(Color.canvas.ignoresSafeArea())
         .animation(.smooth(duration: 0.25), value: filter)
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Rezept oder Zutat")
         .refreshable {
             await store.load()
             await log.load()
@@ -79,6 +88,23 @@ struct RecipesView: View {
             CookingHistoryView()
         }
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    withAnimation(.smooth(duration: 0.25)) {
+                        if showsSearch { closeSearch() } else { showsSearch = true }
+                    }
+                    if showsSearch { searchFocused = true }
+                } label: {
+                    Image(systemName: showsSearch ? "xmark" : "magnifyingglass")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.onBrand)
+                        .frame(width: 36, height: 36)
+                        .background(Color.onBrand.opacity(0.18), in: .circle)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .accessibilityLabel(showsSearch ? "Suche schließen" : "Suchen")
+            }
+            .sharedBackgroundVisibility(.hidden)
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("Aus Link importieren", systemImage: "link") { showsImport = true }
@@ -106,13 +132,40 @@ struct RecipesView: View {
         }
     }
 
-    private var countLabel: String {
-        let count = filter.map { recipes(for: $0).count } ?? store.recipes.count
-        switch count {
-        case 0: return "Eure Sammlung"
-        case 1: return "1 Rezept"
-        default: return "\(count) Rezepte"
+    private var recipeCount: Int {
+        filter.map { recipes(for: $0).count } ?? store.recipes.count
+    }
+
+    // MARK: - Suche
+
+    /// Liegt hinter dem Lupen-Button, damit der Kopf sonst klein bleibt.
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.onBrand.opacity(0.8))
+            TextField("", text: $query, prompt: Text("Rezept oder Zutat").foregroundStyle(Color.onBrand.opacity(0.7)))
+                .font(.bodySans)
+                .foregroundStyle(Color.onBrand)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .focused($searchFocused)
+            if !query.isEmpty {
+                Button("Eingabe löschen", systemImage: "xmark.circle.fill") { query = "" }
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(Color.onBrand.opacity(0.8))
+            }
         }
+        .padding(.horizontal, 14)
+        .frame(height: 46)
+        .background(Color.onBrand.opacity(0.18), in: .capsule)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private func closeSearch() {
+        query = ""
+        searchFocused = false
+        showsSearch = false
     }
 
     // MARK: - Startseite
@@ -275,10 +328,13 @@ struct RecipesView: View {
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
-                .padding(.trailing, Metrics.gutter)
+                .scrollTargetLayout()
             }
+            // Chips rasten an der linken Kante ein – im Stand ist keiner angeschnitten
+            .scrollTargetBehavior(.viewAligned)
+            .contentMargins(.trailing, Metrics.gutter, for: .scrollContent)
             .scrollIndicators(.hidden)
-            .onAppear { proxy.scrollTo(selected, anchor: .center) }
+            .onAppear { proxy.scrollTo(selected, anchor: .leading) }
         }
     }
 
@@ -339,6 +395,24 @@ struct RecipesView: View {
 }
 
 /// Kompakte Karte fürs Raster.
+/// Anzahl im kleinen Kreis neben der Überschrift; bei drei Stellen wird er zur Pille.
+struct CountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count)")
+            .font(.custom("DMMono-Medium", size: 14, relativeTo: .subheadline))
+            .monospacedDigit()
+            .foregroundStyle(Color.onBrand)
+            .padding(.horizontal, 8)
+            .frame(minWidth: 32, minHeight: 32)
+            .background(Color.onBrand.opacity(0.2), in: .capsule)
+            .contentTransition(.numericText())
+            .animation(.smooth, value: count)
+            .accessibilityLabel(count == 1 ? "1 Rezept" : "\(count) Rezepte")
+    }
+}
+
 struct RecipeTile: View {
     let recipe: Recipe
     /// Ersetzt die Metazeile, z. B. „Zuletzt vor 3 Monaten“

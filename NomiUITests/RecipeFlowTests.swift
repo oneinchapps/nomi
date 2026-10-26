@@ -37,8 +37,21 @@ final class RecipeFlowTests: NomiUITestCase {
         // Kachel in der Sammlung
         let tile = app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Halloumi-Tacos")).firstMatch
         XCTAssertTrue(tile.waitForExistence(timeout: 10), "Neues Rezept erscheint nicht in der Sammlung")
-        XCTAssertTrue(app.staticTexts["1 REZEPT"].exists)
+        XCTAssertTrue(app.staticTexts["1 Rezept"].exists)
         snapshot(app, "12-recipes-grid")
+
+        // Suche liegt hinter dem Lupen-Button
+        app.buttons["Suchen"].tap()
+        let search = app.textFields["Rezept oder Zutat"]
+        XCTAssertTrue(search.waitForExistence(timeout: 3))
+        search.typeText("Kohl")
+        XCTAssertTrue(app.staticTexts["Nichts gefunden für „Kohl“."].waitForExistence(timeout: 3))
+        app.buttons["Eingabe löschen"].tap()
+        search.typeText("halloumi")
+        XCTAssertTrue(tile.waitForExistence(timeout: 3))
+        snapshot(app, "12b-search")
+        app.buttons["Suche schließen"].tap()
+        XCTAssertFalse(search.exists)
 
         // Detail mit Originalmengen
         tile.tap()

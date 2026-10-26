@@ -72,3 +72,12 @@ Deno.test("interne Adressen werden abgelehnt", () => {
   }
   assertEquals(assertPublicURL("https://www.chefkoch.de/x").hostname, "www.chefkoch.de");
 });
+
+Deno.test("Platzhalterbild ohne Rezeptfoto wird verworfen (Chefkoch)", () => {
+  const html = `<html><head>
+    <meta property="og:image" content="https://img.chefkoch-cdn.de/images/crop-960x540/assets/v2/img/placeholders/16x9/c.png">
+    <script type="application/ld+json">{"@type":"Recipe","name":"Carne em vinho","image":{"@id":"https://www.chefkoch.de/x#primaryimage"}}</script>
+  </head></html>`;
+  const page = parsePage(html, new URL("https://www.chefkoch.de/rezepte/1/x.html"), "web");
+  assertEquals(page.imageURL, null);
+});

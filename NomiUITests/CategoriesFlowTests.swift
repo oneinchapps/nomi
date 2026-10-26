@@ -25,7 +25,7 @@ final class CategoriesFlowTests: NomiUITestCase {
         }
 
         app.tabBars.buttons["Rezepte"].tap()
-        if !app.staticTexts["3 REZEPTE"].waitForExistence(timeout: 20) {
+        if !app.staticTexts["3 Rezepte"].waitForExistence(timeout: 20) {
             snapshot(app, "fail-categories")
             XCTFail("Rezepte fehlen: \(app.staticTexts.allElementsBoundByIndex.prefix(15).map(\.label))")
             return
@@ -39,7 +39,7 @@ final class CategoriesFlowTests: NomiUITestCase {
 
         // Kategorie öffnen, dann per Chip wechseln
         vegetarian.tap()
-        XCTAssertTrue(app.staticTexts["2 REZEPTE"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["2 Rezepte"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Linsen-Dal'")).firstMatch.exists)
         XCTAssertFalse(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Rinderrouladen'")).firstMatch.exists)
         snapshot(app, "91-recipes-vegetarian")
@@ -62,7 +62,7 @@ final class CategoriesFlowTests: NomiUITestCase {
         // Lange nicht gekocht: die beiden anderen, Linsen-Dal nicht
         app.swipeUp()
         app.buttons.containing(NSPredicate(format: "label CONTAINS 'Lange nicht gekocht'")).firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["2 REZEPTE"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["2 Rezepte"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons.containing(NSPredicate(format: "label CONTAINS 'NOCH NIE GEKOCHT'")).firstMatch.exists)
         XCTAssertFalse(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Linsen-Dal'")).firstMatch.exists)
         app.buttons["Übersicht"].tap()
