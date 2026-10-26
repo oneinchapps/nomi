@@ -15,7 +15,12 @@ struct NomiApp: App {
 
 struct RootView: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showsSplash = RootView.splashEnabled
+    @State private var backgroundedAt: Date?
+
+    /// Kürzere Abstecher (z. B. Code aus WhatsApp kopieren) zeigen den Splash nicht erneut
+    private static let splashAfterBackground: TimeInterval = 10
 
     private static var splashEnabled: Bool {
         #if DEBUG
@@ -48,6 +53,20 @@ struct RootView: View {
                 }
                 .transition(.opacity)
                 .zIndex(1)
+            }
+        }
+        // Splash bei jedem Start – auch wenn iOS die App nur aus dem Hintergrund zurückholt
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                backgroundedAt = .now
+            case .active:
+                if let since = backgroundedAt, Date.now.timeIntervalSince(since) >= Self.splashAfterBackground, Self.splashEnabled {
+                    showsSplash = true
+                }
+                backgroundedAt = nil
+            default:
+                break
             }
         }
     }

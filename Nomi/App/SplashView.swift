@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Start: Chefi hüpft herein, hebt den Löffel und zwinkert, winkt – dann erscheint „nomi“.
-/// Läuft etwa eine Sekunde. Ist die App danach noch nicht so weit, rührt Chefi weiter, bis `isReady` kommt.
+/// Läuft knapp zweieinhalb Sekunden. Ist die App danach noch nicht so weit, rührt Chefi weiter, bis `isReady` kommt.
 struct SplashView: View {
     var isReady: Bool
     var onFinished: () -> Void
@@ -49,35 +49,37 @@ struct SplashView: View {
     private func play() async {
         guard !reduceMotion else {
             arrived = true; waves = true; showsWordmark = true
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(for: .milliseconds(1000))
             sequenceDone = true
             finishIfPossible()
             return
         }
         // 1 · hereinhüpfen, beim Landen kurz stauchen
-        withAnimation(.spring(duration: 0.4, bounce: 0.25)) { arrived = true }
-        try? await Task.sleep(for: .milliseconds(300))
-        withAnimation(.easeOut(duration: 0.1)) { squash = true }
-        try? await Task.sleep(for: .milliseconds(100))
-        withAnimation(.spring(duration: 0.3, bounce: 0.5)) { squash = false }
+        withAnimation(.spring(duration: 0.55, bounce: 0.25)) { arrived = true }
+        try? await Task.sleep(for: .milliseconds(450))
+        withAnimation(.easeOut(duration: 0.12)) { squash = true }
+        try? await Task.sleep(for: .milliseconds(120))
+        withAnimation(.spring(duration: 0.35, bounce: 0.5)) { squash = false }
+        try? await Task.sleep(for: .milliseconds(250))
 
         // 2 · Löffel hoch, zwinkern
-        withAnimation(.spring(duration: 0.35, bounce: 0.4)) {
+        withAnimation(.spring(duration: 0.45, bounce: 0.4)) {
             spoonTilt = -0.08
             spoonLift = 20
         }
         winks = true
-        try? await Task.sleep(for: .milliseconds(350))
+        try? await Task.sleep(for: .milliseconds(600))
         winks = false
+        try? await Task.sleep(for: .milliseconds(150))
 
-        // 3 · winken, Wortmarke
-        withAnimation(.spring(duration: 0.35, bounce: 0.3)) {
+        // 3 · winken, Wortmarke – und kurz stehen lassen
+        withAnimation(.spring(duration: 0.45, bounce: 0.3)) {
             spoonTilt = -0.32
             spoonLift = 0
             waves = true
             showsWordmark = true
         }
-        try? await Task.sleep(for: .milliseconds(400))
+        try? await Task.sleep(for: .milliseconds(900))
         sequenceDone = true
         finishIfPossible()
         if !ready { await stir() }

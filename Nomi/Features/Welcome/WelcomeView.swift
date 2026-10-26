@@ -46,7 +46,7 @@ struct WelcomeView: View {
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: 16) {
-            DisplayHeadline(lines: ["Weniger", "„Was essen wir?“"])
+            DisplayHeadline(lines: ["Mit nomi wirst", "du immer satt"])
             Text("Findet ein Rezept, das ihr beide liebt – ein Swipe nach dem anderen.")
                 .font(.bodySans)
                 .foregroundStyle(Color.inkMuted)

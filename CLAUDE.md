@@ -84,7 +84,7 @@ Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Haup
 Maskottchen **Chefi** (kleiner Koch in Mint mit Kochmütze und Holzlöffel):
 - Entwürfe und Render-Skript liegen in `design/mascot/`. Das App-Icon ist dessen `app-icon.png` (Ausschnitt B), kopiert nach `AppIcon.appiconset`.
 - In der App zeichnet `ChefiView` dieselben Formen. Löffel-Neigung und -Höhe sind animierbar, dazu gibt es die Posen Zwinkern und Winken.
-- `SplashView` spielt beim Start etwa 1 Sekunde: hereinhüpfen, Löffel heben und zwinkern, winken mit Wortmarke. Ist die App dann noch nicht fertig, rührt Chefi weiter.
+- `SplashView` spielt bei jedem Start etwa 2,5 Sekunden: hereinhüpfen, Löffel heben und zwinkern, winken mit Wortmarke. Das gilt auch, wenn die App nach mindestens 10 Sekunden aus dem Hintergrund zurückkommt. Ist die App dann noch nicht fertig, rührt Chefi weiter.
 - Der statische Startbildschirm ist die Farbe `LaunchBackground`. In Simulator-Videoaufnahmen wirkt er knalliger als der Splash; das liegt an der Aufnahme, die Farbe selbst stimmt.
 
 Creme-Grund, Überschriften in Bricolage Grotesque (immer über `Font.heading(...)` bzw. `.display`/`.cardTitle`, nie direkt per Schriftname), Fließtext DM Sans, Metazeilen in DM Mono als Versalien („25 MIN · FÜR ZWEI“), dunkle Pillen-Buttons. Mehrzeilige Headlines mit `DisplayHeadline` setzen, weil negatives `lineSpacing` in SwiftUI nicht greift.
