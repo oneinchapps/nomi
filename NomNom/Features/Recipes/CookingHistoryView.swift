@@ -50,7 +50,7 @@ struct CookingHistoryView: View {
         if let recipe = recipes.recipe(id: entry.recipeId) {
             NavigationLink(value: recipe.id) {
                 HStack(spacing: 14) {
-                    RecipeImage(recipe: recipe, emojiSize: 24)
+                    RecipeImage(recipe: recipe)
                         .frame(width: 52, height: 52)
                         .clipShape(.rect(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 3) {

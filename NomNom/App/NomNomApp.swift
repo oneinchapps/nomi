@@ -17,6 +17,19 @@ struct RootView: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
+        #if DEBUG
+        if let gallery = ProcessInfo.processInfo.environment["NOMNOM_GALLERY"] {
+            IllustrationGallery()
+                .preferredColorScheme(gallery == "dark" ? .dark : nil)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+
+    private var content: some View {
         Group {
             switch app.phase {
             case .loading:

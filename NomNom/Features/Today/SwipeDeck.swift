@@ -189,15 +189,9 @@ struct CandidateCard: View {
     @ViewBuilder
     private var image: some View {
         if let recipe {
-            RecipeImage(recipe: recipe, emojiSize: 84)
+            RecipeImage(recipe: recipe)
         } else {
-            let placeholder = Recipe(title: title)
-            ZStack {
-                Rectangle().fill(placeholder.tint.gradient)
-                Text(candidate.aiRecipe?.emoji ?? placeholder.emoji)
-                    .font(.system(size: 84))
-                    .shadow(color: .black.opacity(0.15), radius: 8, y: 6)
-            }
+            IllustrationTile(motif: FoodMotif.matching(title: title) ?? .teller, scale: 0.55)
         }
     }
 }

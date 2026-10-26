@@ -8,16 +8,18 @@ struct ImportProgressView: View {
     @State private var step = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let emojis = ["🥕", "🧄", "🍋", "🌶️", "🧀", "🍅"]
+    private let motifs: [FoodMotif] = [.gemuese, .suppe, .nudeln, .fisch, .kuchen, .taco]
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Text(emojis[step % emojis.count])
-                .font(.system(size: 64))
+            let motif = motifs[step % motifs.count]
+            FoodIllustration(motif: motif, background: .mist)
+                .frame(width: 76, height: 76)
                 .frame(width: 120, height: 120)
                 .background(Color.mist, in: .circle)
-                .contentTransition(.opacity)
+                .id(motif)
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
                 .rotationEffect(.degrees(reduceMotion ? 0 : Double(step % 2 == 0 ? -6 : 6)))
             VStack(spacing: 8) {
                 Text("nomnom liest mit")

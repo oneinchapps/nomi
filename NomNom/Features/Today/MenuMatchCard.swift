@@ -114,13 +114,9 @@ struct MenuMatchCard: View {
         let content = HStack(spacing: 14) {
             Group {
                 if let recipe {
-                    RecipeImage(recipe: recipe, emojiSize: 28)
+                    RecipeImage(recipe: recipe)
                 } else {
-                    let placeholder = Recipe(title: candidate.aiRecipe?.title ?? "")
-                    ZStack {
-                        Rectangle().fill(placeholder.tint.gradient)
-                        Text(candidate.aiRecipe?.emoji ?? placeholder.emoji).font(.system(size: 28))
-                    }
+                    IllustrationTile(motif: FoodMotif.matching(title: candidate.aiRecipe?.title ?? "") ?? .teller)
                 }
             }
             .frame(width: 64, height: 64)

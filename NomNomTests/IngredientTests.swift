@@ -150,15 +150,33 @@ struct DurationLabelTests {
     }
 }
 
-struct EmojiTests {
+struct MotifTests {
     @Test(arguments: [
-        ("Kürbis-Gnocchi mit Salbeibutter", "🎃"),
-        ("Rührei mit Schnittlauch", "🍳"),
-        ("Halloumi-Tacos", "🌮"),
-        ("Klassische Rinderrouladen", "🥩"),
-        ("Etwas ganz anderes", "🍽️"),
+        // Die Form des Gerichts schlägt die Zutat: was auf den Tisch kommt
+        ("Kürbis-Gnocchi mit Salbeibutter", FoodMotif.nudeln),
+        ("Halloumi-Tacos", .taco),
+        ("Klassische Rinderrouladen", .steak),
+        ("Kabeljau in Senfsauce", .fisch),
+        ("Weiße-Schokolade-Whisky-Eis", .eis),
+        ("Kürbis-Risotto", .bowl),
+        ("Cremige Kürbissuppe", .suppe),
+        ("Gefüllter Kürbis aus dem Ofen", .kuerbis),
+        ("Gebratener Reis", .bowl),
+        ("Etwas ganz anderes", .teller),
     ])
-    func picksFittingEmoji(title: String, emoji: String) {
-        #expect(Recipe(title: title).emoji == emoji)
+    func picksMotifFromTitle(title: String, motif: FoodMotif) {
+        #expect(Recipe(title: title).motif == motif)
+    }
+
+    @Test func fallsBackToCategory() {
+        #expect(Recipe(title: "Omas Spezial", dishType: .dessert).motif == .kuchen)
+        #expect(Recipe(title: "Omas Spezial", dishType: .hauptgericht, diet: .fisch).motif == .fisch)
+        #expect(Recipe(title: "Omas Spezial", dishType: .hauptgericht).motif == .teller)
+    }
+
+    @Test func eisIsAWordNotAPartOfReis() {
+        #expect(FoodMotif.matching(title: "Vanilleeis") == .eis)
+        #expect(FoodMotif.matching(title: "Milchreis") == .bowl)
+        #expect(FoodMotif.matching(title: "Fleischpflanzerl") != .eis)
     }
 }

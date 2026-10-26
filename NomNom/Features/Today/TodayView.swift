@@ -82,7 +82,7 @@ struct TodayView: View {
         if let first = today.first, decide.messages.isEmpty {
             NavigationLink(value: first.id) {
                 HStack(spacing: 14) {
-                    RecipeImage(recipe: first, emojiSize: 26)
+                    RecipeImage(recipe: first)
                         .frame(width: 56, height: 56)
                         .clipShape(.rect(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 3) {

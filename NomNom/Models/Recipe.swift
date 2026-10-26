@@ -129,20 +129,6 @@ enum DishType: String, Codable, CaseIterable, Sendable {
         case .getraenk: "Getränke"
         }
     }
-
-    var emoji: String {
-        switch self {
-        case .vorspeise: "🥟"
-        case .suppe: "🍲"
-        case .salat: "🥗"
-        case .hauptgericht: "🍽️"
-        case .beilage: "🥔"
-        case .dessert: "🍰"
-        case .backen: "🧁"
-        case .snack: "🍢"
-        case .getraenk: "🍹"
-        }
-    }
 }
 
 /// Ernährung – entspricht dem Check-Constraint recipes.diet.
@@ -155,15 +141,6 @@ enum Diet: String, Codable, CaseIterable, Sendable {
         case .fisch: "Fisch"
         case .vegetarisch: "Vegetarisch"
         case .vegan: "Vegan"
-        }
-    }
-
-    var emoji: String {
-        switch self {
-        case .fleisch: "🥩"
-        case .fisch: "🐟"
-        case .vegetarisch: "🥦"
-        case .vegan: "🌱"
         }
     }
 }
@@ -187,25 +164,6 @@ extension Recipe {
     static func servingsLabel(_ n: Int) -> String {
         let words = [1: "eine Person", 2: "zwei", 3: "drei", 4: "vier", 5: "fünf", 6: "sechs"]
         return "für " + (words[n] ?? "\(n)")
-    }
-
-    /// Platzhalter-Emoji nach Stichworten im Titel, solange es kein Foto gibt.
-    var emoji: String {
-        let t = title.lowercased()
-        let map: [(String, String)] = [
-            ("taco", "🌮"), ("burrito", "🌯"), ("pizza", "🍕"), ("burger", "🍔"), ("ramen", "🍜"),
-            ("nudel", "🍜"), ("udon", "🍜"), ("pasta", "🍝"), ("spaghetti", "🍝"), ("lasagne", "🍝"),
-            ("curry", "🍛"), ("dal", "🍛"), ("reis", "🍚"), ("risotto", "🍚"), ("sushi", "🍣"),
-            ("suppe", "🍲"), ("eintopf", "🍲"), ("chili", "🌶️"), ("salat", "🥗"), ("bowl", "🥗"),
-            ("gemüse", "🥦"), ("shakshuka", "🍳"), ("eier", "🍳"), ("spiegelei", "🍳"), ("rührei", "🍳"),
-            ("omelett", "🍳"), ("frittata", "🍳"), ("kürbis", "🎃"), ("gnocchi", "🥔"), ("pfannkuchen", "🥞"), ("pancake", "🥞"),
-            ("kuchen", "🍰"), ("brot", "🥖"), ("sandwich", "🥪"), ("lachs", "🐟"), ("fisch", "🐟"),
-            ("garnele", "🍤"), ("hähnchen", "🍗"), ("huhn", "🍗"), ("steak", "🥩"), ("kartoffel", "🥔"),
-            ("roulade", "🥩"), ("braten", "🍖"), ("gulasch", "🍲"), ("schnitzel", "🍖"), ("knödel", "🥟"),
-            ("spätzle", "🍝"), ("flammkuchen", "🍕"), ("auflauf", "🥘"), ("gratin", "🥘"), ("quiche", "🥧"),
-            ("falafel", "🧆"), ("halloumi", "🧀"), ("käse", "🧀"), ("dumpling", "🥟"), ("gyoza", "🥟"),
-        ]
-        return map.first { t.contains($0.0) }?.1 ?? "🍽️"
     }
 
     /// Stabile Pastellfarbe pro Rezept (hashValue ist pro Start zufällig, daher eigener Hash).

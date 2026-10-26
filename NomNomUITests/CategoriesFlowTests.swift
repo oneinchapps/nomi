@@ -43,7 +43,7 @@ final class CategoriesFlowTests: NomNomUITestCase {
         XCTAssertTrue(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Linsen-Dal'")).firstMatch.exists)
         XCTAssertFalse(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Rinderrouladen'")).firstMatch.exists)
         snapshot(app, "91-recipes-vegetarian")
-        app.buttons["🥩 Fleisch"].tap()
+        app.buttons["Fleisch"].tap()
         XCTAssertTrue(app.buttons.containing(NSPredicate(format: "label CONTAINS 'Rinderrouladen'")).firstMatch.waitForExistence(timeout: 3))
         app.buttons["Übersicht"].tap()
 

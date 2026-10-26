@@ -4,6 +4,7 @@ import SwiftUI
 struct RecipesView: View {
     @Environment(RecipeStore.self) private var store
     @Environment(CookingLogStore.self) private var log
+    @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
     @State private var filter: RecipeFilter?
     @State private var showsEditor = false
@@ -206,7 +207,8 @@ struct RecipesView: View {
             filter = target
         } label: {
             HStack(spacing: 12) {
-                Text(target.emoji).font(.system(size: 22))
+                FoodIllustration(motif: target.motif, background: .surface)
+                    .frame(width: 30, height: 30)
                 Text(target.title).font(.bodySansMedium).foregroundStyle(Color.ink)
                 Spacer()
                 Text("\(recipes(for: target).count)")
@@ -256,7 +258,12 @@ struct RecipesView: View {
                         Button {
                             filter = chip
                         } label: {
-                            Text("\(chip.emoji) \(chip.title)")
+                            HStack(spacing: 6) {
+                                FoodIllustration(motif: chip.motif, background: isSelected ? .brand : .mist)
+                                    .frame(width: 18, height: 18)
+                                    .environment(\.colorScheme, isSelected ? .dark : colorScheme)
+                                Text(chip.title)
+                            }
                                 .font(.captionSans)
                                 .foregroundStyle(isSelected ? Color.onBrand : Color.ink)
                                 .padding(.horizontal, 12)
@@ -302,10 +309,9 @@ struct RecipesView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: -18) {
                 ForEach(Array(Recipe.samples.prefix(3).enumerated()), id: \.offset) { index, sample in
-                    Text(sample.emoji)
-                        .font(.system(size: 34))
+                    IllustrationTile(motif: sample.motif)
                         .frame(width: 64, height: 64)
-                        .background(sample.tint, in: .circle)
+                        .clipShape(.circle)
                         .overlay { Circle().strokeBorder(Color.canvas, lineWidth: 3) }
                         .rotationEffect(.degrees(Double(index - 1) * 8))
                 }
@@ -340,7 +346,7 @@ struct RecipeTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RecipeImage(recipe: recipe, emojiSize: 48)
+            RecipeImage(recipe: recipe)
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(.rect(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 4) {
@@ -366,7 +372,7 @@ struct SmallRecipeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            RecipeImage(recipe: recipe, emojiSize: 40)
+            RecipeImage(recipe: recipe)
                 .frame(width: 148, height: 148)
                 .clipShape(.rect(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 3) {
@@ -391,30 +397,34 @@ struct CategoryTile: View {
     let count: Int
     let cover: Recipe?
 
+    private var hasPhoto: Bool { cover?.imageURL != nil }
+
     var body: some View {
         Color.clear
             .aspectRatio(4 / 3, contentMode: .fit)
             .overlay {
-                // Nur echte Fotos – sonst stünden Platzhalter-Emoji und Kategorie-Emoji übereinander
-                if let cover, cover.imageURL != nil {
-                    RecipeImage(recipe: cover, emojiSize: 36)
+                if let cover, hasPhoto {
+                    RecipeImage(recipe: cover)
+                        .overlay { LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom) }
                 } else {
-                    Rectangle().fill((cover?.tint ?? .mist).gradient)
+                    // Ohne Foto die Illustration der Kategorie, rechts oben – Schrift unten bleibt frei
+                    filter.motif.tint
+                        .overlay(alignment: .topTrailing) {
+                            FoodIllustration(motif: filter.motif)
+                                .frame(width: 74, height: 74)
+                                .padding(10)
+                        }
                 }
-            }
-            .overlay {
-                LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
             }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(filter.emoji).font(.system(size: 22))
                     Text(filter.title)
                         .font(.heading(19, relativeTo: .headline))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(hasPhoto ? .white : Color.ink)
                     Text(count == 1 ? "1 Rezept" : "\(count) Rezepte")
                         .font(.meta)
                         .tracking(1)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(hasPhoto ? .white.opacity(0.85) : Color.inkMuted)
                 }
                 .padding(12)
             }

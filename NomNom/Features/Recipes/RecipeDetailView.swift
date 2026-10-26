@@ -28,7 +28,7 @@ struct RecipeDetailView: View {
         let currentServings = servings ?? recipe.servings
         return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                RecipeImage(recipe: recipe, emojiSize: 96)
+                RecipeImage(recipe: recipe)
                     .frame(height: 340)
                     .frame(maxWidth: .infinity)
                     .clipped()
@@ -128,7 +128,7 @@ struct RecipeDetailView: View {
                     .foregroundStyle(Color.inkMuted)
                     .lineSpacing(3)
             }
-            let categories = [recipe.dishType.map { "\($0.emoji) \($0.title)" }, recipe.diet.map { "\($0.emoji) \($0.title)" }].compactMap { $0 }
+            let categories = [recipe.dishType?.title, recipe.diet?.title].compactMap { $0 }
             if !categories.isEmpty || !recipe.tags.isEmpty {
                 FlowTags(tags: categories + recipe.tags.filter { tag in
                     // Doppelte vermeiden („vegetarisch“ als Tag und als Kategorie)

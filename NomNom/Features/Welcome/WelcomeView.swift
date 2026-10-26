@@ -39,7 +39,6 @@ struct WelcomeView: View {
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: 16) {
-            MetaLabel("Abendessen, entschieden", font: .eyebrow, tracking: 2.4)
             DisplayHeadline(lines: ["Weniger", "„Was essen wir?“"])
             Text("Findet ein Rezept, das ihr beide liebt – ein Swipe nach dem anderen.")
                 .font(.bodySans)

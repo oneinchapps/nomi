@@ -170,12 +170,11 @@ struct RecipeCard: View {
     }
 }
 
-/// Rezeptfoto, oder ein getönter Platzhalter mit Emoji, solange es keins gibt.
+/// Rezeptfoto, oder eine nomnom-Illustration, solange es keins gibt.
 /// Nimmt genau den angebotenen Platz ein – das Foto füllt ihn und wird beschnitten,
 /// statt mit seinem Seitenverhältnis das Layout aufzudrücken.
 struct RecipeImage: View {
     let recipe: Recipe
-    var emojiSize: CGFloat = 72
 
     var body: some View {
         Color.clear
@@ -199,11 +198,6 @@ struct RecipeImage: View {
     }
 
     private var placeholder: some View {
-        ZStack {
-            Rectangle().fill(recipe.tint.gradient)
-            Text(recipe.emoji)
-                .font(.system(size: emojiSize))
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 6)
-        }
+        IllustrationTile(motif: recipe.motif)
     }
 }

@@ -80,16 +80,6 @@ enum RecipeFilter: Hashable, Identifiable {
         }
     }
 
-    var emoji: String {
-        switch self {
-        case .all: "📖"
-        case .diet(let diet): diet.emoji
-        case .dishType(let type): type.emoji
-        case .quick: "⏱️"
-        case .longNotCooked: "🕰️"
-        }
-    }
-
     /// Ab wie vielen Tagen ein Rezept als „lange nicht gekocht“ gilt
     static let longAgoDays = 30
 

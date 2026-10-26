@@ -90,10 +90,10 @@ struct RecipeEditorView: View {
 
                     HStack(alignment: .top, spacing: 12) {
                         field("Art") {
-                            categoryMenu(selection: $dishType, options: DishType.allCases, title: \.title, emoji: \.emoji)
+                            categoryMenu(selection: $dishType, options: DishType.allCases, title: \.title)
                         }
                         field("Ernährung") {
-                            categoryMenu(selection: $diet, options: Diet.allCases, title: \.title, emoji: \.emoji)
+                            categoryMenu(selection: $diet, options: Diet.allCases, title: \.title)
                         }
                     }
 
@@ -204,18 +204,17 @@ struct RecipeEditorView: View {
     private func categoryMenu<Option: Hashable>(
         selection: Binding<Option?>,
         options: [Option],
-        title: KeyPath<Option, String>,
-        emoji: KeyPath<Option, String>
+        title: KeyPath<Option, String>
     ) -> some View {
         Menu {
             Button("Keine Angabe") { selection.wrappedValue = nil }
             Divider()
             ForEach(options, id: \.self) { option in
-                Button("\(option[keyPath: emoji]) \(option[keyPath: title])") { selection.wrappedValue = option }
+                Button(option[keyPath: title]) { selection.wrappedValue = option }
             }
         } label: {
             HStack {
-                Text(selection.wrappedValue.map { "\($0[keyPath: emoji]) \($0[keyPath: title])" } ?? "Wählen")
+                Text(selection.wrappedValue.map { $0[keyPath: title] } ?? "Wählen")
                     .foregroundStyle(selection.wrappedValue == nil ? Color.inkMuted : Color.ink)
                     .lineLimit(1)
                 Spacer(minLength: 4)
@@ -414,7 +413,7 @@ private struct PhotoPickerLabel: View {
                     Image(uiImage: image).resizable().scaledToFill()
                 }
             } else if let imageURL {
-                RecipeImage(recipe: Recipe(title: title, imageURL: imageURL), emojiSize: 56)
+                RecipeImage(recipe: Recipe(title: title, imageURL: imageURL))
             } else {
                 Rectangle().fill(Color.mist)
                 VStack(spacing: 8) {

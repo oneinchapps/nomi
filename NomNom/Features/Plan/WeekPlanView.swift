@@ -160,7 +160,7 @@ struct WeekPlanView: View {
     private func entryRow(_ entry: MealPlanEntry, recipe: Recipe) -> some View {
         NavigationLink(value: recipe.id) {
             HStack(spacing: 14) {
-                RecipeImage(recipe: recipe, emojiSize: 26)
+                RecipeImage(recipe: recipe)
                     .frame(width: 56, height: 56)
                     .clipShape(.rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 3) {
@@ -235,7 +235,7 @@ struct RecipePickerSheet: View {
                         }
                     } label: {
                         HStack(spacing: 14) {
-                            RecipeImage(recipe: recipe, emojiSize: 24)
+                            RecipeImage(recipe: recipe)
                                 .frame(width: 52, height: 52)
                                 .clipShape(.rect(cornerRadius: 12))
                             VStack(alignment: .leading, spacing: 3) {
