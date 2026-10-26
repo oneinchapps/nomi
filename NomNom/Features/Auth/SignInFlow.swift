@@ -1,24 +1,28 @@
 import SwiftUI
 import Supabase
 
-/// Willkommen → E-Mail → Code. Nach erfolgreicher Prüfung übernimmt AppModel über authStateChanges.
+/// Willkommen → E-Mail → Code, oder Willkommen → Einladung (ohne E-Mail).
+/// Nach erfolgreicher Anmeldung übernimmt AppModel über authStateChanges.
 struct SignInFlow: View {
     @State private var path: [Step] = []
 
     enum Step: Hashable {
         case email
         case code(email: String)
+        case invite
     }
 
     var body: some View {
         NavigationStack(path: $path) {
-            WelcomeView { path.append(.email) }
+            WelcomeView { path.append(.email) } onInvite: { path.append(.invite) }
                 .navigationDestination(for: Step.self) { step in
                     switch step {
                     case .email:
                         EmailStepView { path.append(.code(email: $0)) }
                     case .code(let email):
                         CodeStepView(email: email)
+                    case .invite:
+                        InviteStepView()
                     }
                 }
         }
@@ -168,6 +172,95 @@ struct CodeStepView: View {
                 try await supabase.auth.signInWithOTP(email: email)
                 resent = true
                 error = nil
+            } catch {
+                withAnimation { self.error = userMessage(for: error) }
+            }
+        }
+    }
+}
+
+/// Code aus WhatsApp/Nachricht: Name und Code genügen, das Konto entsteht dabei.
+struct InviteStepView: View {
+    @Environment(AppModel.self) private var app
+
+    @State private var name = ""
+    @State private var code = ""
+    @State private var isWorking = false
+    @State private var error: String?
+    @FocusState private var focus: Field?
+
+    enum Field { case name, code }
+
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
+    private var normalizedCode: String { InviteCode.normalize(code) }
+    private var isValid: Bool { !trimmedName.isEmpty && normalizedCode.count == InviteCode.length }
+
+    var body: some View {
+        FormScreen(
+            eyebrow: "Einladung",
+            headline: ["Schön, dass", "du da bist"],
+            text: "Gib den Code aus der Nachricht ein. Eine E-Mail brauchst du nicht."
+        ) {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    MetaLabel("Code aus der Nachricht")
+                    HStack(spacing: 10) {
+                        TextField("XXXX-XXXX", text: $code)
+                            .font(.custom("DMMono-Medium", size: 22, relativeTo: .title3))
+                            .tracking(3)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .submitLabel(.next)
+                            .focused($focus, equals: .code)
+                            .onSubmit { focus = .name }
+                            .onChange(of: code) { _, new in
+                                // Eingefügte ganze Nachricht → nur der Code. Erst formatieren, wenn er vollständig ist –
+                                // Umschreiben bei jedem Tastendruck verschluckt Zeichen.
+                                guard let found = InviteCode.find(in: new) else { return }
+                                let cleaned = InviteCode.format(found)
+                                if cleaned != new { code = cleaned }
+                                if trimmedName.isEmpty { focus = .name }
+                            }
+                            .fieldBackground(isFocused: focus == .code)
+                        PasteButton(payloadType: String.self) { strings in
+                            guard let text = strings.first, let found = InviteCode.find(in: text) else { return }
+                            code = InviteCode.format(found)
+                            focus = .name
+                        }
+                        .labelStyle(.iconOnly)
+                        .buttonBorderShape(.circle)
+                        .tint(Color.ink)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    MetaLabel("Wie heißt du?")
+                    TextField("Vorname", text: $name)
+                        .textContentType(.givenName)
+                        .submitLabel(.join)
+                        .focused($focus, equals: .name)
+                        .onSubmit(submit)
+                        .fieldBackground(isFocused: focus == .name)
+                }
+
+                InlineError(message: error)
+            }
+        } footer: {
+            LoadingButton(title: "Los geht's", isLoading: isWorking, isEnabled: isValid, action: submit)
+        }
+        .onAppear { focus = .code }
+    }
+
+    private func submit() {
+        guard isValid, !isWorking else { return }
+        // Tastatur weg, damit eine Fehlermeldung sichtbar ist
+        focus = nil
+        isWorking = true
+        error = nil
+        Task {
+            defer { isWorking = false }
+            do {
+                try await app.redeemInvite(code: normalizedCode, displayName: trimmedName)
             } catch {
                 withAnimation { self.error = userMessage(for: error) }
             }

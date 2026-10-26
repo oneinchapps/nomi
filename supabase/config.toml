@@ -439,3 +439,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/decide/deno.json"
 entrypoint = "./functions/decide/index.ts"
+
+[functions.invite]
+enabled = true
+# Öffentlich: Wer einen Code einlöst, hat noch kein Konto (withSupabase({ auth: "none" }))
+verify_jwt = false
+import_map = "./functions/invite/deno.json"
+entrypoint = "./functions/invite/index.ts"

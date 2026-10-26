@@ -19,8 +19,8 @@ struct MatchCard: View {
     var body: some View {
         VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text("🎉")
-                    .font(.system(size: 44))
+                ReactionIllustration(reaction: .jubel)
+                    .frame(width: 76, height: 76)
                     .scaleEffect(appeared ? 1 : 0.3)
                 MetaLabel("Ihr habt ein Match", font: .eyebrow, tracking: 2.4)
                 Text("Heute gibt's")

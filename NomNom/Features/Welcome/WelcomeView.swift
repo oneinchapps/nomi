@@ -2,16 +2,23 @@ import SwiftUI
 
 struct WelcomeView: View {
     var onStart: () -> Void
+    var onInvite: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
             header
             copy
             Spacer(minLength: 24)
-            Button("Gemeinsam Essen finden", action: onStart)
-                .buttonStyle(.primary)
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.bottom, 8)
+            VStack(spacing: 14) {
+                Button("Gemeinsam Essen finden", action: onStart)
+                    .buttonStyle(.primary)
+                Button("Ich habe eine Einladung", action: onInvite)
+                    .font(.bodySansMedium)
+                    .foregroundStyle(Color.ink)
+                    .frame(minHeight: 44)
+            }
+            .padding(.horizontal, Metrics.gutter)
+            .padding(.bottom, 4)
         }
         .background(Color.canvas.ignoresSafeArea())
     }

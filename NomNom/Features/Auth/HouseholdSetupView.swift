@@ -16,9 +16,10 @@ struct HouseholdSetupView: View {
     enum Field { case name, code }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
-    private var normalizedCode: String { code.uppercased().filter { $0.isLetter || $0.isNumber } }
+    private var normalizedCode: String { InviteCode.normalize(code) }
+    /// 8 Zeichen: Einmal-Code aus der Einladung, 6 Zeichen: älterer Haushalts-Code
     private var isValid: Bool {
-        !trimmedName.isEmpty && (mode == .create || normalizedCode.count == 6)
+        !trimmedName.isEmpty && (mode == .create || [6, InviteCode.length].contains(normalizedCode.count))
     }
 
     var body: some View {
@@ -41,7 +42,7 @@ struct HouseholdSetupView: View {
                 VStack(spacing: 10) {
                     ChoiceCard(
                         title: "Neuen Haushalt anlegen",
-                        detail: "Du bekommst einen Code zum Weitergeben.",
+                        detail: "Du bekommst einen Code für WhatsApp oder Nachricht.",
                         systemImage: "house",
                         isSelected: mode == .create
                     ) { select(.create) }
@@ -54,14 +55,16 @@ struct HouseholdSetupView: View {
                 }
 
                 if mode == .join {
-                    TextField("ABC123", text: $code)
+                    TextField("XXXX-XXXX", text: $code)
                         .font(.custom("DMMono-Medium", size: 22, relativeTo: .title3))
                         .tracking(4)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .focused($focus, equals: .code)
                         .onChange(of: code) { _, new in
-                            let cleaned = String(new.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(6))
+                            // Erst formatieren, wenn der Code vollständig ist – Umschreiben bei jedem Tastendruck verschluckt Zeichen
+                            guard let found = InviteCode.find(in: new) else { return }
+                            let cleaned = InviteCode.format(found)
                             if cleaned != new { code = cleaned }
                         }
                         .fieldBackground(isFocused: focus == .code)

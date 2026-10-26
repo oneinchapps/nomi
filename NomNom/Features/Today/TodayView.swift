@@ -18,8 +18,8 @@ struct TodayView: View {
                 header
                 VStack(alignment: .leading, spacing: 18) {
 
-                    if app.partner == nil, let household = app.household {
-                        InviteCard(code: household.inviteCode)
+                    if app.partner == nil, app.household != nil {
+                        InviteCard()
                     }
 
                     plannedToday
@@ -152,7 +152,7 @@ struct TodayView: View {
         return VStack(alignment: .leading, spacing: 12) {
             if let partner = pending.first {
                 let left = decide.remaining(for: partner.userId)
-                Text("⏳").font(.system(size: 36))
+                ReactionIllustration(reaction: .warten).frame(width: 56, height: 56)
                 Text("Warte auf \(partner.displayName)")
                     .font(.cardTitle)
                     .foregroundStyle(Color.ink)
@@ -160,7 +160,7 @@ struct TodayView: View {
                     .font(.bodySans)
                     .foregroundStyle(Color.inkMuted)
             } else {
-                Text("🤷").font(.system(size: 36))
+                ReactionIllustration(reaction: .ratlos).frame(width: 56, height: 56)
                 Text("Diesmal kein Match")
                     .font(.cardTitle)
                     .foregroundStyle(Color.ink)

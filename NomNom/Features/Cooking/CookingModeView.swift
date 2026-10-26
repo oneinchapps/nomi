@@ -253,7 +253,7 @@ struct CookingModeView: View {
     private var donePage: some View {
         VStack(spacing: 14) {
             Spacer()
-            Text("😋").font(.system(size: 72))
+            ReactionIllustration(reaction: .lecker).frame(width: 120, height: 120)
             Text("Guten Appetit!")
                 .font(.display)
                 .tracking(-1)

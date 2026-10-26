@@ -32,16 +32,48 @@ struct FoodIllustration: View {
     var background: Color?
 
     var body: some View {
-        let fillColor = background ?? motif.tint
+        IllustrationCanvas(parts: motif.parts, fill: background ?? motif.tint)
+    }
+}
+
+/// Momente statt Gerichte (Match, Warten, Guten Appetit …) – ersetzt die Reaktions-Emojis.
+enum Reaction: String, CaseIterable, Sendable {
+    case jubel, warten, lecker, korb, ratlos
+
+    /// Füllung der Flächen; die Zeichnungen stehen frei auf dem Creme-Grund
+    var tint: Color {
+        switch self {
+        case .jubel, .korb: FoodMotif.nudeln.tint
+        case .warten, .ratlos: FoodMotif.teller.tint
+        case .lecker: FoodMotif.suppe.tint
+        }
+    }
+
+    fileprivate var parts: [IllustrationPart] { Motifs.parts(for: self) }
+}
+
+struct ReactionIllustration: View {
+    let reaction: Reaction
+
+    var body: some View {
+        IllustrationCanvas(parts: reaction.parts, fill: reaction.tint)
+    }
+}
+
+fileprivate struct IllustrationCanvas: View {
+    let parts: [IllustrationPart]
+    let fill: Color
+
+    var body: some View {
         Canvas { context, size in
             let scale = min(size.width, size.height) / 200
             context.translateBy(x: (size.width - 200 * scale) / 2, y: (size.height - 200 * scale) / 2)
             context.scaleBy(x: scale, y: scale)
             let stroke = StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round)
-            for part in motif.parts {
+            for part in parts {
                 switch part.role {
                 case .fill:
-                    context.fill(part.path, with: .color(fillColor))
+                    context.fill(part.path, with: .color(fill))
                     context.stroke(part.path, with: .color(.ink), style: stroke)
                 case .accent:
                     context.fill(part.path, with: .color(.brand))
@@ -496,6 +528,74 @@ fileprivate enum Motifs {
             ]
         }
     }
+
+    static func parts(for reaction: Reaction) -> [IllustrationPart] {
+        switch reaction {
+        case .jubel:
+            // Konfettikanone, Öffnung nach rechts oben
+            return [
+                .init(path: D.steam(124, 104, 172), role: .line),
+                .init(path: D.wave(from: 116, to: 180, y: 96, amp: 8, waves: 2), role: .line),
+                .init(path: D.poly([(150, 136), (164, 142), (158, 156), (144, 150)]), role: .accent),
+                .init(path: D.poly([(88, 146), (100, 150), (96, 162), (84, 158)]), role: .soft),
+                .init(path: D.circle(160, 118, 7), role: .accent),
+                .init(path: D.circle(176, 168, 5), role: .dot),
+                .init(path: D.circle(104, 186, 4), role: .dot),
+                .init(path: D.circle(186, 130, 4), role: .dot),
+                .init(path: D.poly([(26, 26), (114, 70), (70, 114)]), role: .fill),
+                .init(path: D.line((62, 44), (44, 62)), role: .line),
+                .init(path: D.line((88, 57), (57, 88)), role: .line),
+            ]
+        case .warten:
+            // Sanduhr
+            return [
+                .init(path: D.poly([(62, 160), (138, 160), (108, 100), (138, 40), (62, 40), (92, 100)]), role: .fill),
+                .init(path: D.poly([(76, 144), (124, 144), (100, 110)]), role: .accent),
+                .init(path: D.poly([(72, 44), (128, 44), (100, 70)]), role: .accent),
+                .init(path: D.line((100, 108), (100, 72)), role: .line),
+                .init(path: D.rect(46, 158, 108, 16, radius: 8), role: .fill),
+                .init(path: D.rect(46, 26, 108, 16, radius: 8), role: .fill),
+            ]
+        case .lecker:
+            // Zufriedenes Gesicht mit Zunge
+            var mouth = Path()
+            mouth.move(to: D.pt(62, 86))
+            mouth.addQuadCurve(to: D.pt(138, 86), control: D.pt(100, 44))
+            return [
+                .init(path: D.circle(100, 100, 72), role: .soft),
+                .init(path: D.bowl(center: 118, 70, radius: 15, depth: 1.4), role: .accent),
+                .init(path: D.line((118, 68), (118, 58)), role: .line),
+                .init(path: mouth, role: .line),
+                .init(path: D.line((64, 116), (76, 128), (88, 116)), role: .line),
+                .init(path: D.line((112, 116), (124, 128), (136, 116)), role: .line),
+            ]
+        case .korb:
+            // Leerer Einkaufskorb, nur ein Blatt schaut heraus
+            return [
+                .init(path: D.dome(center: 100, 104, radius: 54, height: 66), role: .line),
+                .init(path: D.leaf(118, 104, 44, angle: 62), role: .accent),
+                .init(path: D.poly([(32, 104), (168, 104), (150, 32), (50, 32)]), role: .fill),
+                .init(path: D.line((74, 100), (78, 36)), role: .line),
+                .init(path: D.line((100, 100), (100, 36)), role: .line),
+                .init(path: D.line((126, 100), (122, 36)), role: .line),
+                .init(path: D.line((42, 68), (158, 68)), role: .line),
+                .init(path: D.rect(24, 98, 152, 18, radius: 9), role: .fill),
+            ]
+        case .ratlos:
+            // Leerer Teller mit Fragezeichen
+            var question = Path()
+            question.move(to: D.pt(84, 116))
+            question.addCurve(to: D.pt(116, 116), control1: D.pt(84, 140), control2: D.pt(116, 140))
+            question.addCurve(to: D.pt(100, 92), control1: D.pt(116, 102), control2: D.pt(100, 104))
+            question.addLine(to: D.pt(100, 84))
+            return [
+                .init(path: D.circle(100, 100, 66), role: .fill),
+                .init(path: D.circle(100, 100, 46), role: .line),
+                .init(path: question, role: .line),
+                .init(path: D.circle(100, 70, 5), role: .accent),
+            ]
+        }
+    }
 }
 
 #if DEBUG
@@ -512,6 +612,15 @@ struct IllustrationGallery: View {
                             .aspectRatio(1, contentMode: .fit)
                             .clipShape(.rect(cornerRadius: 14))
                         Text(motif.rawValue).font(.meta)
+                    }
+                }
+                ForEach(Reaction.allCases, id: \.self) { reaction in
+                    VStack(spacing: 4) {
+                        ReactionIllustration(reaction: reaction)
+                            .padding(10)
+                            .aspectRatio(1, contentMode: .fit)
+                            .background(Color.surface, in: .rect(cornerRadius: 14))
+                        Text(reaction.rawValue).font(.meta)
                     }
                 }
             }

@@ -43,6 +43,10 @@ enum SupabaseEnvironment {
 
 /// Übersetzt Fehler aus Auth und Datenbank in Sätze, die man in der App zeigen kann.
 func userMessage(for error: Error) -> String {
+    // Edge Functions liefern schon eine fertige Meldung
+    if let function = error as? FunctionError {
+        return function.message
+    }
     if let auth = error as? AuthError {
         switch auth.errorCode {
         case .overEmailSendRateLimit, .overRequestRateLimit:

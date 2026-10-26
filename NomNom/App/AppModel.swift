@@ -16,6 +16,8 @@ final class AppModel {
     private(set) var userId: UUID?
     private(set) var household: Household?
     private(set) var members: [HouseholdMember] = []
+    /// Per Einladungscode angemeldet, ohne echte Mailadresse
+    private(set) var signedInWithoutEmail = false
 
     var me: HouseholdMember? { members.first { $0.userId == userId } }
     var partner: HouseholdMember? { members.first { $0.userId != userId } }
@@ -33,6 +35,7 @@ final class AppModel {
             case .initialSession, .signedIn, .userUpdated:
                 if let session {
                     userId = session.user.id
+                    signedInWithoutEmail = session.user.email?.hasSuffix("@einladung.nomnom.invalid") ?? false
                     await loadHousehold()
                 } else {
                     reset()
@@ -95,6 +98,34 @@ final class AppModel {
         phase = .ready
     }
 
+    /// Einmal-Code aus WhatsApp/Nachricht einlösen: legt bei Bedarf das Konto an und meldet an.
+    /// Den Rest übernimmt observeAuth, sobald die Sitzung da ist.
+    func redeemInvite(code: String, displayName: String) async throws {
+        struct Body: Encodable { let code: String; let display_name: String }
+        struct Response: Decodable { let token_hash: String }
+        let response: Response = try await callFunction(
+            "invite",
+            body: Body(code: code, display_name: displayName),
+            timeout: 30,
+            fallbackMessage: "Das hat nicht geklappt. Probier es gleich noch mal."
+        )
+        try await supabase.auth.verifyOTP(tokenHash: response.token_hash, type: .magiclink)
+    }
+
+    /// Code zum Weitergeben. Mit `member` meldet er dieses Mitglied auf einem neuen Gerät an.
+    func invite(for member: UUID? = nil) async throws -> HouseholdInvite {
+        try await supabase
+            .rpc("create_invite", params: ["member": member])
+            .single()
+            .execute()
+            .value
+    }
+
+    /// Mitglieder, die per Einladung ohne E-Mail beigetreten sind, kommen nur mit neuem Code zurück ins Konto.
+    func isInvitedAccount(_ userId: UUID) async -> Bool {
+        (try? await supabase.rpc("is_invited_account", params: ["uid": userId]).execute().value) ?? false
+    }
+
     func signOut() async {
         try? await supabase.auth.signOut()
         reset()
@@ -119,6 +150,7 @@ final class AppModel {
 
     private func reset() {
         userId = nil
+        signedInWithoutEmail = false
         household = nil
         members = []
         phase = .signedOut

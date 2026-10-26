@@ -143,10 +143,8 @@ struct ShoppingListView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Text("🧺")
-                .font(.system(size: 44))
-                .frame(width: 88, height: 88)
-                .background(Color.mist, in: .circle)
+            ReactionIllustration(reaction: .korb)
+                .frame(width: 96, height: 96)
             Text("Alles da")
                 .font(.cardTitle)
                 .foregroundStyle(Color.ink)
