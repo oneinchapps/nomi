@@ -54,7 +54,7 @@ Deno.test("Prompt enthält Sammlung, Stimmen mit Namen und den Chat", () => {
   assertStringIncludes(prompt, "Sonntag, 25. Oktober 2026");
   assertStringIncludes(prompt, "r1 | Halloumi-Tacos | 25 Min | vegetarisch | Zutaten: Halloumi, Tortillas");
   assertStringIncludes(prompt, "- Linsen-Dal (Sam: nein)");
-  assertStringIncludes(prompt, "Alex: Was Schnelles bitte\nnomnom: Klar!");
+  assertStringIncludes(prompt, "Alex: Was Schnelles bitte\nnomi: Klar!");
 });
 
 Deno.test("Menü: nur Vorschläge für bekannte, offene Gänge", () => {

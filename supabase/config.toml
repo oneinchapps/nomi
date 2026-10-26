@@ -245,11 +245,11 @@ otp_expiry = 3600
 
 # Anmeldung per 6-stelligem Code statt Link (für neue und bestehende Nutzer)
 [auth.email.template.confirmation]
-subject = "Dein nomnom-Code"
+subject = "Dein nomi-Code"
 content_path = "./supabase/templates/otp.html"
 
 [auth.email.template.magic_link]
-subject = "Dein nomnom-Code"
+subject = "Dein nomi-Code"
 content_path = "./supabase/templates/otp.html"
 
 # Uncomment to customize email template

@@ -1,17 +1,19 @@
-# nomnom
+# nomi
 
 Persönliche iOS-App für zwei: Rezepte gemeinsam per KI-Chat und Swipe auswählen, Einkaufsliste, Wochenplan, Kochmodus. UI-Sprache Deutsch.
 
+Die App hieß früher „nomnom“ und darf so nicht mehr heißen. Überall sichtbar und im Code heißt sie „nomi“. Nur diese Namen bleiben bewusst „nomnom“: der Repo-Ordner, die lokale Supabase-`project_id` (Docker-Container und Daten hängen daran) und Kommentare in schon eingespielten Migrationen.
+
 ## Stack
 - SwiftUI, iOS 26+ (für Liquid-Glass-APIs wie `sharedBackgroundVisibility`), Swift 6 (Default-Isolation `MainActor`)
-- Projekt wird mit XcodeGen aus `project.yml` erzeugt; `NomNom.xcodeproj` ist nicht eingecheckt
+- Projekt wird mit XcodeGen aus `project.yml` erzeugt; `Nomi.xcodeproj` ist nicht eingecheckt
 - Backend: Supabase (Postgres, Auth, Realtime, Edge Functions). Der Anthropic-Key liegt nur als Supabase-Secret vor, nie in der App
 
 ## Bauen
 ```sh
 xcodegen generate
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer   # solange xcode-select auf die CommandLineTools zeigt
-xcodebuild -project NomNom.xcodeproj -scheme NomNom \
+xcodebuild -project Nomi.xcodeproj -scheme Nomi \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build build
 ```
 Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
@@ -28,28 +30,34 @@ Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
 - Secret `ANTHROPIC_API_KEY`: lokal in `supabase/functions/.env` (gitignored), live per `supabase secrets set --env-file supabase/functions/.env`.
 - Prüfen: `cd supabase/functions/import-recipe && deno check --config deno.json index.ts && deno test --config deno.json`
 - Lokal starten: `supabase functions serve import-recipe`
-- Teilen-Erweiterung `NomNomShare` nutzt Design-System, Modelle und Services der App mit (siehe project.yml) und teilt die Anmeldung über die Keychain-Gruppe `<Team>.de.gregorzoller.nomnom.shared`.
+- Teilen-Erweiterung `NomiShare` nutzt Design-System, Modelle und Services der App mit (siehe project.yml) und teilt die Anmeldung über die Keychain-Gruppe `<Team>.de.gregorzoller.nomi.shared`.
+
+## Einladen (zweite Person)
+- Ohne E-Mail: Der Standard-Mailversand von Supabase erreicht nur Mitglieder des Supabase-Teams. Darum lädt man per Einmal-Code ein (8 Zeichen, 7 Tage gültig, RPC `create_invite`), der über das Teilen-Menü per WhatsApp oder Nachricht rausgeht.
+- Edge Function `supabase/functions/invite` (`auth: "none"`) löst den Code ein: Sie legt ein Konto mit der Adresse `<uuid>@einladung.nomi.invalid` an, trägt es in den Haushalt ein und gibt einen Magic-Link-`token_hash` zurück. Die App tauscht ihn per `verifyOTP(tokenHash:type: .magiclink)` gegen eine Sitzung.
+- Neues Handy: `create_invite(member)` erzeugt einen Anmeldecode für ein bestehendes Mitglied. Das geht nur für Konten ohne echte Mailadresse (`is_invited_account`).
+- `join_household` nimmt Einmal-Codes und den alten 6-stelligen Haushalts-Code an. Das ist der Weg für Leute, die per E-Mail angemeldet sind.
 
 ## Gemeinsam entscheiden (Heute-Tab)
-- Edge Function `supabase/functions/decide`: `suggest` (Chat + Sammlung + bisherige Stimmen → 5 Karten, Antwort von nomnom) und `expand` (Idee → vollständiges Rezept in der Sammlung). Prompts in `suggest.ts`, gemeinsames Rezeptschema und Claude-Aufruf in `supabase/functions/_shared/recipe.ts`.
+- Edge Function `supabase/functions/decide`: `suggest` (Chat + Sammlung + bisherige Stimmen → 5 Karten, Antwort von nomi) und `expand` (Idee → vollständiges Rezept in der Sammlung). Prompts in `suggest.ts`, gemeinsames Rezeptschema und Claude-Aufruf in `supabase/functions/_shared/recipe.ts`.
 - Match entsteht per Trigger `check_match`, sobald alle Mitglieder dieselbe Karte mögen.
-- Antworten von nomnom (`user_id` null) schreibt nur die Function mit `supabaseAdmin`; Nutzer:innen dürfen per RLS nur als sie selbst schreiben.
+- Antworten von nomi (`user_id` null) schreibt nur die Function mit `supabaseAdmin`; Nutzer:innen dürfen per RLS nur als sie selbst schreiben.
 - Neue Tabellen haben auch für `service_role` keine Standardrechte – bei Bedarf gezielt `grant`.
 
 ## Kochmodus
 `Features/Cooking`: Vollbild aus der Rezeptansicht, Bildschirm bleibt an. Timer laufen über einen Endzeitpunkt (`CookingTimers`), zusätzlich gibt es eine lokale Mitteilung für den Hintergrund. Timer kommen aus `Recipe.Step.timerSeconds` – beim Import/Ausarbeiten von Claude gesetzt, im Editor per Menü oder automatisch aus dem Text erkannt (`StepText.detectTimer`).
 
 ## Tests
-- `NomNomTests` (Swift Testing): Zutaten-Parser, Mengenformat, Skalierung, Abteilungs-Zuordnung
-- `NomNomUITests`: Onboarding mit zwei Personen und Rezept-Flow (anlegen, öffnen, Portionen skalieren). Gemeinsame Helfer stehen in `UITestSupport.swift`.
+- `NomiTests` (Swift Testing): Zutaten-Parser, Mengenformat, Skalierung, Abteilungs-Zuordnung
+- `NomiUITests`: Onboarding mit zwei Personen und Rezept-Flow (anlegen, öffnen, Portionen skalieren). Gemeinsame Helfer stehen in `UITestSupport.swift`.
 
 Die UI-Tests laufen gegen das lokale Supabase:
 ```sh
 supabase start
-xcodebuild test -project NomNom.xcodeproj -scheme NomNom \
+xcodebuild test -project Nomi.xcodeproj -scheme Nomi \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build
 ```
-Debug-Builds lesen `NOMNOM_SUPABASE_URL`, `NOMNOM_SUPABASE_KEY`, `NOMNOM_RESET_SESSION` und `NOMNOM_DISABLE_NOTIFICATIONS` (keine Rückfrage nach Mitteilungen in UI-Tests) aus der Umgebung.
+Debug-Builds lesen `NOMI_SUPABASE_URL`, `NOMI_SUPABASE_KEY`, `NOMI_RESET_SESSION` und `NOMI_DISABLE_NOTIFICATIONS` (keine Rückfrage nach Mitteilungen in UI-Tests) aus der Umgebung.
 
 ## Live-Sync
 Stores laden komplett neu, sobald sich etwas ändert (`observeTable` in `Services/Realtime.swift`). Delete-Events kommen in Supabase Realtime nicht bei gefilterten Abos an, deshalb hört `observeTable` zusätzlich ungefiltert auf Deletes. Neue Tabellen mit Live-Sync in die Publication `supabase_realtime` aufnehmen.
@@ -63,9 +71,9 @@ Stores laden komplett neu, sobald sich etwas ändert (`observeTable` in `Service
 Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf anderen Threads aufruft (z. B. `UIColor { traits in … }`), müssen `nonisolated`/`@Sendable` sein, sonst stürzt die App zur Laufzeit ab.
 
 ## Struktur
-- `NomNom/DesignSystem/`: Farben (`Color.canvas`, `.ink`, `.mist` …), Schriften (`Font.display`, `.meta` …), wiederverwendbare Komponenten. Neue Screens nutzen diese Tokens statt eigener Werte.
-- `NomNom/Features/<Feature>/`: ein Ordner pro Feature
-- `NomNom/Models/`
+- `Nomi/DesignSystem/`: Farben (`Color.canvas`, `.ink`, `.mist` …), Schriften (`Font.display`, `.meta` …), wiederverwendbare Komponenten. Neue Screens nutzen diese Tokens statt eigener Werte.
+- `Nomi/Features/<Feature>/`: ein Ordner pro Feature
+- `Nomi/Models/`
 
 ## Design
 Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Hauptscreen beginnt mit `BrandHeader` und nutzt `.brandNavigationBar()`: Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe (ein eigener Leisten-Hintergrund würde unter iOS 26 dunkler wirken). Toolbar-Elemente auf der Markenfarbe ohne Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`). Entwürfe und das Render-Skript fürs App-Icon liegen in `design/`.

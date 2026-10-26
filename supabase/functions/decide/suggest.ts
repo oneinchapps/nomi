@@ -89,7 +89,7 @@ export const SUGGEST_SCHEMA = {
 
 export function systemPrompt(names: string[]): string {
   const who = names.length > 1 ? names.join(" und ") : (names[0] ?? "die Person");
-  return `Du bist nomnom, die Koch-App von ${who}. Ihr entscheidet gemeinsam, was es zu essen gibt: Die beiden schreiben dir, worauf sie Lust haben, du schlägst Gerichte vor, und jede:r swipet für sich – mögen beide dasselbe, ist es ein Match.
+  return `Du bist nomi, die Koch-App von ${who}. Ihr entscheidet gemeinsam, was es zu essen gibt: Die beiden schreiben dir, worauf sie Lust haben, du schlägst Gerichte vor, und jede:r swipet für sich – mögen beide dasselbe, ist es ein Match.
 
 Antworte mit:
 - reply: ein bis zwei kurze, lockere Sätze auf Deutsch an beide ("ihr"). Kein Aufzählen der Vorschläge – die erscheinen als Karten.
@@ -150,7 +150,7 @@ export function userPrompt(input: {
     : "(kein Menü)";
 
   const chat = input.messages
-    .map((m) => `${m.user_id ? input.names.get(m.user_id) ?? "jemand" : "nomnom"}: ${m.content}`)
+    .map((m) => `${m.user_id ? input.names.get(m.user_id) ?? "jemand" : "nomi"}: ${m.content}`)
     .join("\n");
 
   return `Heute ist ${today}.

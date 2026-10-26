@@ -1,7 +1,7 @@
 // Gemeinsam entscheiden: KI-Vorschläge für den Swipe-Stapel und Ausarbeiten einer Idee nach dem Match.
 //
 // POST { action: "suggest", session_id } → { reply, candidates }
-//   Liest Chat, Sammlung und bisherige Stimmen, schreibt eine Antwort von nomnom in chat_messages
+//   Liest Chat, Sammlung und bisherige Stimmen, schreibt eine Antwort von nomi in chat_messages
 //   und neue Karten in session_candidates.
 // POST { action: "expand", candidate_id } → { recipe }
 //   Macht aus einer KI-Idee ein vollständiges Rezept, speichert es in der Sammlung
@@ -44,10 +44,10 @@ export default {
     } catch (e) {
       console.error(body.action, "failed", e);
       if (e instanceof Anthropic.RateLimitError) {
-        return error(503, "nomnom ist gerade ausgelastet. Probier es in einer Minute noch mal.");
+        return error(503, "nomi ist gerade ausgelastet. Probier es in einer Minute noch mal.");
       }
       if (e instanceof Anthropic.AnthropicError || e instanceof ClaudeError || e instanceof SyntaxError) {
-        return error(502, "nomnom hat gerade keine Idee. Probier es gleich noch mal.");
+        return error(502, "nomi hat gerade keine Idee. Probier es gleich noch mal.");
       }
       throw e;
     }
@@ -57,7 +57,7 @@ export default {
 // deno-lint-ignore no-explicit-any
 type Client = any;
 
-/// `admin` nur für die Antwort von nomnom (user_id null) – Nutzer:innen dürfen nur als sie selbst schreiben.
+/// `admin` nur für die Antwort von nomi (user_id null) – Nutzer:innen dürfen nur als sie selbst schreiben.
 /// Die Zugehörigkeit zur Runde ist vorher über den RLS-Client geprüft.
 async function suggest(supabase: Client, admin: Client, sessionId: string): Promise<Response> {
   // RLS sorgt dafür, dass nur Sessions des eigenen Haushalts sichtbar sind

@@ -83,7 +83,7 @@ export default {
     } catch (e) {
       console.error("extract failed", e);
       if (e instanceof Anthropic.RateLimitError) {
-        return error(503, "nomnom ist gerade ausgelastet. Probier es in einer Minute noch mal.");
+        return error(503, "nomi ist gerade ausgelastet. Probier es in einer Minute noch mal.");
       }
       if (e instanceof Anthropic.AnthropicError || e instanceof ExtractionError || e instanceof SyntaxError) {
         return error(502, "Das Rezept ließ sich nicht auslesen.");

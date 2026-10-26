@@ -28,7 +28,7 @@ set search_path = ''
 as $$
     select exists (
         select 1 from auth.users
-        where id = uid and email like '%@einladung.nomnom.invalid'
+        where id = uid and email like '%@einladung.nomi.invalid'
     );
 $$;
 

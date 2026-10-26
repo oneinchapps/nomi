@@ -1,5 +1,5 @@
-// Rendert Stil-Vorschläge für nomnom-Illustrationen: sechs Motive in vier Stilen.
-// Aufruf: swift design/illustrations/render-styles.swift NomNom/Resources/Fonts design/illustrations
+// Rendert Stil-Vorschläge für nomi-Illustrationen: sechs Motive in vier Stilen.
+// Aufruf: swift design/illustrations/render-styles.swift Nomi/Resources/Fonts design/illustrations
 import AppKit
 import CoreText
 

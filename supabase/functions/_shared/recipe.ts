@@ -88,7 +88,7 @@ export const RECIPE_SCHEMA = {
   },
 };
 
-/** Schema für ein vollständiges Rezept ohne found_recipe (z. B. wenn nomnom eine Idee ausarbeitet). */
+/** Schema für ein vollständiges Rezept ohne found_recipe (z. B. wenn nomi eine Idee ausarbeitet). */
 export const FULL_RECIPE_SCHEMA = {
   ...RECIPE_SCHEMA,
   required: RECIPE_SCHEMA.required.filter((key) => key !== "found_recipe"),

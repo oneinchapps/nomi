@@ -1,5 +1,5 @@
 /// Konten aus Einladungen bekommen eine Adresse, an die nie eine Mail geht (siehe is_invited_account()).
-export const INVITED_DOMAIN = "einladung.nomnom.invalid";
+export const INVITED_DOMAIN = "einladung.nomi.invalid";
 
 /// „abcd-efgh“, „ABCD EFGH“ → „ABCDEFGH“
 export function normalizeCode(input: unknown): string | null {
