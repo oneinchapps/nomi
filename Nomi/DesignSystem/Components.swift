@@ -96,6 +96,25 @@ struct DisplayHeadline: View {
     }
 }
 
+/// Wortmarke „nomi“: DynaPuff mit angebissenem Ocker-o, als Vektorgrafik aus
+/// design/appicon/render-icon-concepts.swift (`--export`). `onLight` für hellen Grund.
+struct Wordmark: View {
+    var height: CGFloat = 24
+    var onLight = false
+
+    /// Seitenverhältnis des PDFs (307,6 × 100)
+    private static let aspectRatio: CGFloat = 3.076
+
+    var body: some View {
+        // Feste Breite und Höhe: In der Toolbar würden Bilder sonst auf Symbolgröße gestaucht
+        Image(onLight ? "WordmarkOnLight" : "Wordmark", label: Text("nomi"))
+            .resizable()
+            .frame(width: height * Self.aspectRatio, height: height)
+            .fixedSize()
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
 /// Anzahl im kleinen Kreis neben der Überschrift eines BrandHeader; bei drei Stellen wird er zur Pille.
 struct CountBadge: View {
     let count: Int

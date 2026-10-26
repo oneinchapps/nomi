@@ -16,9 +16,13 @@ final class DecideFlowTests: NomiUITestCase {
         let household = try await api("POST", "/rest/v1/rpc/join_household", body: ["code": inviteCode, "display_name": "Sam"], as: sam)
         let householdId = try XCTUnwrap(household["id"] as? String)
 
+        // Heute: Vorschläge fürs Abendessen öffnen das Auswahlblatt
         app.tabBars.buttons["Heute"].tap()
-        XCTAssertTrue(app.buttons["Was Schnelles"].waitForExistence(timeout: 5))
+        let suggest = app.buttons["Vorschläge fürs Abendessen"]
+        XCTAssertTrue(suggest.waitForExistence(timeout: 5))
         snapshot(app, "50-today-start")
+        suggest.tap()
+        XCTAssertTrue(app.buttons["Was Schnelles"].waitForExistence(timeout: 5))
         app.buttons["Was Schnelles"].tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["nomi überlegt"].waitForExistence(timeout: 5))
@@ -57,10 +61,11 @@ final class DecideFlowTests: NomiUITestCase {
         XCTAssertTrue(app.staticTexts["Heute gibt's"].waitForExistence(timeout: 10), "Match kommt nicht live an")
         snapshot(app, "52-match")
 
-        // Idee ausarbeiten → Rezept ansehen
+        // Idee ausarbeiten → steht danach von selbst beim Abendessen → Rezept ansehen
         app.buttons["Rezept ausarbeiten"].tap()
         let view = app.buttons["Rezept ansehen"]
         XCTAssertTrue(view.waitForExistence(timeout: 90), "Rezept wurde nicht ausgearbeitet")
+        XCTAssertTrue(app.staticTexts["Steht beim Abend"].waitForExistence(timeout: 10), "Entscheidung steht nicht beim Abendessen")
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'nicht ausarbeiten'")).firstMatch.exists,
                        "Fehlermeldung trotz erfolgreichem Ausarbeiten")
         snapshot(app, "53-match-expanded")
@@ -70,13 +75,11 @@ final class DecideFlowTests: NomiUITestCase {
         snapshot(app, "54-ai-recipe")
         app.navigationBars.buttons.element(boundBy: 0).tap()
 
-        // Für heute einplanen, dann neue Runde
-        app.buttons["Für heute"].tap()
-        XCTAssertTrue(app.buttons["Eingeplant"].waitForExistence(timeout: 5))
-        app.buttons["Neue Runde"].tap()
-        XCTAssertTrue(app.buttons["Was Schnelles"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'HEUTE GEPLANT'")).firstMatch.exists)
-        snapshot(app, "55-new-round")
+        // Blatt schließen: Das Gericht steht im Heute-Tab beim Abendessen, mit „Jetzt kochen“
+        app.buttons["Fertig"].tap()
+        XCTAssertTrue(app.buttons["Jetzt kochen"].waitForExistence(timeout: 10), "Gericht fehlt im Heute-Tab")
+        XCTAssertTrue(app.buttons["Gang zum Abendessen hinzufügen"].exists)
+        snapshot(app, "55-today-planned")
 
         // Das neue Rezept liegt in der Sammlung
         app.tabBars.buttons["Rezepte"].tap()

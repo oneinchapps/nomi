@@ -50,22 +50,23 @@ func draw(_ name: String, active: Bool, in ctx: CGContext) {
 
     switch name {
     case "Nomi":
-        // Chefi: kleine Kochmütze über rundem Gesicht
-        let head = rrect(3.6, 1.2, 16.8, 13.2, 6.6)
-        let puffs = [circle(8.7, 18.4, 2.8), circle(12, 20, 3.3), circle(15.3, 18.4, 2.8), rrect(8.4, 15.6, 7.2, 3.2, 1)]
+        // Chefi: großes rundes Gesicht, kleine Mütze obendrauf – das Gesicht muss auch in 25 pt lesbar sein
+        let head = circle(12, 9.6, 8.6)
+        let puffs = [circle(9.5, 20.6, 2.3), circle(12, 21.7, 2.5), circle(14.5, 20.6, 2.3), rrect(9.2, 18.4, 5.6, 2.6, 0.8)]
         let hat = puffs.dropFirst().reduce(puffs[0]) { $0.union($1) }
-        let band = rrect(7.8, 13, 8.4, 2.9, 1.1)
+        let band = rrect(8.4, 16.6, 7.2, 2.5, 1)
         if active { fill(head, 0.2) }
         strokePath(head)
-        clear(hat); strokePath(hat)
+        clear(hat.copy(strokingWithWidth: stroke, lineCap: .round, lineJoin: .round, miterLimit: 1).union(hat))
+        strokePath(hat)
         clear(band.copy(strokingWithWidth: stroke, lineCap: .round, lineJoin: .round, miterLimit: 1).union(band))
         if active { fill(band) } else { strokePath(band) }
-        // Gesicht
-        fill(circle(9.2, 8.2, 1.3)); fill(circle(14.8, 8.2, 1.3))
+        // Gesicht: große Augen, breites Lächeln
+        fill(circle(8.8, 10.4, 1.55)); fill(circle(15.2, 10.4, 1.55))
         let smile = CGMutablePath()
-        smile.addArc(center: CGPoint(x: 12, y: 7.2), radius: 2.5, startAngle: -0.35, endAngle: -.pi + 0.35, clockwise: true)
+        smile.addArc(center: CGPoint(x: 12, y: 8.4), radius: 3.3, startAngle: -0.3, endAngle: -.pi + 0.3, clockwise: true)
         strokePath(smile)
-        if active { fill(ellipse(6.8, 5.8, 2.6, 1.6), 0.7); fill(ellipse(17.2, 5.8, 2.6, 1.6), 0.7) }
+        if active { fill(ellipse(6.4, 7.4, 2.6, 1.7), 0.7); fill(ellipse(17.6, 7.4, 2.6, 1.7), 0.7) }
     case "Today":
         // Pfanne schräg von der Seite: Rand als Ellipse, gewölbter Boden, langer Stiel
         let rim = ellipse(9.6, 12.4, 15.6, 5.6)
@@ -175,6 +176,22 @@ for (row, mode) in rows.enumerated() {
             ? (mode.dark ? CGColor(srgbRed: 0.88, green: 0.35, blue: 0.49, alpha: 1) : CGColor(srgbRed: 0.8, green: 0.2, blue: 0.37, alpha: 1))
             : (mode.dark ? CGColor(srgbRed: 0.95, green: 0.94, blue: 0.91, alpha: 1) : CGColor(srgbRed: 0.15, green: 0.17, blue: 0.16, alpha: 1))
         preview.setFillColor(tint); preview.fill(rect)
+        preview.restoreGState()
+    }
+}
+// Originalgröße: so groß erscheint das Symbol in der Tab-Leiste (25 pt @3x = 75 px)
+for (row, mode) in rows.enumerated() where !mode.dark {
+    let y = CGFloat(rows.count - 1 - row) * cell
+    for (col, name) in names.enumerated() {
+        let layer = CGContext(data: nil, width: 75, height: 75, bitsPerComponent: 8, bytesPerRow: 0,
+                              space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        layer.scaleBy(x: 75 / 24, y: 75 / 24)
+        draw(name, active: mode.active, in: layer)
+        let rect = CGRect(x: CGFloat(col) * cell + 112, y: y + 8, width: 32, height: 32)
+        preview.saveGState()
+        preview.clip(to: rect, mask: layer.makeImage()!)
+        preview.setFillColor(mode.active ? CGColor(srgbRed: 0.8, green: 0.2, blue: 0.37, alpha: 1) : CGColor(srgbRed: 0.15, green: 0.17, blue: 0.16, alpha: 1))
+        preview.fill(rect)
         preview.restoreGState()
     }
 }

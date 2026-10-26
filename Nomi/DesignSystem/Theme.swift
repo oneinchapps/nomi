@@ -68,7 +68,6 @@ extension Font {
     static let display = heading(42, relativeTo: .largeTitle)
     static let titleHeading = heading(30, relativeTo: .title)
     static let cardTitle = heading(23, relativeTo: .title3)
-    static let logo = Font.custom("BricolageGrotesque96pt-ExtraBold", size: 28, relativeTo: .title2)
 
     static let bodySans = Font.custom("DMSans-Regular", size: 17, relativeTo: .body)
     static let bodySansMedium = Font.custom("DMSans-Medium", size: 17, relativeTo: .body)

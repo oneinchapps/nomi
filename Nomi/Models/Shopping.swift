@@ -196,6 +196,35 @@ enum ShoppingMerge {
 
 // MARK: - Wochenplan
 
+/// Mahlzeiten eines Tages. Mittag- und Abendessen gibt es immer, Frühstück bei Bedarf.
+enum Meal: String, Codable, CaseIterable, Identifiable, Hashable, Sendable {
+    case fruehstueck, mittag, abend
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fruehstueck: "Frühstück"
+        case .mittag: "Mittagessen"
+        case .abend: "Abendessen"
+        }
+    }
+
+    /// Kurz für Metazeilen und Auswahl: „Frühstück“, „Mittag“, „Abend“
+    var short: String {
+        switch self {
+        case .fruehstueck: "Frühstück"
+        case .mittag: "Mittag"
+        case .abend: "Abend"
+        }
+    }
+
+    /// Welche Mahlzeit gemeint ist, wenn jemand „heute“ sagt
+    static func next(after date: Date = .now) -> Meal {
+        PlanCalendar.calendar.component(.hour, from: date) < 14 ? .mittag : .abend
+    }
+}
+
 struct MealPlanEntry: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var householdId: UUID
@@ -204,18 +233,23 @@ struct MealPlanEntry: Codable, Identifiable, Hashable, Sendable {
     var recipeId: UUID
     var servings: Int
     var note: String?
+    var meal: Meal
+    /// Reihenfolge der Gänge innerhalb der Mahlzeit
+    var position: Int
 
-    init(id: UUID = UUID(), householdId: UUID, day: String, recipeId: UUID, servings: Int, note: String? = nil) {
+    init(id: UUID = UUID(), householdId: UUID, day: String, recipeId: UUID, servings: Int, note: String? = nil, meal: Meal = .abend, position: Int = 0) {
         self.id = id
         self.householdId = householdId
         self.day = day
         self.recipeId = recipeId
         self.servings = servings
         self.note = note
+        self.meal = meal
+        self.position = position
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, day, servings, note
+        case id, day, servings, note, meal, position
         case householdId = "household_id"
         case recipeId = "recipe_id"
     }

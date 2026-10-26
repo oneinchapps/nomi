@@ -19,10 +19,7 @@ struct ShareImportView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("nomi")
-                    .font(.logo)
-                    .tracking(-0.8)
-                    .foregroundStyle(Color.ink)
+                Wordmark(onLight: true)
                 Spacer()
                 Button("Schließen", systemImage: "xmark", action: close)
                     .labelStyle(.iconOnly)

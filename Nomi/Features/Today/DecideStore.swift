@@ -17,6 +17,8 @@ final class DecideStore {
     var error: String?
     /// Für „alle mögen es“ – kommt aus AppModel.members
     var memberCount = 1
+    /// Mahlzeit für die nächste neue Runde
+    private var roundMeal: Meal = .abend
 
     init(householdId: UUID, userId: UUID) {
         self.householdId = householdId
@@ -150,10 +152,23 @@ final class DecideStore {
         await load()
     }
 
-    /// Von nomi aus: frische Runde fürs heutige Essen, mit dem Wunsch als erste Nachricht.
-    func startRound(wish: String?) async {
-        if session?.status == .matched { await newRound() }
-        await send(wish)
+    /// Runde für eine Mahlzeit von heute. Läuft schon eine offene Runde für dieselbe Mahlzeit,
+    /// geht es dort weiter; sonst beginnt eine neue (es gibt immer nur eine Runde pro Haushalt).
+    func startRound(meal: Meal, wish: String?) async {
+        roundMeal = meal
+        if let session, session.status == .open, session.meal == meal {
+            if let wish { await send(wish) }
+            return
+        }
+        if session != nil { await newRound() }
+        // Ohne Wunsch wartet das Blatt auf einen Klick auf einen Wunsch-Chip
+        if let wish { await send(wish) }
+    }
+
+    /// Läuft gerade eine Runde für diese Mahlzeit?
+    func isRunning(for meal: Meal) -> Bool {
+        guard let session, session.meal == meal else { return false }
+        return session.status == .open && !candidates.isEmpty
     }
 
     /// Macht aus der gematchten Idee ein Rezept in der Sammlung.
@@ -190,10 +205,10 @@ final class DecideStore {
 
     private func openSession() async throws -> DecideSession {
         if let session, session.status == .open { return session }
-        struct NewSession: Encodable { let household_id: UUID }
+        struct NewSession: Encodable { let household_id: UUID; let meal: Meal }
         let created: DecideSession = try await supabase
             .from("decide_sessions")
-            .insert(NewSession(household_id: householdId))
+            .insert(NewSession(household_id: householdId, meal: roundMeal))
             .select()
             .single()
             .execute()

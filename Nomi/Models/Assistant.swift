@@ -37,13 +37,24 @@ struct AssistantActions: Codable, Hashable, Sendable {
     struct PlanAction: Codable, Hashable, Sendable {
         /// „2026-10-27“
         var date: String
+        var meal: Meal
         var recipeId: UUID?
         var servings: Int
         var note: String?
 
         enum CodingKeys: String, CodingKey {
-            case date, servings, note
+            case date, meal, servings, note
             case recipeId = "recipe_id"
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            date = try c.decode(String.self, forKey: .date)
+            // Nachrichten von vor den Mahlzeiten hatten kein meal
+            meal = try c.decodeIfPresent(Meal.self, forKey: .meal) ?? .abend
+            recipeId = try c.decodeIfPresent(UUID.self, forKey: .recipeId)
+            servings = try c.decode(Int.self, forKey: .servings)
+            note = try c.decodeIfPresent(String.self, forKey: .note)
         }
     }
 
@@ -71,6 +82,15 @@ struct AssistantActions: Codable, Hashable, Sendable {
 
     struct TodayAction: Codable, Hashable, Sendable {
         var wish: String?
+        var meal: Meal
+
+        enum CodingKeys: String, CodingKey { case wish, meal }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            wish = try c.decodeIfPresent(String.self, forKey: .wish)
+            meal = try c.decodeIfPresent(Meal.self, forKey: .meal) ?? .abend
+        }
     }
 
     /// Aktionen, die Daten ändern (und sich deshalb rückgängig machen lassen)

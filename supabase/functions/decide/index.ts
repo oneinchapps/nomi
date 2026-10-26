@@ -5,7 +5,8 @@
 //   und neue Karten in session_candidates.
 // POST { action: "expand", candidate_id } → { recipe }
 //   Macht aus einer KI-Idee ein vollständiges Rezept, speichert es in der Sammlung
-//   und verknüpft die Karte damit (recipe_id statt ai_recipe).
+//   und verknüpft die Karte damit (recipe_id statt ai_recipe). War die Runde für eine Mahlzeit,
+//   steht das Gericht danach für heute im Plan (plan_decision).
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "@anthropic-ai/sdk";
@@ -152,7 +153,7 @@ async function suggest(supabase: Client, admin: Client, sessionId: string): Prom
 
 async function expand(supabase: Client, candidateId: string): Promise<Response> {
   const { data: candidate } = await supabase
-    .from("session_candidates").select("id, household_id, recipe_id, ai_recipe").eq("id", candidateId).maybeSingle();
+    .from("session_candidates").select("id, session_id, household_id, recipe_id, ai_recipe").eq("id", candidateId).maybeSingle();
   if (!candidate) return error(404, "Diesen Vorschlag gibt es nicht.");
 
   // Schon ausgearbeitet (z. B. von der anderen Person) → vorhandenes Rezept zurückgeben
@@ -166,6 +167,10 @@ async function expand(supabase: Client, candidateId: string): Promise<Response> 
   const { error: linkError } = await supabase
     .from("session_candidates").update({ recipe_id: saved.id, ai_recipe: null }).eq("id", candidateId);
   if (linkError) throw linkError;
+
+  // War die Runde für eine Mahlzeit, kommt das jetzt fertige Gericht dorthin (Rezepte sind schon eingetragen)
+  const { error: planError } = await supabase.rpc("plan_decision", { session: candidate.session_id });
+  if (planError) throw planError;
 
   return Response.json({ recipe: saved });
 }

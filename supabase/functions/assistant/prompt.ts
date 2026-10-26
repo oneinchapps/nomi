@@ -12,11 +12,16 @@ export interface RecipeRow {
   diet: string | null;
 }
 
+export type Meal = "fruehstueck" | "mittag" | "abend";
+export const MEALS: Meal[] = ["fruehstueck", "mittag", "abend"];
+const MEAL_NAMES: Record<Meal, string> = { fruehstueck: "Frühstück", mittag: "Mittagessen", abend: "Abendessen" };
+
 export interface PlanRow {
   day: string;
   recipe_id: string;
   servings: number;
   note: string | null;
+  meal: Meal;
 }
 
 export interface MessageRow {
@@ -35,6 +40,7 @@ export interface ShoppingRow {
 export interface PlanEntry {
   /** YYYY-MM-DD */
   date: string;
+  meal: Meal;
   /** Rezept aus der Sammlung … */
   recipe_id: string | null;
   /** … oder ein neues Gericht, das vor dem Speichern ausgearbeitet wird */
@@ -51,8 +57,8 @@ export interface AssistantActions {
     include_new_plan: boolean;
     items: string[];
   } | null;
-  /** Heute-Tab öffnen und dort Vorschläge für heute holen (allein festlegen oder gemeinsam swipen) */
-  today: { wish: string | null } | null;
+  /** Heute-Tab öffnen und dort Vorschläge für eine Mahlzeit holen (allein festlegen oder gemeinsam swipen) */
+  today: { wish: string | null; meal: Meal } | null;
   navigate: Tab | null;
 }
 
@@ -87,9 +93,10 @@ export const ASSISTANT_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["date", "recipe_id", "idea", "servings", "note"],
+        required: ["date", "meal", "recipe_id", "idea", "servings", "note"],
         properties: {
           date: { type: "string" },
+          meal: { type: "string", enum: MEALS },
           recipe_id: nullable({ type: "string" }),
           idea: nullable(IDEA_SCHEMA),
           servings: { type: "integer" },
@@ -118,8 +125,8 @@ export const ASSISTANT_SCHEMA = {
     today: nullable({
       type: "object",
       additionalProperties: false,
-      required: ["wish"],
-      properties: { wish: nullable({ type: "string" }) },
+      required: ["wish", "meal"],
+      properties: { wish: nullable({ type: "string" }), meal: { type: "string", enum: MEALS } },
     }),
     navigate: nullable({ type: "string", enum: TABS }),
   },
@@ -134,12 +141,15 @@ So antwortest du (reply):
 - Die Antwort wird oft vorgelesen. Darum kein Markdown, keine Aufzählungszeichen, keine Emojis, keine Links. Zahlen und Mengen so, wie man sie spricht.
 - Sag nur, was du wirklich tust. Was in den Aktionen steht, ist erledigt, sobald die App sie ausführt – formuliere es so („Ich hab … auf die Liste gesetzt“).
 
+Jeder Tag hat Mahlzeiten: Mittagessen und Abendessen, auf Wunsch Frühstück (meal: "fruehstueck", "mittag", "abend"). Eine Mahlzeit kann mehrere Gänge haben. Ohne Angabe ist abends gemeint; fragt jemand vormittags nach „heute“, eher das Mittagessen.
+
 Was du tun kannst (Aktionen; alles, was du nicht brauchst, ist null):
-- today: Es geht ums heutige Essen und noch nichts steht fest – „Was essen wir heute?“, „Ich hab Lust auf was mit Kürbis“, „Heute Abend ein Drei-Gänge-Menü“. Dann suchst du NICHT selbst aus und planst nichts, sondern setzt today.wish auf den Wunsch in wenigen Worten (z. B. „Drei-Gänge-Menü“, „was mit Kürbis“, oder null) und navigate auf "today". Die App öffnet den Heute-Bereich und holt dort Vorschläge, aus denen man allein festlegt oder gemeinsam swipt. Sag kurz, dass dort Vorschläge warten.
+- today: Es geht ums heutige Essen und noch nichts steht fest – „Was essen wir heute?“, „Ich hab Lust auf was mit Kürbis“, „Heute Abend ein Drei-Gänge-Menü“. Dann suchst du NICHT selbst aus und planst nichts, sondern setzt today.wish auf den Wunsch in wenigen Worten (z. B. „Drei-Gänge-Menü“, „was mit Kürbis“, oder null), today.meal auf die Mahlzeit und navigate auf "today". Die App öffnet den Heute-Bereich und holt dort Vorschläge, aus denen man allein festlegt oder gemeinsam swipt. Sag kurz, dass dort Vorschläge warten.
 - plan: Gerichte in den Wochenplan setzen, mit Datum. Für heute nur, wenn ein konkretes Gericht genannt ist („Heute gibt's Lasagne“) – dann navigate "today". Sonst navigate "week", auch wenn du zusätzlich einkaufst.
   - Nimm bevorzugt Rezepte aus der Sammlung (recipe_id genau wie angegeben). Achte auf Abwechslung und darauf, was lange nicht gekocht wurde.
   - Neue Gerichte nur, wenn es gewünscht ist oder die Sammlung nichts Passendes hat – höchstens drei pro Antwort, als idea (wird dann ausgearbeitet und in der Sammlung gespeichert). Dann ist recipe_id null.
   - Tage, an denen schon etwas geplant ist, überspringst du – außer es ist ausdrücklich gewünscht.
+  - meal: die Mahlzeit. Mehrere Gänge einer Mahlzeit sind mehrere Einträge mit demselben Datum und derselben meal, in Reihenfolge.
   - servings: 2, wenn nichts anderes gesagt ist. note nur für Hinweise wie den Gang („Dessert“).
 - shopping: Zutaten auf die gemeinsame Einkaufsliste. recipes für Rezepte aus der Sammlung (mit Portionen), include_new_plan true für alles, was du in derselben Antwort planst, items für einzelne Dinge in Alltagssprache („2 l Milch“, „Brot“). Die App führt Mengen mit vorhandenen Einträgen zusammen. navigate "shopping", wenn es nur ums Einkaufen geht.
 - navigate: Bereich, der danach geöffnet wird – "today", "recipes", "shopping", "week" oder null, wenn man im Gespräch bleibt.
@@ -185,7 +195,7 @@ export function userPrompt(input: {
 
   const plan = input.plan.map((p) => {
     const date = new Date(`${p.day}T12:00:00Z`);
-    return `- ${p.day} (${weekday(date)}): ${titles.get(p.recipe_id) ?? "Rezept"}, ${p.servings} Portionen${p.note ? `, ${p.note}` : ""}`;
+    return `- ${p.day} (${weekday(date)}), ${MEAL_NAMES[p.meal] ?? "Abendessen"}: ${titles.get(p.recipe_id) ?? "Rezept"}, ${p.servings} Portionen${p.note ? `, ${p.note}` : ""}`;
   });
 
   const shopping = input.shopping.map((s) => `- ${[s.quantity, s.unit, s.name].filter((x) => x !== null && x !== "").join(" ")}`);
@@ -219,7 +229,7 @@ ${conversation.join("\n") || "(Das ist die erste Nachricht.)"}`;
 export function actionSummary(actions: AssistantActions, titles: Map<string, string>): string | null {
   const parts: string[] = [];
   if (actions.plan?.length) {
-    parts.push(`geplant: ${actions.plan.map((p) => `${p.date} ${p.recipe_id ? titles.get(p.recipe_id) ?? "Rezept" : p.idea?.title ?? "Gericht"}`).join(", ")}`);
+    parts.push(`geplant: ${actions.plan.map((p) => `${p.date} ${MEAL_NAMES[p.meal] ?? ""} ${p.recipe_id ? titles.get(p.recipe_id) ?? "Rezept" : p.idea?.title ?? "Gericht"}`).join(", ")}`);
   }
   if (actions.shopping) {
     const count = actions.shopping.recipes.length + actions.shopping.items.length + (actions.shopping.include_new_plan ? 1 : 0);
@@ -247,6 +257,7 @@ export function validActions(result: AssistantResult, recipeIds: Set<string>, to
     return false;
   }).map((entry) => ({
     ...entry,
+    meal: MEALS.includes(entry.meal) ? entry.meal : "abend" as Meal,
     idea: entry.recipe_id ? null : entry.idea,
     servings: Math.min(Math.max(entry.servings || 2, 1), 20),
     note: entry.note?.trim() || null,
@@ -261,7 +272,9 @@ export function validActions(result: AssistantResult, recipeIds: Set<string>, to
     ? { recipes: shoppingRecipes, include_new_plan: includePlan, items }
     : null;
 
-  const today_ = result.today ? { wish: result.today.wish?.trim() || null } : null;
+  const today_ = result.today
+    ? { wish: result.today.wish?.trim() || null, meal: MEALS.includes(result.today.meal) ? result.today.meal : "abend" as Meal }
+    : null;
   const navigate = result.navigate && TABS.includes(result.navigate) ? result.navigate : null;
 
   if (!plan.length && !shopping && !today_ && !navigate) return null;

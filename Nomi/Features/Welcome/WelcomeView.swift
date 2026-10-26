@@ -33,11 +33,7 @@ struct WelcomeView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("nomi")
-                        .font(.logo)
-                        .tracking(-0.8)
-                        .foregroundStyle(Color.onBrand)
-                        .accessibilityAddTraits(.isHeader)
+                    Wordmark(height: 26)
                 }
                 .sharedBackgroundVisibility(.hidden)
             }

@@ -170,8 +170,8 @@ struct WeekPlanView: View {
                         .foregroundStyle(Color.ink)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    // Bei Menüs steht der Gang vorne („VORSPEISE · 20 MIN · FÜR ZWEI“)
-                    MetaLabel([entry.note, recipe.totalMinutes.map(Recipe.durationLabel), Recipe.servingsLabel(entry.servings)]
+                    // Mahlzeit und bei Menüs der Gang vorne („ABEND · VORSPEISE · 20 MIN · FÜR ZWEI“)
+                    MetaLabel([entry.meal.short, entry.note, recipe.totalMinutes.map(Recipe.durationLabel), Recipe.servingsLabel(entry.servings)]
                         .compactMap { $0 }.joined(separator: " · "))
                 }
                 Spacer(minLength: 0)
@@ -205,14 +205,17 @@ struct WeekPlanView: View {
     }
 }
 
-/// Rezept für einen Tag auswählen.
+/// Rezept für einen Tag auswählen – für eine feste Mahlzeit (Heute-Tab) oder mit Auswahl (Wochenplan).
 struct RecipePickerSheet: View {
     let day: Date
+    /// nil = Mahlzeit oben auswählbar
+    var meal: Meal?
 
     @Environment(RecipeStore.self) private var recipes
     @Environment(MealPlanStore.self) private var plan
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var chosenMeal: Meal = .abend
 
     private var filtered: [Recipe] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
@@ -231,7 +234,7 @@ struct RecipePickerSheet: View {
                 ForEach(filtered) { recipe in
                     Button {
                         Task {
-                            await plan.add(recipe, on: day, servings: 2)
+                            await plan.add(recipe, on: day, servings: 2, meal: meal ?? chosenMeal)
                             dismiss()
                         }
                     } label: {
@@ -261,7 +264,18 @@ struct RecipePickerSheet: View {
             .scrollContentBackground(.hidden)
             .background(Color.canvas.ignoresSafeArea())
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Rezept suchen")
-            .navigationTitle("\(DayFormat.weekday(day)), \(DayFormat.short(day))")
+            .safeAreaInset(edge: .top) {
+                if meal == nil {
+                    Picker("Mahlzeit", selection: $chosenMeal) {
+                        ForEach(Meal.allCases) { Text($0.short).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, Metrics.gutter)
+                    .padding(.vertical, 8)
+                    .background(Color.canvas)
+                }
+            }
+            .navigationTitle(meal.map { "\($0.title) · \(DayFormat.relative(day))" } ?? "\(DayFormat.weekday(day)), \(DayFormat.short(day))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

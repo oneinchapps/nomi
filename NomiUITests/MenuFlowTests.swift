@@ -57,16 +57,19 @@ final class MenuFlowTests: NomiUITestCase {
         XCTAssertTrue(app.staticTexts["Euer Menü"].waitForExistence(timeout: 10), "Menü kommt nicht live an")
         snapshot(app, "82-menu-match")
 
-        // Ideen ausarbeiten (parallel), dann alles für heute einplanen
+        // Ideen ausarbeiten (parallel) – danach stehen alle Gänge von selbst bei der Mahlzeit
         let expand = app.buttons.matching(NSPredicate(format: "label ENDSWITH 'ausarbeiten'")).firstMatch
         if expand.exists { expand.tap() }
-        let planAll = app.buttons["Für heute einplanen"]
-        XCTAssertTrue(planAll.waitForExistence(timeout: 120), "Ideen wurden nicht ausgearbeitet")
+        let planned = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Steht beim'")).firstMatch
+        XCTAssertTrue(planned.waitForExistence(timeout: 120), "Ideen wurden nicht ausgearbeitet")
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'nicht ausarbeiten'")).firstMatch.exists,
                        "Fehlermeldung trotz erfolgreichem Ausarbeiten")
-        planAll.tap()
-        XCTAssertTrue(app.staticTexts["Für heute eingeplant"].waitForExistence(timeout: 5))
         snapshot(app, "83-menu-planned")
+        app.buttons["Fertig"].tap()
+        let entries = try await apiList("/rest/v1/meal_plan_entries?household_id=eq.\(householdId)&select=id", as: sam)
+        XCTAssertEqual(entries.count, 3, "Nicht alle Gänge eingetragen")
+        XCTAssertEqual(app.buttons.matching(identifier: "Jetzt kochen").count, 3, "Heute zeigt nicht alle Gänge")
+        snapshot(app, "83b-menu-today")
 
         // Im Wochenplan stehen alle drei Gänge, mit Gang als Hinweis
         app.tabBars.buttons["Woche"].tap()

@@ -86,6 +86,8 @@ targets:
       - path: Nomi/Services
       - path: Nomi/Resources/Fonts
         buildPhase: resources
+      # Wortmarke (Vektor-PDF) im Kopf der Teilen-Ansicht
+      - path: Nomi/Resources/Assets.xcassets
     dependencies:
       - package: Supabase
         product: Supabase

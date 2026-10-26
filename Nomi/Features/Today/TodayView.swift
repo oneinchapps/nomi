@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Heute-Tab: das heutige Essen. Vorschläge holen, dann allein festlegen („Das nehmen wir“)
-/// oder gemeinsam swipen bis zum Match. Freie Wünsche gehen über nomi, das hierher zurückspringt.
+/// Heute-Tab: die Mahlzeiten von heute. Mittag- und Abendessen sind immer da, Frühstück bei Bedarf.
+/// Jede Mahlzeit hat zunächst einen Platz für ein Gericht, weitere Gänge kommen per „+ Gang“ dazu.
+/// Leere Plätze füllt man über Vorschläge (DecideSheet) oder aus der Sammlung; von jedem Gericht
+/// aus geht es mit „Jetzt kochen“ in den Kochmodus.
 struct TodayView: View {
     @Environment(DecideStore.self) private var decide
     @Environment(RecipeStore.self) private var recipes
@@ -9,214 +11,270 @@ struct TodayView: View {
     @Environment(AppModel.self) private var app
     @Environment(AppNavigation.self) private var navigation
 
-    private let quickPrompts = ["Was Schnelles", "Vegetarisch", "Comfort Food", "Was Neues ausprobieren", "Überrasch uns"]
+    @State private var showsBreakfast = false
+    /// Mahlzeiten mit einem zusätzlichen leeren Platz für einen weiteren Gang
+    @State private var extraSlot: Set<Meal> = []
+    @State private var picking: Meal?
+    @State private var cooking: CookingSelection?
+
+    struct CookingSelection: Identifiable {
+        let recipe: Recipe
+        let servings: Int
+        var id: UUID { recipe.id }
+    }
+
+    private var meals: [Meal] {
+        let breakfast = showsBreakfast || !plan.entries(on: .now, meal: .fruehstueck).isEmpty
+        return breakfast ? Meal.allCases : [.mittag, .abend]
+    }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                header
-                VStack(alignment: .leading, spacing: 18) {
-
-                    if app.partner == nil, app.household != nil {
-                        InviteCard()
-                    }
-
-                    plannedToday
-
-                    // Ohne Karten (noch keine Runde, oder sie ist abgebrochen) geht es mit einem Wunsch los
-                    if decide.candidates.isEmpty && !decide.isThinking {
-                        start
-                    } else {
-                        roundIntro
-                    }
-
-                    if decide.isThinking {
-                        ThinkingBubble()
-                    }
-
-                    roundState
-
-                    InlineError(message: decide.error)
-
-                    Color.clear.frame(height: 1).id("bottom")
+        @Bindable var navigation = navigation
+        ScrollView {
+            header
+            VStack(alignment: .leading, spacing: 30) {
+                if app.partner == nil, app.household != nil {
+                    InviteCard()
                 }
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+                if !meals.contains(.fruehstueck) {
+                    Button("Frühstück hinzufügen", systemImage: "plus") {
+                        withAnimation(.smooth) { showsBreakfast = true }
+                    }
+                    .font(.bodySansMedium)
+                    .foregroundStyle(Color.ink)
+                }
+                ForEach(meals) { meal in
+                    mealSection(meal)
+                }
+                InlineError(message: plan.error ?? decide.error)
             }
-            .background(Color.canvas.ignoresSafeArea())
-            .onChange(of: decide.messages.count) { scrollDown(proxy) }
-            .onChange(of: decide.isThinking) { scrollDown(proxy) }
-            .onChange(of: decide.candidates.count) { scrollDown(proxy) }
-            .navigationDestination(for: UUID.self) { id in
-                RecipeDetailView(recipeId: id)
-            }
-            .onChange(of: app.members.count, initial: true) { _, count in
-                decide.memberCount = max(1, count)
-            }
+            .padding(.horizontal, Metrics.gutter)
+            .padding(.top, 20)
+            .padding(.bottom, 28)
+        }
+        .background(Color.canvas.ignoresSafeArea())
+        .refreshable {
+            await plan.load()
+            await decide.load()
+        }
+        .navigationDestination(for: UUID.self) { id in
+            RecipeDetailView(recipeId: id)
+        }
+        .onChange(of: app.members.count, initial: true) { _, count in
+            decide.memberCount = max(1, count)
+        }
+        // Ist der zusätzliche Gang eingetragen, verschwindet sein Platzhalter
+        .onChange(of: plan.entries(on: .now).count) { extraSlot = [] }
+        .sheet(item: $navigation.decideMeal) { meal in
+            DecideSheet(meal: meal)
+        }
+        .sheet(item: $picking) { meal in
+            RecipePickerSheet(day: .now, meal: meal)
+        }
+        .fullScreenCover(item: $cooking) { selection in
+            CookingModeView(recipe: selection.recipe, servings: selection.servings)
         }
     }
-
-    // MARK: - Bausteine
 
     private var header: some View {
-        BrandHeader {
+        BrandHeader(bottomPadding: 22) {
+            MetaLabel(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "de_DE"))), font: .eyebrow, tracking: 2.4)
             DisplayHeadline(lines: ["Was gibt es heute?"])
-            if decide.candidates.isEmpty {
-                Text("Holt euch Vorschläge und legt allein fest – oder swipet beide, bis ihr ein Match habt.")
-                    .font(.bodySans)
-                    .foregroundStyle(Color.onBrand.opacity(0.9))
-                    .lineSpacing(3)
+        }
+    }
+
+    // MARK: - Mahlzeiten
+
+    private func mealSection(_ meal: Meal) -> some View {
+        let entries = plan.entries(on: .now, meal: meal)
+        let running = decide.isRunning(for: meal)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(meal.title)
+                    .font(.cardTitle)
+                    .foregroundStyle(Color.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                if meal == .fruehstueck && entries.isEmpty {
+                    Button("Ausblenden") { withAnimation(.smooth) { showsBreakfast = false } }
+                        .font(.captionSans)
+                        .foregroundStyle(Color.inkMuted)
+                }
+            }
+
+            ForEach(entries) { entry in
+                if let recipe = recipes.recipe(id: entry.recipeId) {
+                    DishCard(entry: entry, recipe: recipe) {
+                        cooking = CookingSelection(recipe: recipe, servings: entry.servings)
+                    }
+                }
+            }
+
+            if running {
+                runningBanner(meal)
+            } else if entries.isEmpty || extraSlot.contains(meal) {
+                EmptyMealSlot(
+                    meal: meal,
+                    isAnotherCourse: !entries.isEmpty,
+                    onSuggest: { navigation.decideMeal = meal },
+                    onPick: { picking = meal },
+                    onCancel: { withAnimation(.smooth) { _ = extraSlot.remove(meal) } }
+                )
+            } else {
+                Button("Gang hinzufügen", systemImage: "plus") {
+                    withAnimation(.smooth) { _ = extraSlot.insert(meal) }
+                }
+                .font(.captionSans)
+                .foregroundStyle(Color.ink)
+                .accessibilityLabel("Gang zum \(meal.title) hinzufügen")
             }
         }
     }
 
-    @ViewBuilder
-    private var plannedToday: some View {
-        let today = plan.entries(on: .now).compactMap { recipes.recipe(id: $0.recipeId) }
-        if let first = today.first {
-            NavigationLink(value: first.id) {
+    /// Für diese Mahlzeit laufen Vorschläge – z. B. weil die andere Person gerade swipt.
+    private func runningBanner(_ meal: Meal) -> some View {
+        let left = decide.myDeck.count
+        return Button {
+            navigation.decideMeal = meal
+        } label: {
+            HStack(spacing: 12) {
+                ReactionIllustration(reaction: left > 0 ? .jubel : .warten)
+                    .frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Vorschläge laufen")
+                        .font(.bodySansMedium)
+                        .foregroundStyle(Color.ink)
+                    Text(left > 0 ? (left == 1 ? "Noch 1 Karte für dich" : "Noch \(left) Karten für dich") : "Du bist durch – warte auf die anderen")
+                        .font(.captionSans)
+                        .foregroundStyle(Color.inkMuted)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").foregroundStyle(Color.inkMuted)
+            }
+            .padding(14)
+            .background(Color.surface, in: .rect(cornerRadius: 18))
+            .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.brand, lineWidth: 1.5) }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Ein geplantes Gericht mit „Jetzt kochen“.
+struct DishCard: View {
+    let entry: MealPlanEntry
+    let recipe: Recipe
+    let onCook: () -> Void
+
+    @Environment(MealPlanStore.self) private var plan
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            NavigationLink(value: recipe.id) {
                 HStack(spacing: 14) {
-                    RecipeImage(recipe: first)
-                        .frame(width: 56, height: 56)
-                        .clipShape(.rect(cornerRadius: 12))
-                    VStack(alignment: .leading, spacing: 3) {
-                        MetaLabel("Heute geplant")
-                        Text(first.title)
-                            .font(.heading(18, relativeTo: .headline))
+                    RecipeImage(recipe: recipe)
+                        .frame(width: 68, height: 68)
+                        .clipShape(.rect(cornerRadius: 14))
+                    VStack(alignment: .leading, spacing: 4) {
+                        MetaLabel([entry.note, recipe.totalMinutes.map(Recipe.durationLabel), Recipe.servingsLabel(entry.servings)]
+                            .compactMap { $0 }.joined(separator: " · "))
+                        Text(recipe.title)
+                            .font(.heading(19, relativeTo: .headline))
                             .foregroundStyle(Color.ink)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").foregroundStyle(Color.inkMuted)
                 }
-                .padding(10)
-                .background(Color.surface, in: .rect(cornerRadius: 16))
-                .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.hairline) }
+                .contentShape(.rect)
             }
             .buttonStyle(.plain)
-        }
-    }
 
-    @ViewBuilder
-    private var roundState: some View {
-        if let dishes = decide.menuMatch {
-            MenuMatchCard(dishes: dishes)
-        } else if let match = decide.match {
-            MatchCard(candidate: match)
-        } else {
-            if decide.menu.isMenu { courseProgress }
-            deckOrWaiting
-        }
-    }
-
-    @ViewBuilder
-    private var deckOrWaiting: some View {
-        if !decide.myDeck.isEmpty {
-            SwipeDeck(
-                deck: decide.myDeck,
-                recipe: { recipes.recipe(id: $0) },
-                onVote: { candidate, liked in Task { await decide.vote(candidate, liked: liked) } },
-                onDecide: { candidate in Task { await decide.decideAlone(candidate) } }
-            )
-            .padding(.top, 6)
-        } else if !decide.candidates.isEmpty && !decide.isThinking {
-            waiting
-        }
-    }
-
-    /// „Vorspeise ✓ · Hauptgang · Dessert“ – welche Gänge schon entschieden sind.
-    private var courseProgress: some View {
-        let decided = decide.menu.decided
-        return FlowLayout(spacing: 8) {
-            ForEach(decide.menu.courses, id: \.self) { course in
-                let done = decided[course] != nil
-                Label(course, systemImage: done ? "checkmark.circle.fill" : "circle.dashed")
-                    .font(.captionSans)
-                    .foregroundStyle(done ? Color.onBrand : Color.ink)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(done ? Color.brand : Color.surface, in: .capsule)
-                    .overlay { Capsule().strokeBorder(done ? .clear : Color.hairline) }
-                    .accessibilityLabel("\(course): \(done ? "entschieden" : "offen")")
-            }
-        }
-    }
-
-    /// Alle eigenen Karten bewertet, aber (noch) kein Match.
-    private var waiting: some View {
-        let others = app.members.filter { $0.userId != app.userId }
-        let pending = others.filter { decide.remaining(for: $0.userId) > 0 }
-        return VStack(alignment: .leading, spacing: 12) {
-            if let partner = pending.first {
-                let left = decide.remaining(for: partner.userId)
-                ReactionIllustration(reaction: .warten).frame(width: 56, height: 56)
-                Text("Warte auf \(partner.displayName)")
-                    .font(.cardTitle)
-                    .foregroundStyle(Color.ink)
-                Text(left == 1 ? "Noch eine Karte – dann wisst ihr mehr." : "Noch \(left) Karten – dann wisst ihr mehr.")
-                    .font(.bodySans)
-                    .foregroundStyle(Color.inkMuted)
-            } else {
-                ReactionIllustration(reaction: .ratlos).frame(width: 56, height: 56)
-                Text("Diesmal kein Match")
-                    .font(.cardTitle)
-                    .foregroundStyle(Color.ink)
-                Text("Sagt nomi, was anders sein soll – oder holt euch einfach neue Vorschläge.")
-                    .font(.bodySans)
-                    .foregroundStyle(Color.inkMuted)
-                Button("Neue Vorschläge") {
-                    Task { await decide.send(nil) }
+            HStack {
+                Button(action: onCook) {
+                    Label("Jetzt kochen", systemImage: "flame.fill")
+                        .font(.buttonSans)
+                        .foregroundStyle(Color.canvas)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 11)
+                        .background(Color.ink, in: .capsule)
                 }
-                .buttonStyle(.secondary)
-                .padding(.top, 4)
+                .buttonStyle(.plain)
+                .disabled(recipe.steps.isEmpty)
+                Spacer()
+                Menu {
+                    Picker("Portionen", selection: Binding(
+                        get: { entry.servings },
+                        set: { value in Task { await plan.setServings(value, for: entry) } }
+                    )) {
+                        ForEach(1...8, id: \.self) { n in
+                            Text(Recipe.servingsLabel(n).replacingOccurrences(of: "für ", with: "Für ")).tag(n)
+                        }
+                    }
+                    Divider()
+                    Button("Entfernen", systemImage: "trash", role: .destructive) {
+                        Task { await plan.remove(entry) }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.inkMuted)
+                        .frame(width: 40, height: 40)
+                        .contentShape(.rect)
+                }
+                .accessibilityLabel("\(recipe.title) bearbeiten")
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.surface, in: .rect(cornerRadius: Metrics.cardRadius))
-        .overlay { RoundedRectangle(cornerRadius: Metrics.cardRadius).strokeBorder(Color.hairline) }
+        .padding(12)
+        .background(Color.surface, in: .rect(cornerRadius: 20))
+        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(Color.hairline) }
+    }
+}
+
+/// Platzhalter einer Mahlzeit (oder eines weiteren Gangs): Vorschläge holen oder ein Rezept aus der Sammlung wählen.
+struct EmptyMealSlot: View {
+    let meal: Meal
+    let isAnotherCourse: Bool
+    let onSuggest: () -> Void
+    let onPick: () -> Void
+    let onCancel: () -> Void
+
+    private var motif: FoodMotif {
+        switch meal {
+        case .fruehstueck: .spiegelei
+        case .mittag: .bowl
+        case .abend: .teller
+        }
     }
 
-    /// Noch keine Runde: Wunsch antippen oder mit nomi besprechen
-    private var start: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MetaLabel("Worauf habt ihr Lust?")
-            FlowLayout(spacing: 8) {
-                ForEach(quickPrompts, id: \.self) { prompt in
-                    Button(prompt) { Task { await decide.send(prompt) } }
-                        .font(.captionSans)
-                        .foregroundStyle(Color.ink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.mist, in: .capsule)
-                        .buttonStyle(.plain)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                FoodIllustration(motif: motif, background: .canvas)
+                    .frame(width: 46, height: 46)
+                Text(isAnotherCourse ? "Noch ein Gang?" : "Noch nichts geplant")
+                    .font(.bodySansMedium)
+                    .foregroundStyle(Color.ink)
+                Spacer(minLength: 0)
+                if isAnotherCourse {
+                    Button("Abbrechen", systemImage: "xmark", action: onCancel)
+                        .labelStyle(.iconOnly)
+                        .foregroundStyle(Color.inkMuted)
                 }
             }
-            Button("Eigener Wunsch? Frag nomi", systemImage: "bubble.left.and.text.bubble.right") {
-                navigation.tab = .nomi
+            HStack(spacing: 10) {
+                Button("Vorschläge", systemImage: "sparkles", action: onSuggest)
+                    .accessibilityLabel("Vorschläge fürs \(meal.title)")
+                Button("Rezept", systemImage: "book.closed", action: onPick)
+                    .accessibilityLabel("Rezept fürs \(meal.title)")
             }
-            .font(.bodySansMedium)
-            .foregroundStyle(Color.ink)
-            .padding(.top, 4)
+            .buttonStyle(.secondary)
         }
-    }
-
-    /// Laufende Runde: worum es geht und was nomi dazu meint
-    @ViewBuilder
-    private var roundIntro: some View {
-        if let wish = decide.messages.last(where: { $0.userId != nil }) {
-            MetaLabel("Wunsch: \(wish.content)")
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Color.inkMuted.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
         }
-        if let reply = decide.messages.last(where: { $0.userId == nil }) {
-            MessageBubble(message: reply, isMe: false, author: "nomi")
-        }
-    }
-
-    // MARK: - Helfer
-
-    private func scrollDown(_ proxy: ScrollViewProxy) {
-        withAnimation(.smooth) { proxy.scrollTo("bottom", anchor: .bottom) }
     }
 }
 

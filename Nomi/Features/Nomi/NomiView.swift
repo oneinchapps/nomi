@@ -193,12 +193,17 @@ struct NomiView: View {
                 plan.weekStart = PlanCalendar.startOfWeek(containing: day)
             }
             if let today = actions.today {
-                Task { await decide.startRound(wish: today.wish) }
+                Task { await decide.startRound(meal: today.meal, wish: today.wish) }
             }
             if let tab = actions.target {
                 // Kurz im Gespräch bleiben, damit man die Antwort sieht
                 try? await Task.sleep(for: .seconds(1.2))
                 withAnimation { navigation.tab = tab }
+                // Erst im Heute-Tab das Auswahlblatt für die Mahlzeit öffnen
+                if let today = actions.today {
+                    try? await Task.sleep(for: .milliseconds(350))
+                    navigation.decideMeal = today.meal
+                }
             }
         }
     }
@@ -325,7 +330,7 @@ struct ActionCard: View {
         for entry in actions.plan ?? [] {
             let title = entry.recipeId.flatMap { recipes.recipe(id: $0)?.title } ?? "Neues Gericht"
             let day = PlanCalendar.date(forKey: entry.date).map(DayFormat.weekdayAndDate) ?? entry.date
-            lines.append(("calendar", "\(day) · \(title)\(entry.note.map { " · \($0)" } ?? "")"))
+            lines.append(("calendar", "\(day) · \(entry.meal.short) · \(title)\(entry.note.map { " · \($0)" } ?? "")"))
         }
         if let action = actions.shopping {
             let dishes = action.recipes.count + (action.includeNewPlan ? (actions.plan?.count ?? 0) : 0)
@@ -335,7 +340,7 @@ struct ActionCard: View {
             lines.append(("basket", parts.joined(separator: " und ") + " auf der Einkaufsliste"))
         }
         if let today = actions.today {
-            lines.append(("fork.knife", "Vorschläge für heute\(today.wish.map { " · \($0)" } ?? "")"))
+            lines.append(("fork.knife", "Vorschläge fürs \(today.meal.title)\(today.wish.map { " · \($0)" } ?? "")"))
         }
         return lines
     }

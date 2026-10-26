@@ -39,7 +39,7 @@ Nach neuen oder umbenannten Dateien `xcodegen generate` erneut ausführen.
 - `join_household` nimmt Einmal-Codes und den alten 6-stelligen Haushalts-Code an. Das ist der Weg für Leute, die per E-Mail angemeldet sind.
 
 ## nomi-Tab (Assistent)
-Erster Tab. Ein gemeinsamer Verlauf pro Haushalt in `assistant_messages`, live für beide.
+Erster Tab. Reihenfolge: nomi, Heute, Woche, Rezepte, Einkauf. Ein gemeinsamer Verlauf pro Haushalt in `assistant_messages`, live für beide.
 
 **Edge Function `supabase/functions/assistant`:**
 - Sie speichert die Nachricht der Person und liest Sammlung, Kochhistorie, Wochenplan, Einkaufsliste und Verlauf.
@@ -61,13 +61,22 @@ Erster Tab. Ein gemeinsamer Verlauf pro Haushalt in `assistant_messages`, live f
 - `Speaker` liest Antworten auf gesprochene Fragen mit der besten deutschen Stimme vor. Das lässt sich im Toolbar-Knopf abschalten.
 - Audio-Callbacks laufen in der `nonisolated` Klasse `RecognitionSession`.
 
-## Heute-Tab (heutiges Essen)
-- Edge Function `supabase/functions/decide`: `suggest` (Chat + Sammlung + bisherige Stimmen → 5 Karten, Antwort von nomi) und `expand` (Idee → vollständiges Rezept in der Sammlung). Prompts in `suggest.ts`, gemeinsames Rezeptschema und Claude-Aufruf in `supabase/functions/_shared/recipe.ts`.
+## Heute-Tab (Mahlzeiten von heute)
+**Aufbau:**
+- Mittag- und Abendessen sind feste Plätze, Frühstück kommt bei Bedarf dazu.
+- Jede Mahlzeit hat einen Platz, weitere Gänge kommen per „+ Gang“ dazu. Jedes Gericht hat „Jetzt kochen“.
+
+**Daten:** `meal_plan_entries` hat `meal` (`fruehstueck`/`mittag`/`abend`) und `position` für die Reihenfolge der Gänge. `MealPlanStore` lädt immer auch heute, egal welche Woche gerade angezeigt wird.
+
+**Vorschläge:** Sie öffnen `DecideSheet` für eine Mahlzeit, mit Wunsch-Chips, Kartenstapel und Match. Eine Runde (`decide_sessions.meal`) gehört zu einer Mahlzeit; es gibt immer nur eine Runde pro Haushalt.
+
+**Entscheiden:**
 - Match entsteht per Trigger `check_match`, sobald alle Mitglieder dieselbe Karte mögen.
 - „Das nehmen wir“ legt allein fest: Die RPC `decide_alone` stimmt im Namen aller Mitglieder für die Karte und setzt `decided_by`. Dadurch greift dieselbe Match-Logik, auch für Menüs.
-- Der Heute-Tab hat keinen eigenen Chat mehr, nur Wunsch-Chips. Freie Wünsche laufen über nomi.
-- Antworten von nomi (`user_id` null) schreibt nur die Function mit `supabaseAdmin`; Nutzer:innen dürfen per RLS nur als sie selbst schreiben.
-- Neue Tabellen haben auch für `service_role` keine Standardrechte – bei Bedarf gezielt `grant`.
+- `check_match` ruft danach `plan_decision` auf. Das trägt die Entscheidung für heute in die Mahlzeit ein: Menüs als mehrere Gänge, `candidate_id` verhindert Doppel-Einträge.
+- Ideen ohne Rezept trägt die decide-Function nach dem Ausarbeiten nach.
+
+**nomi** kennt die Mahlzeiten: `plan[].meal` und `today.meal`. Bei `today` öffnet die App den Heute-Tab und dort das Auswahlblatt (`AppNavigation.decideMeal`).
 
 ## Kochmodus
 `Features/Cooking`: Vollbild aus der Rezeptansicht, Bildschirm bleibt an. Timer laufen über einen Endzeitpunkt (`CookingTimers`), zusätzlich gibt es eine lokale Mitteilung für den Hintergrund. Timer kommen aus `Recipe.Step.timerSeconds` – beim Import/Ausarbeiten von Claude gesetzt, im Editor per Menü oder automatisch aus dem Text erkannt (`StepText.detectTimer`).
@@ -105,11 +114,13 @@ Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf and
 - `Nomi/Models/`
 
 ## Design
-Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Hauptscreen beginnt mit `BrandHeader` und nutzt `.brandNavigationBar()`: Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe (ein eigener Leisten-Hintergrund würde unter iOS 26 dunkler wirken). Toolbar-Elemente auf der Markenfarbe ohne Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`). Entwürfe und das Render-Skript fürs App-Icon liegen in `design/`.
+Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Hauptscreen beginnt mit `BrandHeader` und nutzt `.brandNavigationBar()`: Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe (ein eigener Leisten-Hintergrund würde unter iOS 26 dunkler wirken). Toolbar-Elemente auf der Markenfarbe ohne Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`). Entwürfe und Render-Skripte liegen in `design/`.
 Tab-Symbole sind eigene Linien-Icons (`Tab<Name>` und `Tab<Name>Active` im Asset-Katalog, als Vorlagenbilder). Gerendert werden sie von `design/tabbar/render-tab-assets.swift`. Die aktive Variante hat gefüllte Akzente und wird in `MainTabView.tabIcon` gewählt.
 
+Wortmarke: DynaPuff (`design/fonts`, OFL) mit angebissenem Ocker-o. In der App ist sie das Vektor-PDF `Wordmark` bzw. `WordmarkOnLight` für hellen Grund, eingebunden über die Komponente `Wordmark`; die App braucht die Schrift selbst nicht. App-Icon ist Konzept D2: Wortmarke oben, darunter Chefi ohne Mütze. Beides erzeugt `swift design/appicon/render-icon-concepts.swift design/fonts/DynaPuff.ttf Nomi/Resources/Fonts --export Nomi/Resources/Assets.xcassets`. Im Icon trägt Chefi keine Mütze, überall sonst schon.
+
 Maskottchen **Chefi** (kleiner Koch in Mint mit Kochmütze und Holzlöffel):
-- Entwürfe und Render-Skript liegen in `design/mascot/`. Das App-Icon ist dessen `app-icon.png` (Ausschnitt B), kopiert nach `AppIcon.appiconset`.
+- Entwürfe und Render-Skript liegen in `design/mascot/`.
 - In der App zeichnet `ChefiView` dieselben Formen. Löffel-Neigung und -Höhe sind animierbar, dazu gibt es die Posen Zwinkern und Winken.
 - `SplashView` spielt bei jedem Start etwa 2,5 Sekunden: hereinhüpfen, Löffel heben und zwinkern, winken mit Wortmarke. Das gilt auch, wenn die App nach mindestens 10 Sekunden aus dem Hintergrund zurückkommt. Ist die App dann noch nicht fertig, rührt Chefi weiter.
 - Der statische Startbildschirm ist die Farbe `LaunchBackground`. In Simulator-Videoaufnahmen wirkt er knalliger als der Splash; das liegt an der Aufnahme, die Farbe selbst stimmt.

@@ -62,9 +62,10 @@ struct MenuMatchCard: View {
                         .foregroundStyle(Color.inkMuted)
                         .multilineTextAlignment(.center)
                 } else {
-                    if planned {
+                    // Runden für eine Mahlzeit trägt die Datenbank selbst ein
+                    if planned || decide.session?.meal != nil {
                         // Erledigt sieht erledigt aus: hell, mit Häkchen, ohne Pfeil
-                        Label("Für heute eingeplant", systemImage: "checkmark")
+                        Label(decide.session?.meal.map { "Steht beim \($0.title)" } ?? "Für heute eingeplant", systemImage: "checkmark")
                             .font(.bodySansMedium)
                             .foregroundStyle(Color.ink)
                             .frame(maxWidth: .infinity, minHeight: 58)

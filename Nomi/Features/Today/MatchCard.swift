@@ -42,13 +42,18 @@ struct MatchCard: View {
                     .buttonStyle(.primary)
 
                     HStack(spacing: 10) {
-                        Button(planned ? "Eingeplant" : "Für heute", systemImage: planned ? "checkmark" : "calendar.badge.plus") {
-                            Task {
-                                await plan.add(recipe, on: .now, servings: 2)
-                                withAnimation { planned = true }
+                        if let meal = decide.session?.meal {
+                            // Runden für eine Mahlzeit trägt die Datenbank selbst ein
+                            Label("Steht beim \(meal.short)", systemImage: "checkmark")
+                        } else {
+                            Button(planned ? "Eingeplant" : "Für heute", systemImage: planned ? "checkmark" : "calendar.badge.plus") {
+                                Task {
+                                    await plan.add(recipe, on: .now, servings: 2)
+                                    withAnimation { planned = true }
+                                }
                             }
+                            .disabled(planned)
                         }
-                        .disabled(planned)
                         Button("Einkaufen", systemImage: "basket") { showsAddToList = true }
                             .disabled(recipe.ingredients.isEmpty)
                     }

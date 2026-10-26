@@ -101,7 +101,7 @@ final class AssistantStore {
         var planned: [(recipe: Recipe, servings: Int)] = []
         for action in actions.plan ?? [] {
             guard let id = action.recipeId, let recipe = recipes.recipe(id: id), let day = PlanCalendar.date(forKey: action.date) else { continue }
-            let entry = await plan.add(recipe, on: day, servings: action.servings, note: action.note)
+            let entry = await plan.add(recipe, on: day, servings: action.servings, note: action.note, meal: action.meal)
             outcome.planEntryIds.append(entry.id)
             planned.append((recipe, action.servings))
         }

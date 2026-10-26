@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import Supabase
 
-/// Wochenplan des Haushalts. Lädt ein Fenster um die angezeigte Woche.
+/// Wochenplan des Haushalts. Lädt die angezeigte Woche – und immer auch heute, für den Heute-Tab.
 @Observable
 final class MealPlanStore {
     let householdId: UUID
@@ -22,9 +22,17 @@ final class MealPlanStore {
 
     var days: [Date] { PlanCalendar.days(ofWeekStarting: weekStart) }
 
+    /// Einträge eines Tages, nach Mahlzeit und Gang sortiert
     func entries(on day: Date) -> [MealPlanEntry] {
         let key = PlanCalendar.key(for: day)
-        return entries.filter { $0.day == key }
+        let order = Meal.allCases
+        return entries.filter { $0.day == key }.sorted {
+            (order.firstIndex(of: $0.meal)!, $0.position) < (order.firstIndex(of: $1.meal)!, $1.position)
+        }
+    }
+
+    func entries(on day: Date, meal: Meal) -> [MealPlanEntry] {
+        entries(on: day).filter { $0.meal == meal }
     }
 
     var weekEntries: [MealPlanEntry] {
@@ -33,8 +41,9 @@ final class MealPlanStore {
     }
 
     func load() async {
-        let from = PlanCalendar.key(for: weekStart)
-        let to = PlanCalendar.key(for: days.last!)
+        let today = PlanCalendar.key(for: .now)
+        let from = min(PlanCalendar.key(for: weekStart), today)
+        let to = max(PlanCalendar.key(for: days.last!), today)
         do {
             entries = try await supabase
                 .from("meal_plan_entries")
@@ -59,11 +68,11 @@ final class MealPlanStore {
     }
 
     @discardableResult
-    func add(_ recipe: Recipe, on day: Date, servings: Int, note: String? = nil) async -> MealPlanEntry {
-        let entry = MealPlanEntry(householdId: householdId, day: PlanCalendar.key(for: day), recipeId: recipe.id, servings: servings, note: note)
-        if PlanCalendar.key(for: day) >= PlanCalendar.key(for: weekStart) && PlanCalendar.key(for: day) <= PlanCalendar.key(for: days.last!) {
-            entries.append(entry)
-        }
+    func add(_ recipe: Recipe, on day: Date, servings: Int, note: String? = nil, meal: Meal = .abend) async -> MealPlanEntry {
+        // Neuer Gang ans Ende der Mahlzeit
+        let position = (entries(on: day, meal: meal).map(\.position).max() ?? -1) + 1
+        let entry = MealPlanEntry(householdId: householdId, day: PlanCalendar.key(for: day), recipeId: recipe.id, servings: servings, note: note, meal: meal, position: position)
+        entries.append(entry)
         await write { try await supabase.from("meal_plan_entries").insert(entry).execute() }
         return entry
     }

@@ -10,6 +10,8 @@ struct DecideSession: Codable, Identifiable, Hashable, Sendable {
     var courses: [String]?
     /// Wer allein festgelegt hat (statt Match); nil = gemeinsam entschieden
     var decidedBy: UUID?
+    /// Für welche Mahlzeit heute ausgesucht wird – die Entscheidung landet dort im Plan
+    var meal: Meal?
     var createdAt: Date?
 
     enum Status: String, Codable, Sendable {
@@ -17,7 +19,7 @@ struct DecideSession: Codable, Identifiable, Hashable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, status, courses
+        case id, status, courses, meal
         case householdId = "household_id"
         case matchedCandidateId = "matched_candidate_id"
         case decidedBy = "decided_by"

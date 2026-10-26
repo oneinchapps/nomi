@@ -79,8 +79,8 @@ async function reply(supabase: Client, admin: Client, userId: string, text: stri
       .eq("household_id", householdId).order("created_at", { ascending: false }).limit(300),
     supabase.from("cooking_log").select("recipe_id, cooked_on").eq("household_id", householdId)
       .order("cooked_on", { ascending: false }).limit(500),
-    supabase.from("meal_plan_entries").select("day, recipe_id, servings, note").eq("household_id", householdId)
-      .gte("day", addDays(today, -7)).lte("day", addDays(today, 21)).order("day"),
+    supabase.from("meal_plan_entries").select("day, recipe_id, servings, note, meal").eq("household_id", householdId)
+      .gte("day", addDays(today, -7)).lte("day", addDays(today, 21)).order("day").order("position"),
     supabase.from("shopping_items").select("name, quantity, unit").eq("household_id", householdId).eq("checked", false),
     supabase.from("staple_items").select("name").eq("household_id", householdId).order("position"),
     supabase.from("assistant_messages").select("user_id, content, actions, result").eq("household_id", householdId)

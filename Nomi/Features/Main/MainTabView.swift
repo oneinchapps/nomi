@@ -4,6 +4,8 @@ import SwiftUI
 @Observable
 final class AppNavigation {
     var tab: AppTab = .nomi
+    /// Öffnet im Heute-Tab das Auswahlblatt (Vorschläge, swipen) für diese Mahlzeit
+    var decideMeal: Meal?
 }
 
 struct MainTabView: View {
@@ -43,6 +45,11 @@ struct MainTabView: View {
                     TodayView()
                 }
             }
+            Tab("Woche", image: tabIcon("Week", .week), value: AppTab.week) {
+                TabRoot {
+                    WeekPlanView()
+                }
+            }
             Tab("Rezepte", image: tabIcon("Recipes", .recipes), value: AppTab.recipes) {
                 TabRoot {
                     RecipesView()
@@ -54,11 +61,6 @@ struct MainTabView: View {
                 }
             }
             .badge(shopping.openItems.count)
-            Tab("Woche", image: tabIcon("Week", .week), value: AppTab.week) {
-                TabRoot {
-                    WeekPlanView()
-                }
-            }
         }
         .tint(Color.brand)
         .environment(navigation)
@@ -97,11 +99,7 @@ struct TabRoot<Content: View>: View {
             content
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Text("nomi")
-                            .font(.logo)
-                            .tracking(-0.6)
-                            .foregroundStyle(Color.onBrand)
-                            .fixedSize()
+                        Wordmark(height: 31)
                     }
                     // Ohne Glas-Kapsel: direkt weiß auf Himbeere
                     .sharedBackgroundVisibility(.hidden)

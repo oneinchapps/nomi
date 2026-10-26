@@ -27,10 +27,7 @@ struct SplashView: View {
                     .frame(width: 190)
                     .scaleEffect(x: squash ? 1.1 : 1, y: squash ? 0.9 : 1, anchor: .bottom)
                     .offset(y: arrived ? 0 : 420)
-                Text("nomi")
-                    .font(.heading(52, relativeTo: .largeTitle))
-                    .tracking(-2)
-                    .foregroundStyle(Color.onBrand)
+                Wordmark(height: 54)
                     .opacity(showsWordmark ? 1 : 0)
                     .offset(y: showsWordmark ? 0 : 12)
             }

@@ -53,6 +53,7 @@ final class NomiFlowTests: NomiUITestCase {
         let app = try launchWithNewHousehold()
         _ = try await joinAsSam(app)
 
+        app.buttons["Vorschläge fürs Mittagessen"].tap()
         let quick = app.buttons["Was Schnelles"]
         XCTAssertTrue(quick.waitForExistence(timeout: 5))
         quick.tap()
