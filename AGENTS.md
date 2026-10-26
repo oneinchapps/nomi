@@ -11,6 +11,12 @@ Die UI-Sprache ist Deutsch. Diese Datei ist die einzige Wissensquelle des Projek
 
 ## Grundsätze für die Arbeit am Projekt
 
+- **Repo:** https://github.com/oneinchapps/nomi, Branch `main`. Pushen mit dem GitHub-Konto `oneinchapps`. Ist lokal ein anderes Konto aktiv, entweder einmalig mitgeben:
+  ```sh
+  git -c credential.helper= -c 'credential.helper=!f() { echo username=oneinchapps; echo "password=$(gh auth token --user oneinchapps)"; }; f' push
+  ```
+  oder dauerhaft umstellen mit `gh auth switch --user oneinchapps`.
+
 - **Texte:**
   - Alle sichtbaren Texte sind Deutsch, locker und per Du.
   - Code-Kommentare sind Deutsch, kurz und erklären das Warum.
@@ -158,7 +164,17 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - **`join_household`** nimmt Einmal-Codes und den alten 6-stelligen Haushalts-Code.
 
 ### Tabs
-Reihenfolge: **nomi, Heute, Woche, Rezepte, Einkauf**. `AppNavigation` (`tab`, `decideMeal`) erlaubt Sprünge zwischen Tabs.
+- Reihenfolge: **nomi, Heute, Woche, Rezepte, Einkauf**. `AppNavigation` (`tab`, `decideMeal`) erlaubt Sprünge zwischen Tabs.
+- **Toolbar:** Jeder Hauptscreen setzt sie selbst per `mainToolbar { … }`: Logo links, eigene Knöpfe, das Profil-Icon immer ganz rechts. `TabRoot` setzt keine Toolbar-Elemente, weil die eines äußeren Rahmens vor denen des Screens landen würden.
+
+### Profil
+- **Anzeige:** `ProfileButton` oben rechts zeigt das Profilfoto (`MemberAvatar`) oder die Initialen und öffnet die Haushaltsübersicht.
+- **Ändern:** In der Übersicht ändert man sein Foto über `AvatarEditor`: auswählen, aufnehmen oder entfernen.
+- **Speicher:**
+  - `AppModel.setAvatar` schneidet quadratisch zu, verkleinert auf 600 px und lädt nach `avatars/<household>/<user>/<uuid>.jpg` hoch, mit neuem Namen gegen Caches.
+  - Die URL steht in `household_members.avatar_url`; das alte Bild wird gelöscht.
+- **Rechte:** Schreiben darf jede Person nur in den eigenen Ordner. Die Speicherregel vergleicht mit `auth.uid()`, darum UUIDs im Pfad kleinschreiben.
+- **Live:** Über Live-Sync von `household_members` sieht die andere Person das Foto sofort.
 
 ### nomi (Assistent)
 - **Verlauf:** ein gemeinsamer Verlauf pro Haushalt in `assistant_messages` (user_id null bedeutet nomi), live für beide.

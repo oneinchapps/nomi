@@ -1,17 +1,14 @@
+import PhotosUI
 import SwiftUI
 
-/// Rundes Initialen-Badge oben rechts, öffnet die Haushaltsübersicht.
+/// Profilfoto (oder Initialen) oben rechts, öffnet die Haushaltsübersicht.
 struct ProfileButton: View {
     @Environment(AppModel.self) private var app
     @State private var showsSheet = false
 
     var body: some View {
         Button { showsSheet = true } label: {
-            Text(app.me?.initials ?? "?")
-                .font(.buttonSans)
-                .foregroundStyle(Color.onBrand)
-                .frame(width: 36, height: 36)
-                .background(Color.onBrand.opacity(0.18), in: .circle)
+            MemberAvatar(member: app.me, size: 36, onBrand: true)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Haushalt und Konto")
@@ -37,10 +34,11 @@ struct HouseholdSheet: View {
                         MetaLabel("Ihr zwei")
                         ForEach(app.members) { member in
                             HStack(spacing: 12) {
-                                Text(member.initials)
-                                    .font(.buttonSans)
-                                    .frame(width: 40, height: 40)
-                                    .background(Color.mist, in: .circle)
+                                if member.userId == app.userId {
+                                    AvatarEditor(member: member)
+                                } else {
+                                    MemberAvatar(member: member, size: 48)
+                                }
                                 Text(member.displayName).font(.bodySansMedium)
                                 if member.userId == app.userId {
                                     MetaLabel("Du")
@@ -158,6 +156,145 @@ struct InviteCard: View {
             error = nil
         } catch {
             self.error = userMessage(for: error)
+        }
+    }
+}
+
+/// Profilfoto eines Mitglieds als Kreis; ohne Foto die Initialen.
+struct MemberAvatar: View {
+    let member: HouseholdMember?
+    var size: CGFloat = 40
+    /// Auf Himbeere: Initialen weiß auf transparentem Weiß
+    var onBrand = false
+
+    var body: some View {
+        ZStack {
+            if let url = member?.avatarURL {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else {
+                        initials
+                    }
+                }
+                .accessibilityIdentifier("avatar-photo")
+            } else {
+                initials
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(.circle)
+        .overlay {
+            if member?.avatarURL != nil {
+                Circle().strokeBorder(onBrand ? Color.onBrand.opacity(0.7) : Color.hairline, lineWidth: 1.5)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var initials: some View {
+        Text(member?.initials ?? "?")
+            .font(size > 44 ? .heading(size * 0.42, relativeTo: .title3) : .buttonSans)
+            .foregroundStyle(onBrand ? Color.onBrand : Color.ink)
+            .frame(width: size, height: size)
+            .background(onBrand ? Color.onBrand.opacity(0.18) : Color.mist, in: .circle)
+    }
+}
+
+/// Eigenes Profilfoto: antippen zum Auswählen, Aufnehmen oder Entfernen.
+struct AvatarEditor: View {
+    let member: HouseholdMember
+
+    @Environment(AppModel.self) private var app
+    @State private var showsLibrary = false
+    @State private var showsCamera = false
+    @State private var selection: PhotosPickerItem?
+    @State private var isUploading = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Menu {
+                Button("Foto auswählen", systemImage: "photo.on.rectangle") { chooseFromLibrary() }
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("Foto aufnehmen", systemImage: "camera") { showsCamera = true }
+                }
+                if member.avatarURL != nil {
+                    Button("Foto entfernen", systemImage: "trash", role: .destructive) { remove() }
+                }
+            } label: {
+                MemberAvatar(member: member, size: 48)
+                    .overlay(alignment: .bottomTrailing) {
+                        Group {
+                            if isUploading {
+                                ProgressView().controlSize(.mini)
+                            } else {
+                                Image(systemName: "camera.fill").font(.system(size: 9, weight: .bold))
+                            }
+                        }
+                        .foregroundStyle(Color.canvas)
+                        .frame(width: 20, height: 20)
+                        .background(Color.ink, in: .circle)
+                        .overlay { Circle().strokeBorder(Color.canvas, lineWidth: 2) }
+                        .offset(x: 3, y: 3)
+                    }
+            }
+            .accessibilityLabel("Profilfoto ändern")
+            .disabled(isUploading)
+            if let error {
+                Text(error).font(.captionSans).foregroundStyle(Color.tomato)
+            }
+        }
+        .photosPicker(isPresented: $showsLibrary, selection: $selection, matching: .images)
+        .onChange(of: selection) { _, item in
+            guard let item else { return }
+            selection = nil
+            Task {
+                guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
+                upload(image)
+            }
+        }
+        .fullScreenCover(isPresented: $showsCamera) {
+            CameraPicker { image in
+                showsCamera = false
+                if let image { upload(image) }
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private func chooseFromLibrary() {
+        #if DEBUG
+        // UI-Tests: Die Fotoauswahl des Systems lässt sich nicht fernsteuern
+        if let path = ProcessInfo.processInfo.environment["NOMI_TEST_PHOTOS"]?.split(separator: ",").first,
+           let image = UIImage(contentsOfFile: String(path)) {
+            upload(image)
+            return
+        }
+        #endif
+        showsLibrary = true
+    }
+
+    private func upload(_ image: UIImage) {
+        isUploading = true
+        error = nil
+        Task {
+            defer { isUploading = false }
+            do {
+                try await app.setAvatar(image)
+            } catch {
+                self.error = "Das Foto ließ sich nicht speichern. Probier es noch mal."
+            }
+        }
+    }
+
+    private func remove() {
+        Task {
+            do {
+                try await app.removeAvatar()
+            } catch {
+                self.error = "Das Foto ließ sich nicht entfernen."
+            }
         }
     }
 }

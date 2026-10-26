@@ -12,4 +12,14 @@ extension UIImage {
         }
         return resized.jpegData(compressionQuality: quality) ?? Data()
     }
+
+    /// Quadratischer Ausschnitt aus der Mitte – für Profilfotos.
+    func squareCropped() -> UIImage {
+        let side = min(size.width, size.height)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { _ in
+            draw(at: CGPoint(x: (side - size.width) / 2, y: (side - size.height) / 2))
+        }
+    }
 }

@@ -52,6 +52,7 @@ struct WeekPlanView: View {
         )) { box in
             AddToListSheet(sources: box.sources)
         }
+        .mainToolbar()
     }
 
     private struct SourcesBox: Identifiable {

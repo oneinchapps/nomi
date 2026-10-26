@@ -87,7 +87,7 @@ struct RecipesView: View {
         .navigationDestination(for: Route.self) { _ in
             CookingHistoryView()
         }
-        .toolbar {
+        .mainToolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     withAnimation(.smooth(duration: 0.25)) {

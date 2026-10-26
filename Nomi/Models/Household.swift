@@ -15,6 +15,8 @@ struct HouseholdMember: Codable, Identifiable, Hashable, Sendable {
     let householdId: UUID
     let userId: UUID
     var displayName: String
+    /// Profilfoto (öffentliche URL im Bucket `avatars`); nil = Initialen
+    var avatarURL: URL?
 
     var id: UUID { userId }
 
@@ -26,6 +28,7 @@ struct HouseholdMember: Codable, Identifiable, Hashable, Sendable {
         case householdId = "household_id"
         case userId = "user_id"
         case displayName = "display_name"
+        case avatarURL = "avatar_url"
     }
 }
 

@@ -74,6 +74,7 @@ struct TodayView: View {
         .fullScreenCover(item: $cooking) { selection in
             CookingModeView(recipe: selection.recipe, servings: selection.servings)
         }
+        .mainToolbar()
     }
 
     private var header: some View {

@@ -53,7 +53,7 @@ struct NomiView: View {
             .onChange(of: assistant.isThinking) { scrollDown(proxy) }
             .onAppear { scrollDown(proxy, animated: false) }
         }
-        .toolbar {
+        .mainToolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     speaksReplies.toggle()

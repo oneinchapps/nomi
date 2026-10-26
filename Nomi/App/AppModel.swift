@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import Supabase
+import UIKit
 
 /// Hält Anmeldung und Haushalt und entscheidet damit, welcher Bereich der App sichtbar ist.
 @Observable
@@ -124,6 +125,57 @@ final class AppModel {
     /// Mitglieder, die per Einladung ohne E-Mail beigetreten sind, kommen nur mit neuem Code zurück ins Konto.
     func isInvitedAccount(_ userId: UUID) async -> Bool {
         (try? await supabase.rpc("is_invited_account", params: ["uid": userId]).execute().value) ?? false
+    }
+
+    // MARK: - Profilfoto
+
+    private static let avatarBucket = "avatars"
+
+    /// Quadratisch zuschneiden, auf 600 px verkleinern, hochladen und am eigenen Mitgliedseintrag speichern.
+    /// Pfad <household>/<user>/<uuid>.jpg – ein neuer Name pro Foto, damit kein altes Bild im Cache hängt.
+    func setAvatar(_ image: UIImage) async throws {
+        guard let userId, let household else { return }
+        let data = image.squareCropped().jpegData(maxSide: 600, quality: 0.82)
+        let folder = "\(household.id.uuidString.lowercased())/\(userId.uuidString.lowercased())"
+        let path = "\(folder)/\(UUID().uuidString.lowercased()).jpg"
+        let bucket = supabase.storage.from(Self.avatarBucket)
+        try await bucket.upload(path, data: data, options: FileOptions(cacheControl: "31536000", contentType: "image/jpeg"))
+        let url = try bucket.getPublicURL(path: path)
+        let previous = me?.avatarURL
+        try await updateAvatar(url)
+        await removeAvatarFile(previous)
+    }
+
+    func removeAvatar() async throws {
+        let previous = me?.avatarURL
+        try await updateAvatar(nil)
+        await removeAvatarFile(previous)
+    }
+
+    private func updateAvatar(_ url: URL?) async throws {
+        guard let userId, let household else { return }
+        struct Change: Encodable {
+            let avatarURL: URL?
+            enum CodingKeys: String, CodingKey { case avatarURL = "avatar_url" }
+            // Auch nil schreiben (als null) – sonst bliebe das alte Foto stehen
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(avatarURL, forKey: .avatarURL)
+            }
+        }
+        try await supabase.from("household_members")
+            .update(Change(avatarURL: url))
+            .eq("household_id", value: household.id)
+            .eq("user_id", value: userId)
+            .execute()
+        if let index = members.firstIndex(where: { $0.userId == userId }) {
+            members[index].avatarURL = url
+        }
+    }
+
+    private func removeAvatarFile(_ url: URL?) async {
+        guard let url, let range = url.path.range(of: "/\(Self.avatarBucket)/") else { return }
+        _ = try? await supabase.storage.from(Self.avatarBucket).remove(paths: [String(url.path[range.upperBound...])])
     }
 
     func signOut() async {

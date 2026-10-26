@@ -74,6 +74,7 @@ struct ShoppingListView: View {
         .sheet(isPresented: $showsStaples) {
             StaplesSheet()
         }
+        .mainToolbar()
     }
 
     // MARK: - Kopf

@@ -90,26 +90,53 @@ struct MainTabView: View {
     }
 }
 
-/// Navigationsrahmen jedes Tabs: Logo links, Profil rechts.
+/// Navigationsrahmen jedes Tabs. Die Toolbar setzt jeder Hauptscreen selbst per `mainToolbar`:
+/// Toolbar-Elemente eines äußeren Rahmens landen vor denen des Screens – das Profil-Icon soll aber
+/// immer ganz rechts stehen.
 struct TabRoot<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
         NavigationStack {
             content
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Wordmark(height: 31)
-                    }
-                    // Ohne Glas-Kapsel: direkt weiß auf Himbeere
-                    .sharedBackgroundVisibility(.hidden)
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ProfileButton()
-                    }
-                    .sharedBackgroundVisibility(.hidden)
-                }
                 .brandNavigationBar()
                 .tint(Color.ink)
         }
     }
+}
+
+extension View {
+    /// Toolbar der Hauptscreens: Logo links, die Knöpfe des Screens, Profil immer ganz rechts.
+    func mainToolbar<Trailing: ToolbarContent>(@ToolbarContentBuilder trailing: () -> Trailing) -> some View {
+        toolbar {
+            logoItem
+            trailing()
+            profileItem
+        }
+    }
+
+    /// Hauptscreen ohne eigene Knöpfe
+    func mainToolbar() -> some View {
+        toolbar {
+            logoItem
+            profileItem
+        }
+    }
+}
+
+@ToolbarContentBuilder
+private var logoItem: some ToolbarContent {
+    ToolbarItem(placement: .topBarLeading) {
+        Wordmark(height: 31)
+    }
+    // Ohne Glas-Kapsel: direkt weiß auf Himbeere
+    .sharedBackgroundVisibility(.hidden)
+}
+
+@ToolbarContentBuilder
+private var profileItem: some ToolbarContent {
+    ToolbarItem(placement: .topBarTrailing) {
+        ProfileButton()
+    }
+    .sharedBackgroundVisibility(.hidden)
 }
