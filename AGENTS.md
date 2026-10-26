@@ -252,8 +252,13 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - Sie beginnen mit `BrandHeader` und `.brandNavigationBar()`. Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe; ein eigener Leisten-Hintergrund wirkt unter iOS 26 dunkler.
 - Toolbar-Elemente auf Himbeere haben keine Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`).
 
+**Gleiche Kopfhöhe:** Rezepte, Einkauf und Woche haben exakt gleich hohe Köpfe:
+- `BrandHeader(bottomPadding: 22)` mit einer Zeile `DisplayHeadline`, rechts daneben höchstens kleine Elemente (Anzahl-Kreis, Wochenpfeile).
+- Zusätzliche Zeilen gehören in den Inhalt darunter, nicht in den Kopf (z. B. „Zur aktuellen Woche“).
+- nomi und Heute sind bewusst Ausnahmen.
+
 **Headlines und Buttons:**
-- Mehrzeilige Headlines setzt man mit `DisplayHeadline`. Zeilen brechen nie um, sondern werden notfalls kleiner, weil negatives `lineSpacing` in SwiftUI nicht greift.
+- Mehrzeilige Headlines setzt man mit `DisplayHeadline`, weil negatives `lineSpacing` in SwiftUI nicht greift. Zeilen brechen nie um, sondern werden notfalls kleiner und behalten dabei ihre volle Zeilenhöhe.
 - Dunkle Pillen-Buttons: `.primary` ist einzeilig, `.secondary` ist der Rahmen-Button.
 
 **Illustrationen im Stil „Linie“** statt Emojis:

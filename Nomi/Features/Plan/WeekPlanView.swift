@@ -20,6 +20,14 @@ struct WeekPlanView: View {
         ScrollView {
             header
             VStack(alignment: .leading, spacing: 22) {
+                // Unter dem Kopf statt darin, damit der Kopf in jeder Woche gleich hoch bleibt
+                if !isCurrentWeek {
+                    Button("Zur aktuellen Woche", systemImage: "arrow.uturn.backward") {
+                        withAnimation { plan.weekStart = PlanCalendar.startOfWeek(containing: .now) }
+                    }
+                    .font(.captionSans)
+                    .foregroundStyle(Color.ink)
+                }
                 ForEach(plan.days, id: \.self) { day in
                     daySection(day)
                 }
@@ -62,24 +70,16 @@ struct WeekPlanView: View {
 
     // MARK: - Kopf
 
+    /// Gleich hoch wie Rezepte und Einkauf: Überschrift links, Pfeile rechts daneben
     private var header: some View {
-        BrandHeader {
-            // Pfeile neben der Kalenderwoche, damit die Headline die volle Breite hat
-            HStack {
-                MetaLabel("KW \(PlanCalendar.weekNumber(of: plan.weekStart)) · \(DayFormat.range(plan.days))", font: .eyebrow, tracking: 2.4)
-                Spacer()
+        BrandHeader(bottomPadding: 22) {
+            HStack(spacing: 12) {
+                DisplayHeadline(lines: [weekTitle])
+                Spacer(minLength: 0)
                 HStack(spacing: 6) {
                     weekButton("chevron.left", label: "Vorige Woche", offset: -1)
                     weekButton("chevron.right", label: "Nächste Woche", offset: 1)
                 }
-            }
-            DisplayHeadline(lines: [weekTitle])
-            if !isCurrentWeek {
-                Button("Zur aktuellen Woche") {
-                    withAnimation { plan.weekStart = PlanCalendar.startOfWeek(containing: .now) }
-                }
-                .font(.captionSans)
-                .underline()
             }
         }
     }

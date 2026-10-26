@@ -82,13 +82,18 @@ struct DisplayHeadline: View {
     var body: some View {
         VStack(alignment: .leading, spacing: -10) {
             ForEach(lines, id: \.self) { line in
-                Text(line)
-                    .font(.display)
-                    .tracking(-1)
-                    // Jede Zeile ist bewusst gesetzt: lieber etwas kleiner als unschön umbrechen
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .foregroundStyle(onBrand ? Color.onBrand : Color.ink)
+                ZStack(alignment: .leading) {
+                    // Hält die volle Zeilenhöhe, auch wenn die Zeile verkleinert wird –
+                    // so sind alle Köpfe gleich hoch, egal wie lang der Titel ist
+                    Text("Ag").font(.display).hidden()
+                    Text(line)
+                        .font(.display)
+                        .tracking(-1)
+                        // Jede Zeile ist bewusst gesetzt: lieber etwas kleiner als unschön umbrechen
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(onBrand ? Color.onBrand : Color.ink)
+                }
             }
         }
         .accessibilityElement(children: .combine)
