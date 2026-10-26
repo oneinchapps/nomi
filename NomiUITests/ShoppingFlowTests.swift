@@ -98,6 +98,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         // Nächste Woche ist leer, zurück zur aktuellen
         app.buttons["Nächste Woche"].tap()
         XCTAssertTrue(app.staticTexts["Nächste Woche"].waitForExistence(timeout: 3))
+        snapshot(app, "43-next-week")
         XCTAssertFalse(app.buttons["Zutaten der Woche einkaufen"].exists)
         app.buttons["Zur aktuellen Woche"].tap()
 

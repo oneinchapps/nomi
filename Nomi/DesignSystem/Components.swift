@@ -85,11 +85,34 @@ struct DisplayHeadline: View {
                 Text(line)
                     .font(.display)
                     .tracking(-1)
+                    // Jede Zeile ist bewusst gesetzt: lieber etwas kleiner als unschön umbrechen
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .foregroundStyle(onBrand ? Color.onBrand : Color.ink)
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Anzahl im kleinen Kreis neben der Überschrift eines BrandHeader; bei drei Stellen wird er zur Pille.
+struct CountBadge: View {
+    let count: Int
+    /// Was die Zahl bedeutet, z. B. „3 Rezepte“ oder „5 offen“
+    let accessibilityLabel: String
+
+    var body: some View {
+        Text("\(count)")
+            .font(.custom("DMMono-Medium", size: 14, relativeTo: .subheadline))
+            .monospacedDigit()
+            .foregroundStyle(Color.onBrand)
+            .padding(.horizontal, 8)
+            .frame(minWidth: 32, minHeight: 32)
+            .background(Color.onBrand.opacity(0.2), in: .capsule)
+            .contentTransition(.numericText())
+            .animation(.smooth, value: count)
+            .accessibilityLabel(accessibilityLabel)
     }
 }
 

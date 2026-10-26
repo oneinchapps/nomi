@@ -63,15 +63,16 @@ struct WeekPlanView: View {
 
     private var header: some View {
         BrandHeader {
-            MetaLabel("KW \(PlanCalendar.weekNumber(of: plan.weekStart)) · \(DayFormat.range(plan.days))", font: .eyebrow, tracking: 2.4)
-            HStack(alignment: .firstTextBaseline) {
-                DisplayHeadline(lines: [weekTitle])
+            // Pfeile neben der Kalenderwoche, damit die Headline die volle Breite hat
+            HStack {
+                MetaLabel("KW \(PlanCalendar.weekNumber(of: plan.weekStart)) · \(DayFormat.range(plan.days))", font: .eyebrow, tracking: 2.4)
                 Spacer()
                 HStack(spacing: 6) {
                     weekButton("chevron.left", label: "Vorige Woche", offset: -1)
                     weekButton("chevron.right", label: "Nächste Woche", offset: 1)
                 }
             }
+            DisplayHeadline(lines: [weekTitle])
             if !isCurrentWeek {
                 Button("Zur aktuellen Woche") {
                     withAnimation { plan.weekStart = PlanCalendar.startOfWeek(containing: .now) }
@@ -102,7 +103,7 @@ struct WeekPlanView: View {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Color.onBrand)
-                .frame(width: 40, height: 40)
+                .frame(width: 34, height: 34)
                 .background(Color.onBrand.opacity(0.18), in: .circle)
         }
         .buttonStyle(.plain)

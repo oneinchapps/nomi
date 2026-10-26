@@ -11,9 +11,13 @@ struct ShoppingListView: View {
 
     var body: some View {
         List {
-            BrandHeader {
-                MetaLabel(shopping.openItems.isEmpty ? "Gemeinsame Liste" : "\(shopping.openItems.count) offen", font: .eyebrow, tracking: 2.4)
-                DisplayHeadline(lines: ["Einkauf"])
+            BrandHeader(bottomPadding: 22) {
+                HStack(spacing: 12) {
+                    DisplayHeadline(lines: ["Einkauf"])
+                    if !shopping.openItems.isEmpty {
+                        CountBadge(count: shopping.openItems.count, accessibilityLabel: "\(shopping.openItems.count) offen")
+                    }
+                }
             }
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)

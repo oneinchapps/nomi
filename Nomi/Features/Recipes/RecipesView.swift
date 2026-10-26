@@ -51,7 +51,7 @@ struct RecipesView: View {
                     HStack(spacing: 12) {
                         DisplayHeadline(lines: [filter.map(\.title) ?? "Rezepte"])
                         if store.hasLoaded, recipeCount > 0 {
-                            CountBadge(count: recipeCount)
+                            CountBadge(count: recipeCount, accessibilityLabel: recipeCount == 1 ? "1 Rezept" : "\(recipeCount) Rezepte")
                         }
                     }
                 }
@@ -395,24 +395,6 @@ struct RecipesView: View {
 }
 
 /// Kompakte Karte fürs Raster.
-/// Anzahl im kleinen Kreis neben der Überschrift; bei drei Stellen wird er zur Pille.
-struct CountBadge: View {
-    let count: Int
-
-    var body: some View {
-        Text("\(count)")
-            .font(.custom("DMMono-Medium", size: 14, relativeTo: .subheadline))
-            .monospacedDigit()
-            .foregroundStyle(Color.onBrand)
-            .padding(.horizontal, 8)
-            .frame(minWidth: 32, minHeight: 32)
-            .background(Color.onBrand.opacity(0.2), in: .capsule)
-            .contentTransition(.numericText())
-            .animation(.smooth, value: count)
-            .accessibilityLabel(count == 1 ? "1 Rezept" : "\(count) Rezepte")
-    }
-}
-
 struct RecipeTile: View {
     let recipe: Recipe
     /// Ersetzt die Metazeile, z. B. „Zuletzt vor 3 Monaten“
