@@ -106,6 +106,8 @@ Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf and
 
 ## Design
 Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Hauptscreen beginnt mit `BrandHeader` und nutzt `.brandNavigationBar()`: Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe (ein eigener Leisten-Hintergrund würde unter iOS 26 dunkler wirken). Toolbar-Elemente auf der Markenfarbe ohne Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`). Entwürfe und das Render-Skript fürs App-Icon liegen in `design/`.
+Tab-Symbole sind eigene Linien-Icons (`Tab<Name>` und `Tab<Name>Active` im Asset-Katalog, als Vorlagenbilder). Gerendert werden sie von `design/tabbar/render-tab-assets.swift`. Die aktive Variante hat gefüllte Akzente und wird in `MainTabView.tabIcon` gewählt.
+
 Maskottchen **Chefi** (kleiner Koch in Mint mit Kochmütze und Holzlöffel):
 - Entwürfe und Render-Skript liegen in `design/mascot/`. Das App-Icon ist dessen `app-icon.png` (Ausschnitt B), kopiert nach `AppIcon.appiconset`.
 - In der App zeichnet `ChefiView` dieselben Formen. Löffel-Neigung und -Höhe sind animierbar, dazu gibt es die Posen Zwinkern und Winken.

@@ -25,31 +25,36 @@ struct MainTabView: View {
         _plan = State(initialValue: MealPlanStore(householdId: householdId))
     }
 
+    /// Eigene Linien-Icons (design/tabbar); aktiv mit gefüllten Akzenten
+    private func tabIcon(_ name: String, _ tab: AppTab) -> String {
+        navigation.tab == tab ? "Tab\(name)Active" : "Tab\(name)"
+    }
+
     var body: some View {
         @Bindable var navigation = navigation
         TabView(selection: $navigation.tab) {
-            Tab("nomi", image: "TabNomi", value: AppTab.nomi) {
+            Tab("nomi", image: tabIcon("Nomi", .nomi), value: AppTab.nomi) {
                 TabRoot {
                     NomiView()
                 }
             }
-            Tab("Heute", systemImage: "fork.knife", value: AppTab.today) {
+            Tab("Heute", image: tabIcon("Today", .today), value: AppTab.today) {
                 TabRoot {
                     TodayView()
                 }
             }
-            Tab("Rezepte", systemImage: "book.closed", value: AppTab.recipes) {
+            Tab("Rezepte", image: tabIcon("Recipes", .recipes), value: AppTab.recipes) {
                 TabRoot {
                     RecipesView()
                 }
             }
-            Tab("Einkauf", systemImage: "basket", value: AppTab.shopping) {
+            Tab("Einkauf", image: tabIcon("Shopping", .shopping), value: AppTab.shopping) {
                 TabRoot {
                     ShoppingListView()
                 }
             }
             .badge(shopping.openItems.count)
-            Tab("Woche", systemImage: "calendar", value: AppTab.week) {
+            Tab("Woche", image: tabIcon("Week", .week), value: AppTab.week) {
                 TabRoot {
                     WeekPlanView()
                 }
