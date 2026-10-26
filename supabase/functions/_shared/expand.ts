@@ -2,6 +2,7 @@
 // Genutzt von decide (nach einem Match) und assistant (neue Gerichte im Wochenplan).
 
 import { CATEGORY_RULES, type ExtractedRecipe, FULL_RECIPE_SCHEMA, structured } from "./recipe.ts";
+import type { UsageMeter } from "./budget.ts";
 
 export interface Idea {
   title: string;
@@ -33,12 +34,19 @@ Schlagworte: ${idea.tags.join(", ")}`;
 type Client = any;
 
 /** Arbeitet die Idee aus und legt sie über den RLS-Client der Person in der Sammlung an. */
-export async function expandIdea(supabase: Client, householdId: string, idea: Idea, servings = 2): Promise<Record<string, unknown>> {
+export async function expandIdea(
+  supabase: Client,
+  householdId: string,
+  idea: Idea,
+  servings = 2,
+  meter?: UsageMeter,
+): Promise<Record<string, unknown>> {
   const full = await structured<Omit<ExtractedRecipe, "found_recipe">>({
     system: EXPAND_SYSTEM,
     user: expandPrompt(idea, servings),
     schema: FULL_RECIPE_SCHEMA,
     effort: "medium",
+    meter,
   });
   const recipe = {
     id: crypto.randomUUID(),

@@ -43,4 +43,19 @@ final class ProfileTests: NomiUITestCase {
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.images["avatar-photo"].firstMatch)
         wait(for: [gone], timeout: 10)
     }
+
+    /// Konto löschen (Pflicht für den App Store): danach zurück zum Willkommensbildschirm
+    @MainActor
+    func testDeleteAccount() throws {
+        let app = try launchWithNewHousehold()
+        app.buttons["Haushalt und Konto"].firstMatch.tap()
+        let delete = app.buttons["Konto löschen"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        delete.tap()
+        let confirm = app.buttons["Konto endgültig löschen"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        snapshot(app, "123-delete-account")
+        confirm.tap()
+        XCTAssertTrue(app.buttons["Gemeinsam Essen finden"].waitForExistence(timeout: 20), "Nach dem Löschen sollte der Willkommensbildschirm kommen")
+    }
 }

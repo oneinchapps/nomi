@@ -1,6 +1,7 @@
 // Gemeinsam für alle Functions: Rezeptformat (passt zu public.recipes und den Swift-Modellen)
 // und der Claude-Client.
 import Anthropic from "@anthropic-ai/sdk";
+import { MODEL, type UsageMeter } from "./budget.ts";
 
 // Muss zu public.aisle und Aisle in der App passen
 export const AISLES = [
@@ -118,10 +119,12 @@ export async function structured<T>(
     user: string | Anthropic.Beta.BetaContentBlockParam[];
     schema: Record<string, unknown>;
     effort?: "low" | "medium" | "high";
+    /** Zählt Tokens und Kosten für die Kostenbremse (siehe budget.ts) */
+    meter?: UsageMeter;
   },
 ): Promise<T> {
   const response = await claude().beta.messages.create({
-    model: "claude-opus-5-5",
+    model: MODEL,
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
@@ -132,6 +135,7 @@ export async function structured<T>(
     system: options.system,
     messages: [{ role: "user", content: options.user }],
   });
+  options.meter?.record(response.usage);
   if (response.stop_reason === "refusal") throw new ClaudeError("refusal");
   if (response.stop_reason === "max_tokens") throw new ClaudeError("truncated");
   const text = response.content.find((block) => block.type === "text");

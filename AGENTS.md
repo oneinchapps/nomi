@@ -86,6 +86,14 @@ xcrun devicectl device process launch --console --device <ID> de.gregorzoller.no
 
 **Bundle-IDs:** `de.gregorzoller.nomi` und `de.gregorzoller.nomi.share`. App und Erweiterung teilen die Anmeldung über die Keychain-Gruppe `<Team>.de.gregorzoller.nomi.shared` (`KeychainLocalStorage` mit Service `nomi.auth`).
 
+## Version und Build
+
+- Version (`MARKETING_VERSION`) und Build (`CURRENT_PROJECT_VERSION`) stehen einmal in `project.yml` und gelten für App und Teilen-Erweiterung.
+- Vor jedem Upload nach App Store Connect die Build-Nummer erhöhen: `scripts/bump-build.sh`. Mit neuer Version: `scripts/bump-build.sh 0.2.0`. Das Skript führt auch `xcodegen generate` aus.
+- Datenschutz-Manifeste: `Nomi/PrivacyInfo.xcprivacy` und `NomiShare/PrivacyInfo.xcprivacy`. Kein Tracking; erhoben werden E-Mail, Name, Fotos und Nutzerinhalte für die App-Funktion; UserDefaults mit Grund `CA92.1`. Bei neuen erhobenen Daten oder neuen „Required Reason“-Schnittstellen hier ergänzen.
+- `ITSAppUsesNonExemptEncryption = false` ist in beiden Info.plists gesetzt; die App nutzt nur HTTPS.
+- Den Plan für TestFlight und den App Store mit Status führt `AppStore.md`.
+
 ## Backend
 
 **Projekte:**
@@ -137,6 +145,7 @@ Einzelne Auth-Werte ändert man besser gezielt im Dashboard oder über die Manag
 | `decide` | `suggest`: aus Chat, Sammlung und Stimmen 5 Karten mit Antwort von nomi, Menüs mit Gängen. `expand`: Idee zu vollständigem Rezept, danach `plan_decision`. |
 | `assistant` | nomi als Assistent, siehe unten |
 | `invite` | Einmal-Code einlösen (öffentlich, `auth: "none"`), siehe Einladen |
+| `account` | Konto löschen, siehe Konto löschen |
 
 Neue Gerichte arbeitet `_shared/expand.ts` aus (`expandIdea`); decide und assistant nutzen es beide.
 
@@ -150,12 +159,38 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 
 **Nach einer neuen Function:** in `config.toml` einen Block `[functions.<name>]` mit `verify_jwt = false`, `import_map` und `entrypoint` anlegen. Der lokale Server muss neu starten, damit die Konfiguration greift.
 
+## Kosten (Kostenbremse für Claude)
+
+- **Messen:** Jede Claude-Anfrage läuft über `structured()` in `_shared/recipe.ts`. Ein `UsageMeter` (`_shared/budget.ts`) zählt die tatsächlichen Tokens aus der API-Antwort. Die Kosten rechnet er mit den Preisen von Claude Opus 5.5 um: 4 $ pro Million Eingabe-Tokens, 20 $ pro Million Ausgabe-Tokens.
+- **Protokoll:** Tabelle `ai_usage`, eine Zeile pro Function-Anfrage mit Function, Tokens und `cost_micros` (Millionstel Dollar). Mitglieder dürfen den Verbrauch ihres Haushalts lesen.
+- **Prüfen:** Vor der ersten Claude-Anfrage ruft jede Function `ensureBudget` auf; `ai_spend_today` liefert den Verbrauch seit Mitternacht Berliner Zeit. Ist ein Budget aufgebraucht, antwortet die Function mit 429 und einer freundlichen Meldung („nomi hat für heute genug gekocht …“), die die App anzeigt.
+- **Budgets** (Function-Secrets, sonst Standard):
+  - `AI_BUDGET_HOUSEHOLD_DAILY_USD`: pro Haushalt und Tag, Standard 2 $.
+  - `AI_BUDGET_TOTAL_DAILY_USD`: alle Haushalte zusammen, Standard 10 $.
+- **Erfahrungswerte:** Eine nomi-Antwort kostet bei kleiner Sammlung etwa 2 Cent. Vorschlagsrunden (alle Rezepte mit Zutaten im Prompt), Ausarbeiten und Foto-Import sind teurer.
+- **Letzte Sicherung:** ein monatliches Ausgabenlimit in der Anthropic Console (Settings → Limits). Das setzt der Nutzer selbst.
+- **Neue Function mit Claude:** `ensureBudget` vor dem Aufruf, `meter` an `structured()` durchreichen, `saveUsage` im `finally`.
+
 ## Funktionen der App
 
 ### Anmeldung und Haushalt
 - **Anmeldung** per E-Mail-Code (OTP, 6 Stellen), ohne Passwort. Sign in with Apple braucht einen bezahlten Developer-Account und kommt später.
 - **Haushalt:** `create_household` und `join_household` (RPCs). Alle Daten hängen am Haushalt.
 - **Mailversand:** Der Standard-Mailversand von Supabase erreicht nur Mitglieder des Supabase-Teams. Deshalb gibt es den Einladungsweg ohne Mail.
+
+### Konto löschen
+- In der Haushaltsübersicht gibt es „Konto löschen“ mit Sicherheitsabfrage. Apple verlangt das bei jeder App mit Kontoerstellung.
+- Die Edge Function `account` (`{ action: "delete" }`) erledigt Folgendes:
+  - Sie löscht die eigenen Chat-Nachrichten; ohne Absender sähen sie sonst wie nomi aus.
+  - Sie löscht das eigene Profilfoto.
+  - Ist die Person allein im Haushalt, löscht sie den ganzen Haushalt per Cascade, dazu die Rezeptfotos im Speicher.
+  - Zum Schluss löscht sie das Anmeldekonto.
+- Die nötigen Rechte für `service_role` stehen in der Migration `account_deletion`.
+
+### Demo-Zugang (App-Prüfung)
+- Ein wiederverwendbarer Einladungscode (`household_invites.reusable`) führt immer in dasselbe Demo-Konto und wird beim Einlösen nicht verbraucht.
+- `scripts/setup-demo.sh local|live` legt einen Demo-Haushalt mit vier Beispielrezepten und den Code `NOMI-DEMO` an (anderer Code über `DEMO_CODE=…`).
+- In der App: „Ich habe eine Einladung“ → Code, Name beliebig. Der Code gehört in die Prüfhinweise in App Store Connect.
 
 ### Einladen (zweite Person)
 - **Einmal-Code:** 8 Zeichen ohne verwechselbare Zeichen, 7 Tage gültig. Die RPC `create_invite` erzeugt ihn, verschickt wird er über das Teilen-Menü per WhatsApp oder Nachricht. Im Code: `InviteCard` und `InviteCode` (Format „XXXX-XXXX“, findet den Code auch in einer eingefügten Nachricht).
@@ -342,6 +377,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 - In Sheets keine zufälligen IDs als Schlüssel für `@State` verwenden: Das Sheet wird neu erzeugt, der State bleibt.
 - Mehrzeilige `TextField`s lösen bei „Senden“ kein `onSubmit` aus, sondern fügen einen Umbruch ein. Deshalb schicken die Chat-Felder ab, sobald ein Umbruch auftaucht.
 - Formulare (`FormScreen`) bleiben mit `defaultScrollAnchor(.bottom, for: .sizeChanges)` unten verankert, damit Felder nicht hinter Tastatur und Button verschwinden. `scrollTo` funktionierte dort nicht.
+- Nach dem Eintreffen neuer Inhalte scrollen Ansichten animiert (z. B. zum Kartenstapel). Ein Tipp in dieser Zeit verfehlt den Knopf, ohne Fehler. Im Test vor dem Tippen kurz warten.
 - Eingabefelder nicht bei jedem Tastendruck umschreiben (z. B. Formatieren); XCUITest und schnelles Tippen verlieren sonst Zeichen. Erst formatieren, wenn die Eingabe vollständig ist.
 
 **Swift 6:**
@@ -355,6 +391,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
-- Die Edge Functions `assistant` und `decide` müssen nach den letzten Änderungen live deployt werden (Mahlzeiten, `plan_decision`).
+- Live deployen: die Edge Functions `account` (neu), `assistant`, `decide`, `import-recipe` und `invite` (Kostenbremse, Mahlzeiten, Demo-Codes).
 - Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
+- Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
 - Sign in with Apple kommt, sobald es einen bezahlten Developer-Account gibt.

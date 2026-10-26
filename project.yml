@@ -50,6 +50,8 @@ targets:
       path: Nomi/Info.plist
       properties:
         CFBundleDevelopmentRegion: de
+        # Nur Standard-Verschlüsselung (HTTPS) – App Store Connect fragt dann nicht bei jedem Upload
+        ITSAppUsesNonExemptEncryption: false
         # Startbildschirm in Himbeere, danach übernimmt der animierte SplashView mit Chefi
         UILaunchScreen:
           UIColorName: LaunchBackground
@@ -107,6 +109,7 @@ targets:
       properties:
         CFBundleDisplayName: nomi
         CFBundleDevelopmentRegion: de
+        ITSAppUsesNonExemptEncryption: false
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomi.shared

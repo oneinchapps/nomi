@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { withSupabase } from "@supabase/server";
 import { ClaudeError, structured } from "../_shared/recipe.ts";
 import { expandIdea } from "../_shared/expand.ts";
+import { BudgetExceeded, budgetResponse, ensureBudget, saveUsage, UsageMeter } from "../_shared/budget.ts";
 import {
   addDays,
   ASSISTANT_SCHEMA,
@@ -45,6 +46,7 @@ export default {
     try {
       return await reply(ctx.supabase, ctx.supabaseAdmin, userId, text);
     } catch (e) {
+      if (e instanceof BudgetExceeded) return budgetResponse(e);
       console.error("assistant failed", e);
       if (e instanceof Anthropic.RateLimitError) {
         return error(503, "nomi ist gerade ausgelastet. Probier es in einer Minute noch mal.");
@@ -66,11 +68,25 @@ async function reply(supabase: Client, admin: Client, userId: string, text: stri
     .from("household_members").select("household_id").eq("user_id", userId).maybeSingle();
   if (!membership) return error(403, "Du bist noch in keinem Haushalt.");
   const householdId: string = membership.household_id;
+  // Kostenbremse vor dem Speichern der Nachricht: Ist das Budget weg, bleibt der Verlauf unverändert
+  await ensureBudget(admin, householdId);
+  const meter = new UsageMeter();
 
   const { data: userMessage, error: insertError } = await supabase
     .from("assistant_messages").insert({ household_id: householdId, content: text }).select().single();
   if (insertError) throw insertError;
 
+  try {
+    return await answer({ supabase, admin, userId, householdId, userMessage, meter });
+  } finally {
+    await saveUsage(admin, { householdId, userId, fn: "assistant", meter });
+  }
+}
+
+async function answer(
+  { supabase, admin, userId, householdId, userMessage, meter }:
+    { supabase: Client; admin: Client; userId: string; householdId: string; userMessage: unknown; meter: UsageMeter },
+): Promise<Response> {
   const now = new Date();
   const today = dayKey(now);
   const [members, recipes, cooked, plan, shopping, staples, history] = await Promise.all([
@@ -112,6 +128,7 @@ async function reply(supabase: Client, admin: Client, userId: string, text: stri
       messages: (history.data as MessageRow[]).reverse(),
     }),
     schema: ASSISTANT_SCHEMA,
+    meter,
   });
 
   const actions = validActions(result, new Set(recipeRows.map((r) => r.id)), today);
@@ -121,7 +138,7 @@ async function reply(supabase: Client, admin: Client, userId: string, text: stri
     actions.plan = (await Promise.all(actions.plan.map(async (entry) => {
       if (entry.recipe_id || !entry.idea) return entry;
       try {
-        const saved = await expandIdea(supabase, householdId, entry.idea, entry.servings);
+        const saved = await expandIdea(supabase, householdId, entry.idea, entry.servings, meter);
         return { ...entry, recipe_id: saved.id as string, idea: null };
       } catch (e) {
         console.error("expand failed", entry.idea.title, e);

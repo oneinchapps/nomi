@@ -1,5 +1,6 @@
 import type { ScrapedPage } from "./scrape.ts";
 import { CATEGORY_RULES, type ExtractedRecipe, RECIPE_SCHEMA, structured } from "../_shared/recipe.ts";
+import type { UsageMeter } from "../_shared/budget.ts";
 
 export { ClaudeError as ExtractionError } from "../_shared/recipe.ts";
 
@@ -40,6 +41,7 @@ export type PhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
 export async function extractRecipeFromPhotos(
   photos: { data: string; mediaType: PhotoMediaType }[],
   note: string | null,
+  meter?: UsageMeter,
 ): Promise<ExtractedRecipe> {
   return await structured<ExtractedRecipe>({
     system: PHOTO_PROMPT,
@@ -58,10 +60,11 @@ export async function extractRecipeFromPhotos(
     schema: RECIPE_SCHEMA,
     // Handschrift lesen lohnt etwas mehr Nachdenken
     effort: "medium",
+    meter,
   });
 }
 
-export async function extractRecipe(page: ScrapedPage, sharedText: string | null): Promise<ExtractedRecipe> {
+export async function extractRecipe(page: ScrapedPage, sharedText: string | null, meter?: UsageMeter): Promise<ExtractedRecipe> {
   const parts = [
     `Plattform: ${page.platform}`,
     `URL: ${page.url}`,
@@ -76,5 +79,6 @@ export async function extractRecipe(page: ScrapedPage, sharedText: string | null
     system: SYSTEM_PROMPT,
     user: `<quelle>\n${parts.join("\n\n")}\n</quelle>`,
     schema: RECIPE_SCHEMA,
+    meter,
   });
 }

@@ -25,6 +25,9 @@ struct HouseholdSheet: View {
     /// Mitglied, das per Einladung ohne E-Mail beigetreten ist – kommt nur per neuem Code wieder rein
     @State private var partnerWithoutEmail = false
     @State private var showsRelogin = false
+    @State private var confirmsDeletion = false
+    @State private var isDeleting = false
+    @State private var deletionError: String?
 
     var body: some View {
         NavigationStack {
@@ -74,6 +77,22 @@ struct HouseholdSheet: View {
                                 .foregroundStyle(Color.inkMuted)
                         }
                     }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button(isDeleting ? "Konto wird gelöscht …" : "Konto löschen") { confirmsDeletion = true }
+                            .font(.captionSans)
+                            .foregroundStyle(Color.inkMuted)
+                            .disabled(isDeleting)
+                        InlineError(message: deletionError)
+                    }
+                    .confirmationDialog("Konto wirklich löschen?", isPresented: $confirmsDeletion, titleVisibility: .visible) {
+                        Button("Konto endgültig löschen", role: .destructive) { deleteAccount() }
+                        Button("Abbrechen", role: .cancel) {}
+                    } message: {
+                        Text(app.partner == nil
+                             ? "Du bist allein im Haushalt. Gelöscht werden dein Konto und alles im Haushalt: Rezepte, Pläne, Einkaufsliste, Verlauf und Fotos."
+                             : "Gelöscht werden dein Konto, dein Profilfoto und deine Nachrichten. Rezepte, Pläne und Listen bleiben für \(app.partner?.displayName ?? "die anderen") erhalten.")
+                    }
                 }
                 .foregroundStyle(Color.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,6 +114,22 @@ struct HouseholdSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+extension HouseholdSheet {
+    func deleteAccount() {
+        isDeleting = true
+        deletionError = nil
+        Task {
+            do {
+                try await app.deleteAccount()
+                dismiss()
+            } catch {
+                deletionError = displayMessage(for: error)
+            }
+            isDeleting = false
+        }
     }
 }
 

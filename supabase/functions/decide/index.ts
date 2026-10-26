@@ -13,6 +13,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { withSupabase } from "@supabase/server";
 import { ClaudeError, structured } from "../_shared/recipe.ts";
 import { expandIdea } from "../_shared/expand.ts";
+import { BudgetExceeded, budgetResponse, ensureBudget, saveUsage, UsageMeter } from "../_shared/budget.ts";
 import {
   type CandidateRow,
   type Idea,
@@ -37,11 +38,14 @@ export default {
       return error(400, "Ungültige Anfrage.");
     }
 
+    // Kostenbremse: Budget prüfen die Aktionen selbst (sie kennen den Haushalt), gespeichert wird hier
+    const usage: Usage = { admin: ctx.supabaseAdmin, meter: new UsageMeter(), householdId: null };
     try {
-      if (body.action === "suggest" && body.session_id) return await suggest(ctx.supabase, ctx.supabaseAdmin, body.session_id);
-      if (body.action === "expand" && body.candidate_id) return await expand(ctx.supabase, body.candidate_id);
+      if (body.action === "suggest" && body.session_id) return await suggest(ctx.supabase, ctx.supabaseAdmin, body.session_id, usage);
+      if (body.action === "expand" && body.candidate_id) return await expand(ctx.supabase, body.candidate_id, usage);
       return error(400, "Unbekannte Aktion.");
     } catch (e) {
+      if (e instanceof BudgetExceeded) return budgetResponse(e);
       console.error(body.action, "failed", e);
       if (e instanceof Anthropic.RateLimitError) {
         return error(503, "nomi ist gerade ausgelastet. Probier es in einer Minute noch mal.");
@@ -50,6 +54,13 @@ export default {
         return error(502, "nomi hat gerade keine Idee. Probier es gleich noch mal.");
       }
       throw e;
+    } finally {
+      await saveUsage(ctx.supabaseAdmin, {
+        householdId: usage.householdId,
+        userId: ctx.userClaims?.id ?? null,
+        fn: `decide.${body.action}`,
+        meter: usage.meter,
+      });
     }
   }),
 };
@@ -57,15 +68,23 @@ export default {
 // deno-lint-ignore no-explicit-any
 type Client = any;
 
+interface Usage {
+  admin: Client;
+  meter: UsageMeter;
+  householdId: string | null;
+}
+
 /// `admin` nur für die Antwort von nomi (user_id null) – Nutzer:innen dürfen nur als sie selbst schreiben.
 /// Die Zugehörigkeit zur Runde ist vorher über den RLS-Client geprüft.
-async function suggest(supabase: Client, admin: Client, sessionId: string): Promise<Response> {
+async function suggest(supabase: Client, admin: Client, sessionId: string, usage: Usage): Promise<Response> {
   // RLS sorgt dafür, dass nur Sessions des eigenen Haushalts sichtbar sind
   const { data: session } = await supabase
     .from("decide_sessions").select("id, household_id, status, courses").eq("id", sessionId).maybeSingle();
   if (!session) return error(404, "Diese Runde gibt es nicht.");
   if (session.status !== "open") return error(409, "Diese Runde ist schon entschieden.");
   const householdId: string = session.household_id;
+  usage.householdId = householdId;
+  await ensureBudget(usage.admin, householdId);
 
   const [members, recipes, messages, candidates, votes] = await Promise.all([
     supabase.from("household_members").select("user_id, display_name").eq("household_id", householdId),
@@ -107,6 +126,7 @@ async function suggest(supabase: Client, admin: Client, sessionId: string): Prom
       decided,
     }),
     schema: SUGGEST_SCHEMA,
+    meter: usage.meter,
   });
 
   // Menü: Gangfolge einmal festlegen, danach bleibt sie für die Runde
@@ -151,7 +171,7 @@ async function suggest(supabase: Client, admin: Client, sessionId: string): Prom
   return Response.json({ reply: result.reply, candidates: inserted });
 }
 
-async function expand(supabase: Client, candidateId: string): Promise<Response> {
+async function expand(supabase: Client, candidateId: string, usage: Usage): Promise<Response> {
   const { data: candidate } = await supabase
     .from("session_candidates").select("id, session_id, household_id, recipe_id, ai_recipe").eq("id", candidateId).maybeSingle();
   if (!candidate) return error(404, "Diesen Vorschlag gibt es nicht.");
@@ -162,7 +182,9 @@ async function expand(supabase: Client, candidateId: string): Promise<Response> 
     return Response.json({ recipe });
   }
 
-  const saved = await expandIdea(supabase, candidate.household_id, candidate.ai_recipe as Idea, 2);
+  usage.householdId = candidate.household_id;
+  await ensureBudget(usage.admin, candidate.household_id);
+  const saved = await expandIdea(supabase, candidate.household_id, candidate.ai_recipe as Idea, 2, usage.meter);
 
   const { error: linkError } = await supabase
     .from("session_candidates").update({ recipe_id: saved.id, ai_recipe: null }).eq("id", candidateId);

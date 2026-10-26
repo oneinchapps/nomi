@@ -178,6 +178,20 @@ final class AppModel {
         _ = try? await supabase.storage.from(Self.avatarBucket).remove(paths: [String(url.path[range.upperBound...])])
     }
 
+    /// Konto endgültig löschen (Edge Function `account`), danach lokal abmelden.
+    func deleteAccount() async throws {
+        struct Body: Encodable { let action = "delete" }
+        struct Response: Decodable { let deleted: Bool }
+        let _: Response = try await callFunction(
+            "account",
+            body: Body(),
+            timeout: 60,
+            fallbackMessage: "Das Konto ließ sich gerade nicht löschen. Probier es gleich noch mal."
+        )
+        try? await supabase.auth.signOut(scope: .local)
+        reset()
+    }
+
     func signOut() async {
         try? await supabase.auth.signOut()
         reset()

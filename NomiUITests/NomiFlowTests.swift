@@ -60,10 +60,13 @@ final class NomiFlowTests: NomiUITestCase {
         let decideAlone = app.buttons["Das nehmen wir"]
         XCTAssertTrue(decideAlone.waitForExistence(timeout: 90), "Keine Vorschläge")
         snapshot(app, "103-today-deck")
+        // Das Blatt scrollt nach dem Eintreffen der Karten noch animiert nach unten –
+        // ein Tipp in dieser Zeit landet neben dem Knopf
+        sleep(2)
         decideAlone.tap()
 
         // Ohne dass Sam abstimmt: entschieden
-        XCTAssertTrue(app.staticTexts["DU HAST ENTSCHIEDEN"].waitForExistence(timeout: 25), "Allein festlegen kommt nicht an")
+        XCTAssertTrue(app.staticTexts["DU HAST ENTSCHIEDEN"].waitForExistence(timeout: 15), "Allein festlegen kommt nicht an")
         snapshot(app, "104-today-decided")
     }
 

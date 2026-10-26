@@ -2,8 +2,54 @@ import AVFoundation
 import Observation
 import Speech
 
+/// Wann eine Spracheingabe zu Ende ist. Zählt nur echte Änderungen am erkannten Text:
+/// Die Erkennung liefert in Sprechpausen oft dasselbe Zwischenergebnis erneut (z. B. mit
+/// nachgetragenem Satzzeichen) – das darf die Pause nicht verlängern.
+struct SilenceDetector {
+    enum Decision: Equatable {
+        case keepListening
+        /// Text abschicken
+        case finish
+        /// Nichts gesagt – ohne Senden beenden
+        case cancel
+    }
+
+    /// So lange ohne neue Wörter beendet die Aufnahme
+    var pause: TimeInterval = 1.5
+    var maxDuration: TimeInterval = 30
+    /// Wer nach dem Antippen gar nichts sagt, wird nach dieser Zeit beendet
+    var noSpeechTimeout: TimeInterval = 8
+
+    let startedAt: Date
+    private(set) var text = ""
+    private(set) var lastChange: Date?
+
+    init(startedAt: Date) {
+        self.startedAt = startedAt
+    }
+
+    /// Neues Zwischenergebnis; zählt nur, wenn sich die Wörter geändert haben
+    mutating func update(_ newText: String, at date: Date) {
+        if Self.words(newText) != Self.words(text) { lastChange = date }
+        text = newText
+    }
+
+    func decision(at now: Date) -> Decision {
+        if now.timeIntervalSince(startedAt) >= maxDuration { return text.isEmpty ? .cancel : .finish }
+        guard let lastChange, !Self.words(text).isEmpty else {
+            return now.timeIntervalSince(startedAt) >= noSpeechTimeout ? .cancel : .keepListening
+        }
+        return now.timeIntervalSince(lastChange) >= pause ? .finish : .keepListening
+    }
+
+    /// Wörter ohne Satzzeichen und Groß-/Kleinschreibung
+    private static func words(_ text: String) -> [String] {
+        text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
+    }
+}
+
 /// Spracheingabe auf Deutsch – wenn das iPhone es kann, ganz auf dem Gerät.
-/// Antippen startet, eine kurze Pause (oder erneutes Antippen) beendet und liefert den Text.
+/// Antippen startet, eine kurze Sprechpause (oder erneutes Antippen) beendet und liefert den Text.
 @Observable
 final class VoiceInput {
     enum State: Equatable {
@@ -19,11 +65,8 @@ final class VoiceInput {
     var onFinished: ((String) -> Void)?
 
     private var session: RecognitionSession?
-    private var silence: Task<Void, Never>?
-
-    /// So lange Stille nach dem letzten Wort beendet die Aufnahme
-    static let pause: Duration = .milliseconds(1600)
-    static let maxDuration: Duration = .seconds(30)
+    private var watcher: Task<Void, Never>?
+    private var detector = SilenceDetector(startedAt: .now)
 
     var isListening: Bool { state == .listening }
 
@@ -55,18 +98,35 @@ final class VoiceInput {
         }
         self.session = session
         state = .listening
-        restartSilenceTimer(after: Self.maxDuration)
+        detector = SilenceDetector(startedAt: .now)
+        watchForPause()
         for await text in session.transcripts {
             transcript = text
-            restartSilenceTimer(after: Self.pause)
+            detector.update(text, at: .now)
         }
         finish()
+    }
+
+    /// Prüft fünfmal pro Sekunde, ob eine Sprechpause erreicht ist
+    private func watchForPause() {
+        watcher?.cancel()
+        watcher = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard let self, self.isListening else { return }
+                switch self.detector.decision(at: .now) {
+                case .keepListening: continue
+                case .finish: self.finish(); return
+                case .cancel: self.cancel(); return
+                }
+            }
+        }
     }
 
     /// Beenden und den bisherigen Text abschicken
     func finish() {
         guard isListening else { return }
-        silence?.cancel()
+        watcher?.cancel()
         session?.stop()
         session = nil
         state = .idle
@@ -78,15 +138,6 @@ final class VoiceInput {
     func cancel() {
         transcript = ""
         finish()
-    }
-
-    private func restartSilenceTimer(after duration: Duration) {
-        silence?.cancel()
-        silence = Task { [weak self] in
-            try? await Task.sleep(for: duration)
-            guard !Task.isCancelled else { return }
-            self?.finish()
-        }
     }
 
     private static func authorize() async -> Bool {

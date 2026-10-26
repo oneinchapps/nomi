@@ -7,6 +7,8 @@
 //   so kommt man auf einem neuen Handy wieder in sein Konto.
 //
 // Codes legt die App über die RPC create_invite() an. Ein Code gilt einmal und 7 Tage.
+// Ausnahme: wiederverwendbare Codes (reusable) für den Demo-Zugang der App-Prüfung – sie führen
+// immer in dasselbe Konto und werden nicht verbraucht (siehe scripts/setup-demo.sh).
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
@@ -28,15 +30,23 @@ export default {
     if (!code) return error(400, "Der Code hat 8 Zeichen.");
 
     const admin = ctx.supabaseAdmin;
-    // Sofort verbrauchen, damit derselbe Code nicht zweimal eingelöst wird
-    const { data: invite, error: consumeError } = await admin
+    // Einmal-Codes sofort verbrauchen, damit derselbe Code nicht zweimal eingelöst wird
+    const now = new Date().toISOString();
+    const { data: consumed, error: consumeError } = await admin
       .from("household_invites")
       .delete()
       .eq("code", code)
-      .gt("expires_at", new Date().toISOString())
+      .eq("reusable", false)
+      .gt("expires_at", now)
       .select()
       .maybeSingle();
     if (consumeError) throw consumeError;
+    let invite = consumed;
+    if (!invite) {
+      const { data: reusable } = await admin
+        .from("household_invites").select().eq("code", code).eq("reusable", true).gt("expires_at", now).maybeSingle();
+      invite = reusable;
+    }
     if (!invite) return error(404, "Diesen Code gibt es nicht oder er ist abgelaufen. Lass dir einen neuen schicken.");
 
     try {
@@ -48,8 +58,8 @@ export default {
       if (linkError) throw linkError;
       return Response.json({ token_hash: link.properties.hashed_token });
     } catch (e) {
-      // Code zurücklegen, damit ein zweiter Versuch klappt
-      await admin.from("household_invites").insert(invite);
+      // Einmal-Code zurücklegen, damit ein zweiter Versuch klappt
+      if (consumed) await admin.from("household_invites").insert(consumed);
       if (e instanceof InviteError) return error(e.status, e.message);
       console.error("redeem failed", e);
       return error(500, "Das hat nicht geklappt. Probier es gleich noch mal.");

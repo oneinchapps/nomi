@@ -14,6 +14,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { ExtractedRecipe } from "../_shared/recipe.ts";
 import { assertPublicURL, scrape, type ScrapedPage } from "./scrape.ts";
 import { ExtractionError, extractRecipe, extractRecipeFromPhotos, type PhotoMediaType } from "./extract.ts";
+import { BudgetExceeded, budgetResponse, ensureBudget, saveUsage, UsageMeter } from "../_shared/budget.ts";
 
 const BUCKET = "recipe-images";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -61,6 +62,13 @@ export default {
     if (!membership) return error(403, "Kein Haushalt.");
     const householdId: string = membership.household_id;
 
+    try {
+      await ensureBudget(ctx.supabaseAdmin, householdId);
+    } catch (e) {
+      if (e instanceof BudgetExceeded) return budgetResponse(e);
+      throw e;
+    }
+
     // 1. Quelle vorbereiten: Fotos direkt, Links erst laden
     let page: ScrapedPage | null = null;
     if (rawURL) {
@@ -78,8 +86,9 @@ export default {
 
     // 2. Rezept auslesen
     let extracted: ExtractedRecipe;
+    const meter = new UsageMeter();
     try {
-      extracted = page ? await extractRecipe(page, sharedText) : await extractRecipeFromPhotos(photos, sharedText);
+      extracted = page ? await extractRecipe(page, sharedText, meter) : await extractRecipeFromPhotos(photos, sharedText, meter);
     } catch (e) {
       console.error("extract failed", e);
       if (e instanceof Anthropic.RateLimitError) {
@@ -89,6 +98,8 @@ export default {
         return error(502, "Das Rezept ließ sich nicht auslesen.");
       }
       throw e;
+    } finally {
+      await saveUsage(ctx.supabaseAdmin, { householdId, userId, fn: "import-recipe", meter });
     }
 
     // 3. Bild in den eigenen Speicher kopieren – Instagram/TikTok-Bildlinks laufen nach Tagen ab.
