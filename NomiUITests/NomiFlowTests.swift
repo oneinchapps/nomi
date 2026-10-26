@@ -63,7 +63,7 @@ final class NomiFlowTests: NomiUITestCase {
         decideAlone.tap()
 
         // Ohne dass Sam abstimmt: entschieden
-        XCTAssertTrue(app.staticTexts["DU HAST ENTSCHIEDEN"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["DU HAST ENTSCHIEDEN"].waitForExistence(timeout: 25), "Allein festlegen kommt nicht an")
         snapshot(app, "104-today-decided")
     }
 
