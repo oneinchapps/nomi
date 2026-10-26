@@ -308,12 +308,13 @@ func wordmark(_ size: CGFloat, centerX: CGFloat, baseline: CGFloat) {
 }
 
 /// Rundes App-Icon in Himbeere; `visible` ist der Ausschnitt im Raster (unten, oben), der das Icon füllt.
-func appIcon(_ rect: CGRect, visible: (CGFloat, CGFloat), background: UInt32 = brand, _ draw: (Pen) -> Void) {
+func appIcon(_ rect: CGRect, visible: (CGFloat, CGFloat), centerX: CGFloat = 100, rounded: Bool = true, background: UInt32 = brand, _ draw: (Pen) -> Void) {
     ctx.saveGState()
-    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: rect.width * 0.225, cornerHeight: rect.width * 0.225, transform: nil)); ctx.clip()
+    let radius = rounded ? rect.width * 0.225 : 0
+    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)); ctx.clip()
     ctx.setFillColor(c(background)); ctx.fill(rect)
     let s = rect.height / (visible.1 - visible.0)
-    drawFigure(x: rect.midX - 100 * s, y: rect.minY - visible.0 * s, scale: s, draw)
+    drawFigure(x: rect.midX - centerX * s, y: rect.minY - visible.0 * s, scale: s, draw)
     ctx.restoreGState()
 }
 
@@ -424,3 +425,31 @@ paragraph("Danach blendet der Splash in den Heute-Tab über. Beim Laden ohne Net
           font: "DMSans-Regular", size: 19, color: inkMuted, in: CGRect(x: 980, y: 300, width: 560, height: 120))
 
 save(ctx, "chefi-varianten.png")
+
+// MARK: - Bogen 3: engere Icon-Ausschnitte
+
+ctx = sheet(width: 1500, height: 560)
+pen = Pen(ctx: ctx)
+text("App-Icon: näher dran", font: "BricolageGrotesque96pt-ExtraBold", size: 44, color: ink, at: CGPoint(x: 60, y: 490))
+let crops: [(String, (CGFloat, CGFloat), CGFloat)] = [
+    ("A · Mütze ganz", (58, 200), 104),
+    ("B · Mütze angeschnitten", (62, 182), 106),
+    ("C · nur Gesicht und Band", (66, 166), 108),
+]
+for (i, (name, visible, centerX)) in crops.enumerated() {
+    let x = 60 + CGFloat(i) * 480
+    appIcon(CGRect(x: x, y: 150, width: 240, height: 240), visible: visible, centerX: centerX) { chefi($0, ChefiPose()) }
+    appIcon(CGRect(x: x + 270, y: 270, width: 120, height: 120), visible: visible, centerX: centerX) { chefi($0, ChefiPose()) }
+    appIcon(CGRect(x: x + 270, y: 190, width: 60, height: 60), visible: visible, centerX: centerX) { chefi($0, ChefiPose()) }
+    appIcon(CGRect(x: x + 350, y: 190, width: 40, height: 40), visible: visible, centerX: centerX) { chefi($0, ChefiPose()) }
+    text(name, font: "DMSans-Medium", size: 21, color: ink, at: CGPoint(x: x, y: 110))
+}
+save(ctx, "icon-ausschnitte.png")
+
+
+// MARK: - App-Icon (Ausschnitt B), eckig – iOS rundet selbst ab
+
+ctx = sheet(width: 1024, height: 1024)
+pen = Pen(ctx: ctx)
+appIcon(CGRect(x: 0, y: 0, width: 1024, height: 1024), visible: (62, 182), centerX: 106, rounded: false) { chefi($0, ChefiPose()) }
+save(ctx, "app-icon.png")

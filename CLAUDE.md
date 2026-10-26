@@ -57,7 +57,11 @@ supabase start
 xcodebuild test -project Nomi.xcodeproj -scheme Nomi \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build
 ```
-Debug-Builds lesen `NOMI_SUPABASE_URL`, `NOMI_SUPABASE_KEY`, `NOMI_RESET_SESSION` und `NOMI_DISABLE_NOTIFICATIONS` (keine Rückfrage nach Mitteilungen in UI-Tests) aus der Umgebung.
+Debug-Builds lesen diese Variablen aus der Umgebung:
+- `NOMI_SUPABASE_URL`, `NOMI_SUPABASE_KEY`, `NOMI_RESET_SESSION`
+- `NOMI_DISABLE_NOTIFICATIONS`: keine Rückfrage nach Mitteilungen in UI-Tests
+- `NOMI_SKIP_SPLASH`: ohne Splash-Animation; setzt `UITestSupport` für alle Flow-Tests
+- `NOMI_GALLERY`: zeigt statt der App alle Illustrationen und Chefi-Posen (`1`/`light`/`dark`)
 
 ## Live-Sync
 Stores laden komplett neu, sobald sich etwas ändert (`observeTable` in `Services/Realtime.swift`). Delete-Events kommen in Supabase Realtime nicht bei gefilterten Abos an, deshalb hört `observeTable` zusätzlich ungefiltert auf Deletes. Neue Tabellen mit Live-Sync in die Publication `supabase_realtime` aufnehmen.
@@ -77,4 +81,10 @@ Die App nutzt Default-Isolation `MainActor`. Closures, die UIKit/SwiftUI auf and
 
 ## Design
 Markenfarbe Himbeere (`Color.brand`, Schrift darauf `Color.onBrand`). Jeder Hauptscreen beginnt mit `BrandHeader` und nutzt `.brandNavigationBar()`: Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe (ein eigener Leisten-Hintergrund würde unter iOS 26 dunkler wirken). Toolbar-Elemente auf der Markenfarbe ohne Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`). Entwürfe und das Render-Skript fürs App-Icon liegen in `design/`.
+Maskottchen **Chefi** (kleiner Koch in Mint mit Kochmütze und Holzlöffel):
+- Entwürfe und Render-Skript liegen in `design/mascot/`. Das App-Icon ist dessen `app-icon.png` (Ausschnitt B), kopiert nach `AppIcon.appiconset`.
+- In der App zeichnet `ChefiView` dieselben Formen. Löffel-Neigung und -Höhe sind animierbar, dazu gibt es die Posen Zwinkern und Winken.
+- `SplashView` spielt beim Start etwa 1 Sekunde: hereinhüpfen, Löffel heben und zwinkern, winken mit Wortmarke. Ist die App dann noch nicht fertig, rührt Chefi weiter.
+- Der statische Startbildschirm ist die Farbe `LaunchBackground`. In Simulator-Videoaufnahmen wirkt er knalliger als der Splash; das liegt an der Aufnahme, die Farbe selbst stimmt.
+
 Creme-Grund, Überschriften in Bricolage Grotesque (immer über `Font.heading(...)` bzw. `.display`/`.cardTitle`, nie direkt per Schriftname), Fließtext DM Sans, Metazeilen in DM Mono als Versalien („25 MIN · FÜR ZWEI“), dunkle Pillen-Buttons. Mehrzeilige Headlines mit `DisplayHeadline` setzen, weil negatives `lineSpacing` in SwiftUI nicht greift.

@@ -22,6 +22,7 @@ class NomiUITestCase: XCTestCase {
             "NOMI_SUPABASE_KEY": localKey,
             "NOMI_RESET_SESSION": "1",
             "NOMI_DISABLE_NOTIFICATIONS": "1",
+            "NOMI_SKIP_SPLASH": "1",
         ]) { _, new in new }
         app.launch()
         XCTAssertTrue(app.buttons["Gemeinsam Essen finden"].waitForExistence(timeout: 10))
@@ -37,6 +38,7 @@ class NomiUITestCase: XCTestCase {
             "NOMI_SUPABASE_URL": apiURL,
             "NOMI_SUPABASE_KEY": localKey,
             "NOMI_DISABLE_NOTIFICATIONS": "1",
+            "NOMI_SKIP_SPLASH": "1",
         ]
         again.launch()
         return again

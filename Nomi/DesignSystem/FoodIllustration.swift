@@ -614,6 +614,15 @@ struct IllustrationGallery: View {
                         Text(motif.rawValue).font(.meta)
                     }
                 }
+                ForEach(Array([ChefiView(), ChefiView(spoonTilt: -0.08, spoonLift: 20, winks: true), ChefiView(waves: true)].enumerated()), id: \.offset) { index, chefi in
+                    VStack(spacing: 4) {
+                        chefi
+                            .padding(8)
+                            .aspectRatio(1, contentMode: .fit)
+                            .background(Color.brand, in: .rect(cornerRadius: 14))
+                        Text("chefi \(index + 1)").font(.meta)
+                    }
+                }
                 ForEach(Reaction.allCases, id: \.self) { reaction in
                     VStack(spacing: 4) {
                         ReactionIllustration(reaction: reaction)
