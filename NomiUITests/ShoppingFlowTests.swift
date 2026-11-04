@@ -75,6 +75,33 @@ final class ShoppingFlowTests: NomiUITestCase {
     }
 
     @MainActor
+    func testAutocompleteKeepsAmount() throws {
+        let app = try launchWithNewHousehold()
+        createRecipe(app, title: "Tomatensuppe", ingredients: "1 Dose San-Marzano-Tomaten\n1 Zwiebel")
+        app.tabBars.buttons["Einkauf"].tap()
+
+        // Menge tippen, Name aus den Vorschlägen – auch Zutaten aus euren Rezepten
+        let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("2 Dosen San")
+        let fromRecipe = app.buttons["Vorschlag: 2 Dosen San-Marzano-Tomaten"]
+        XCTAssertTrue(fromRecipe.waitForExistence(timeout: 3))
+        snapshot(app, "33-autocomplete")
+        fromRecipe.tap()
+        XCTAssertTrue(app.buttons["item-San-Marzano-Tomaten"].waitForExistence(timeout: 5))
+        XCTAssertEqual(field.value as? String, "Was fehlt? z. B. 2 l Milch", "Feld wurde nach dem Vorschlag nicht geleert")
+
+        // Grundwortschatz, Umlaute egal
+        field.typeText("1 l hafe")
+        let oat = app.buttons["Vorschlag: 1 l Hafermilch"]
+        XCTAssertTrue(oat.waitForExistence(timeout: 3))
+        oat.tap()
+        XCTAssertTrue(app.buttons["item-Hafermilch"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["item-Hafermilch"].label.contains("1 l"))
+    }
+
+    @MainActor
     func testWeekPlanAndShoppingForTheWeek() async throws {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Shakshuka", ingredients: "6 Eier\n1 Dose Tomaten\n1 Paprika")

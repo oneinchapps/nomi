@@ -260,6 +260,11 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - **Einkauf:**
   - Die Liste wird aus Rezepten gefüllt und zusammengeführt (`ShoppingMerge`, Einheiten vergleichbar gemacht), nach Abteilung sortiert und live gemeinsam abgehakt.
   - Wiederkehrende Einträge stehen in `staple_items`.
+  - **Autovervollständigung:** Beim Tippen ersetzen Vorschlags-Chips die Standardartikel. Ein Tipp setzt den Eintrag direkt auf die Liste, die eingetippte Menge bleibt („2 l Mi“ → „2 l Milch“).
+    - Die Logik steht getestet in `ShoppingSuggestions`.
+    - Quellen nach Gewicht: eigener Verlauf, Standardartikel, die Liste, Rezeptzutaten, Grundwortschatz.
+    - Rangfolge: Treffer am Namensanfang vor Treffer am Wortanfang vor Treffer im Wort (ab 3 Zeichen). Groß-/Kleinschreibung und Umlaute zählen nicht.
+    - Der Verlauf (`ShoppingHistory`) liegt pro Haushalt in den UserDefaults, nur auf dem Gerät. Erledigtes verschwindet beim „Leeren“ aus der Datenbank.
   - Die Anzahl offener Einträge steht im Kreis.
 - **Woche:**
   - Die Pfeile stehen neben der Kalenderwoche, die Headline hat die volle Breite.
@@ -328,7 +333,7 @@ swift design/appicon/render-icon-concepts.swift design/fonts/DynaPuff.ttf Nomi/R
 ## Tests
 
 **Arten:**
-- `NomiTests` (Swift Testing): Parser, Mengen, Skalieren, Zusammenführen, Einladungscodes, Kategorien, Kochhistorie, Function-Datumsformat.
+- `NomiTests` (Swift Testing): Parser, Mengen, Skalieren, Zusammenführen, Einkaufsvorschläge, Einladungscodes, Kategorien, Kochhistorie, Function-Datumsformat.
 - `NomiUITests`: alle Hauptabläufe, mit zweiter Person über die REST-API. Gemeinsame Helfer stehen in `UITestSupport.swift`.
 - Deno-Tests in jeder Function (`deno test`).
 

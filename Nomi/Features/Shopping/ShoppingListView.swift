@@ -100,9 +100,43 @@ struct ShoppingListView: View {
                 .accessibilityLabel("Auf die Liste")
             }
 
-            staplesRow
+            // Beim Tippen stehen hier Vorschläge statt der Standardartikel
+            let suggestions = addFocused ? shopping.suggestions(for: newItem, recipes: recipes.recipes) : []
+            if suggestions.isEmpty {
+                staplesRow
+            } else {
+                suggestionsRow(suggestions)
+            }
         }
         .padding(.top, 8)
+    }
+
+    private func suggestionsRow(_ suggestions: [ShoppingSuggestion]) -> some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                ForEach(suggestions) { suggestion in
+                    Button {
+                        add(suggestion.line)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 11, weight: .bold))
+                            Text(suggestion.line)
+                        }
+                        .font(.captionSans)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(Color.onBrand)
+                        .background(Color.brand, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Vorschlag: \(suggestion.line)")
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.never)
     }
 
     private var staplesRow: some View {
@@ -219,7 +253,11 @@ struct ShoppingListView: View {
     }
 
     private func addNewItem() {
-        let line = newItem.trimmingCharacters(in: .whitespaces)
+        add(newItem)
+    }
+
+    private func add(_ text: String) {
+        let line = text.trimmingCharacters(in: .whitespaces)
         guard !line.isEmpty else { return }
         newItem = ""
         addFocused = true

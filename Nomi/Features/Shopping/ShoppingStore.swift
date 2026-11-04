@@ -12,10 +12,13 @@ final class ShoppingStore {
     private(set) var staples: [StapleItem] = []
     private(set) var hasLoaded = false
     var error: String?
+    /// Selbst eingetippte Artikel mit Anzahl – für die Vorschläge beim Tippen
+    private var history: [String: Int]
 
     init(householdId: UUID, userId: UUID) {
         self.householdId = householdId
         self.userId = userId
+        history = ShoppingHistory.load(householdId: householdId)
     }
 
     var openItems: [ShoppingItem] { items.filter { !$0.checked } }
@@ -27,6 +30,18 @@ final class ShoppingStore {
         return Aisle.allCases.compactMap { aisle in
             groups[aisle].map { (aisle, $0.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }) }
         }
+    }
+
+    /// Vorschläge für das Eingabefeld: euer Verlauf, Standardartikel, die Liste, Rezeptzutaten, Grundwortschatz
+    func suggestions(for input: String, recipes: [Recipe]) -> [ShoppingSuggestion] {
+        guard !input.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        let candidates = ShoppingSuggestions.candidates(
+            history: history,
+            staples: staples.map(\.name),
+            listItems: items.map(\.name),
+            recipeIngredients: recipes.flatMap { $0.ingredients.map(\.name) }
+        )
+        return ShoppingSuggestions.suggestions(for: input, candidates: candidates)
     }
 
     func isOnList(_ staple: StapleItem) -> Bool {
@@ -79,6 +94,8 @@ final class ShoppingStore {
     /// Freitext wie „2 l Milch“ oder „Brot“.
     func addLine(_ line: String) async {
         guard let ingredient = IngredientParser.parse(line) else { return }
+        ShoppingHistory.record(ingredient.name, householdId: householdId)
+        history = ShoppingHistory.load(householdId: householdId)
         await add([ingredient], recipeId: nil)
     }
 
