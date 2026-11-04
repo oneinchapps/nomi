@@ -10,6 +10,8 @@ struct ShoppingItem: Codable, Identifiable, Hashable, Sendable {
     var checked: Bool
     var checkedBy: UUID?
     var recipeId: UUID?
+    /// Eigene Kategorie des Haushalts, geht vor `aisle`
+    var categoryId: UUID?
     var createdAt: Date?
 
     init(
@@ -22,6 +24,7 @@ struct ShoppingItem: Codable, Identifiable, Hashable, Sendable {
         checked: Bool = false,
         checkedBy: UUID? = nil,
         recipeId: UUID? = nil,
+        categoryId: UUID? = nil,
         createdAt: Date? = nil
     ) {
         self.id = id
@@ -33,6 +36,7 @@ struct ShoppingItem: Codable, Identifiable, Hashable, Sendable {
         self.checked = checked
         self.checkedBy = checkedBy
         self.recipeId = recipeId
+        self.categoryId = categoryId
         self.createdAt = createdAt
     }
 
@@ -45,6 +49,7 @@ struct ShoppingItem: Codable, Identifiable, Hashable, Sendable {
         case householdId = "household_id"
         case checkedBy = "checked_by"
         case recipeId = "recipe_id"
+        case categoryId = "category_id"
         case createdAt = "created_at"
     }
 
@@ -60,6 +65,8 @@ struct ShoppingItem: Codable, Identifiable, Hashable, Sendable {
         try c.encode(checked, forKey: .checked)
         try c.encode(checkedBy, forKey: .checkedBy)
         try c.encode(recipeId, forKey: .recipeId)
+        // Nur wenn gesetzt: Beim Zusammenführen bleibt die Kategorie so unangetastet
+        try c.encodeIfPresent(categoryId, forKey: .categoryId)
     }
 }
 
@@ -299,32 +306,43 @@ struct AislePreference: Codable, Hashable, Sendable {
     /// `ShoppingMerge.key` des Namens
     var nameKey: String
     var aisle: Aisle
+    /// Eigene Kategorie, wenn dorthin gezogen
+    var categoryId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case aisle
         case householdId = "household_id"
         case nameKey = "name_key"
+        case categoryId = "category_id"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(householdId, forKey: .householdId)
+        try c.encode(nameKey, forKey: .nameKey)
+        try c.encode(aisle, forKey: .aisle)
+        try c.encode(categoryId, forKey: .categoryId) // auch null schreiben
     }
 }
 
 extension ShoppingMerge {
     /// Eigene Abteilungen des Haushalts gehen vor Rezept, KI und Stichwort-Raten.
-    static func applyPreferences(_ preferences: [String: Aisle], to ingredients: [Ingredient]) -> [Ingredient] {
+    static func applyPreferences(_ preferences: [String: AislePreference], to ingredients: [Ingredient]) -> [Ingredient] {
         guard !preferences.isEmpty else { return ingredients }
         return ingredients.map { ingredient in
             var ingredient = ingredient
-            if let aisle = preferences[key(ingredient.name)] { ingredient.aisle = aisle }
+            if let preference = preferences[key(ingredient.name)] { ingredient.aisle = preference.aisle }
             return ingredient
+        }
+    }
+
+    /// Neue Einträge in die gemerkte eigene Kategorie legen
+    static func applyCategories(_ preferences: [String: AislePreference], to inserts: [ShoppingItem]) -> [ShoppingItem] {
+        inserts.map { item in
+            var item = item
+            if let id = preferences[key(item.name)]?.categoryId { item.categoryId = id }
+            return item
         }
     }
 }
 
-/// Umsortieren in der flachen Liste aus Abteilungs-Überschriften und Einträgen.
-enum AisleMove {
-    /// Abteilung für einen Eintrag, der von `source` nach `destination` gezogen wird (Indizes wie bei
-    /// `onMove`, also vor dem Entfernen). Es gilt die nächste Überschrift darüber; ganz oben die erste.
-    static func aisle(movingFrom source: Int, to destination: Int, headers: [Int: Aisle]) -> Aisle? {
-        let above = headers.filter { $0.key < destination && $0.key != source }.max { $0.key < $1.key }
-        return above?.value ?? headers.min { $0.key < $1.key }?.value
-    }
-}

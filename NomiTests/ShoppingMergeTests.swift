@@ -146,7 +146,7 @@ struct MenuStateTests {
 
 struct AislePreferenceTests {
     @Test func householdAislesWinOverGuessing() {
-        let preferences = ["hafermilch": Aisle.kuehlregal]
+        let preferences = ["hafermilch": AislePreference(householdId: UUID(), nameKey: "hafermilch", aisle: .kuehlregal)]
         let ingredients = ShoppingMerge.applyPreferences(preferences, to: [Ingredient(name: "Hafermilch ", quantity: 1, unit: "l"), Ingredient(name: "Brot")])
         #expect(ingredients[0].aisle == .kuehlregal)
         #expect(ingredients[1].aisle == nil)
@@ -161,14 +161,14 @@ struct AisleMoveTests {
 
     @Test func takesHeaderAboveDropPoint() {
         // Kombucha unter die Milch
-        #expect(AisleMove.aisle(movingFrom: 5, to: 4, headers: headers) == .kuehlregal)
+        #expect(CategoryMove.target(movingFrom: 5, to: 4, headers: headers) == .kuehlregal)
         // Bananen ganz ans Ende
-        #expect(AisleMove.aisle(movingFrom: 1, to: 6, headers: headers) == .sonstiges)
+        #expect(CategoryMove.target(movingFrom: 1, to: 6, headers: headers) == .sonstiges)
         // Milch direkt unter die Überschrift „Obst“
-        #expect(AisleMove.aisle(movingFrom: 3, to: 1, headers: headers) == .obstGemuese)
+        #expect(CategoryMove.target(movingFrom: 3, to: 1, headers: headers) == .obstGemuese)
     }
 
     @Test func topOfListMeansFirstAisle() {
-        #expect(AisleMove.aisle(movingFrom: 5, to: 0, headers: headers) == .obstGemuese)
+        #expect(CategoryMove.target(movingFrom: 5, to: 0, headers: headers) == .obstGemuese)
     }
 }

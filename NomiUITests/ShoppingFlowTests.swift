@@ -144,6 +144,72 @@ final class ShoppingFlowTests: NomiUITestCase {
     }
 
     @MainActor
+    func testStoresWithOwnOrderAndCategories() throws {
+        let app = try launchWithNewHousehold()
+        app.tabBars.buttons["Einkauf"].tap()
+        let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("Bananen\n")
+        field.typeText("Milch\n")
+        field.typeText("Orangensaft\n")
+        XCTAssertTrue(app.buttons["item-Orangensaft"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sortiert für")).firstMatch.exists)
+
+        // Zahnrad → Supermarkt anlegen
+        app.buttons["Einstellungen fürs Einkaufen"].tap()
+        app.buttons["Supermarkt hinzufügen"].tap()
+        app.alerts.textFields.firstMatch.typeText("Rewe")
+        app.alerts.buttons["Sichern"].tap()
+        let rewe = app.collectionViews.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Rewe")).firstMatch
+        XCTAssertTrue(rewe.waitForExistence(timeout: 5))
+        snapshot(app, "36-shopping-settings")
+
+        // Reihenfolge: Getränke am Griff ganz nach oben ziehen
+        rewe.tap()
+        let drinks = app.cells.containing(.staticText, identifier: "Getränke").firstMatch
+        let first = app.cells.containing(.staticText, identifier: "Obst & Gemüse").firstMatch
+        XCTAssertTrue(drinks.waitForExistence(timeout: 5))
+        drinks.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
+            .press(forDuration: 0.5, thenDragTo: first.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.2)), withVelocity: .slow, thenHoldForDuration: 0.5)
+        XCTAssertLessThan(drinks.frame.minY, first.frame.minY, "Getränke steht nicht oben")
+        snapshot(app, "37-store-order")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // Kategorien: eigene anlegen, feste umbenennen
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Kategorien bearbeiten")).firstMatch.tap()
+        app.buttons["Kategorie hinzufügen"].tap()
+        app.alerts.textFields.firstMatch.typeText("Bio-Ecke")
+        app.alerts.buttons["Sichern"].tap()
+        XCTAssertTrue(app.staticTexts["Bio-Ecke"].waitForExistence(timeout: 5))
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Kühlregal")).firstMatch.tap()
+        let nameField = app.alerts.textFields.firstMatch
+        // Alten Namen löschen (Cursor steht am Ende)
+        nameField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Kühlregal".count) + "Kühltheke")
+        app.alerts.buttons["Sichern"].tap()
+        XCTAssertTrue(app.staticTexts["Kühltheke"].waitForExistence(timeout: 5))
+        snapshot(app, "38-categories")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons["Fertig"].firstMatch.tap()
+
+        // Liste in Rewe-Reihenfolge, mit neuem Namen
+        let picker = app.buttons["Sortiert für Rewe"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        let drinksHeader = app.staticTexts["GETRÄNKE"]
+        XCTAssertTrue(drinksHeader.waitForExistence(timeout: 5))
+        XCTAssertLessThan(drinksHeader.frame.minY, app.staticTexts["OBST & GEMÜSE"].frame.minY)
+        XCTAssertTrue(app.staticTexts["KÜHLTHEKE"].exists)
+
+        // In die eigene Kategorie legen
+        app.buttons["item-Milch"].swipeRight()
+        app.buttons["Abteilung"].tap()
+        app.buttons["Bio-Ecke"].tap()
+        XCTAssertTrue(app.staticTexts["BIO-ECKE"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["KÜHLTHEKE"].exists)
+        snapshot(app, "39-list-by-store")
+    }
+
+    @MainActor
     func testWeekPlanAndShoppingForTheWeek() async throws {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Shakshuka", ingredients: "6 Eier\n1 Dose Tomaten\n1 Paprika")

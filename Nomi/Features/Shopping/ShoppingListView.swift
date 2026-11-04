@@ -7,6 +7,7 @@ struct ShoppingListView: View {
 
     @State private var newItem = ""
     @State private var showsStaples = false
+    @State private var showsSettings = false
     /// Zählt Verschiebungen, nur für das haptische Feedback
     @State private var moves = 0
     /// Eintrag, für den gerade die Abteilung gewählt wird
@@ -41,8 +42,8 @@ struct ShoppingListView: View {
             // halten und in eine andere Abteilung ziehen (onMove geht nur innerhalb eines ForEach).
             ForEach(openRows) { entry in
                 switch entry {
-                case .header(let aisle):
-                    MetaLabel(aisle.title)
+                case .header(let category):
+                    MetaLabel(category.name)
                         .padding(.top, 14)
                         .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 2, trailing: 20))
                         .listRowSeparator(.hidden)
@@ -80,7 +81,7 @@ struct ShoppingListView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color.canvas.ignoresSafeArea())
-        .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)\($0.aisle)" })
+        .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)\($0.categoryKey.raw)" } + shopping.categoryOrder.map(\.name))
         .sensoryFeedback(.success, trigger: moves)
         .confirmationDialog(
             "In welche Abteilung?",
@@ -88,15 +89,32 @@ struct ShoppingListView: View {
             titleVisibility: .visible,
             presenting: aisleChoice
         ) { item in
-            ForEach(Aisle.allCases.filter { $0 != item.aisle }, id: \.self) { aisle in
-                Button(aisle.title) { move(item, to: aisle) }
+            ForEach(shopping.categoryOrder.filter { $0.key != item.categoryKey }) { category in
+                Button(category.name) { move(item, to: category.key) }
             }
         }
         .refreshable { await shopping.load() }
         .sheet(isPresented: $showsStaples) {
             StaplesSheet()
         }
-        .mainToolbar()
+        .sheet(isPresented: $showsSettings) {
+            ShoppingSettingsSheet()
+        }
+        .mainToolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showsSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.onBrand)
+                        .frame(width: 36, height: 36)
+                        .background(Color.onBrand.opacity(0.18), in: .circle)
+                }
+                .accessibilityLabel("Einstellungen fürs Einkaufen")
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
     }
 
     // MARK: - Kopf
@@ -129,8 +147,48 @@ struct ShoppingListView: View {
             } else {
                 suggestionsRow(suggestions)
             }
+
+            if let store = shopping.activeStore {
+                storePicker(store)
+            }
         }
         .padding(.top, 8)
+    }
+
+    /// „Sortiert für Rewe ▾“ – wechselt den Supermarkt und damit die Reihenfolge der Kategorien
+    private func storePicker(_ active: ShoppingStoreRecord) -> some View {
+        Menu {
+            ForEach(shopping.stores) { store in
+                Button {
+                    shopping.activeStoreId = store.id
+                } label: {
+                    if store.id == active.id {
+                        Label(store.name, systemImage: "checkmark")
+                    } else {
+                        Text(store.name)
+                    }
+                }
+            }
+            Divider()
+            Button("Supermärkte bearbeiten", systemImage: "gearshape") { showsSettings = true }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "storefront")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Sortiert für")
+                    .foregroundStyle(Color.inkMuted)
+                Text(active.name)
+                    .font(.captionSans.weight(.semibold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .font(.captionSans)
+            .foregroundStyle(Color.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .overlay { Capsule().strokeBorder(Color.hairline, lineWidth: 1.5) }
+        }
+        .accessibilityLabel("Sortiert für \(active.name)")
     }
 
     private func suggestionsRow(_ suggestions: [ShoppingSuggestion]) -> some View {
@@ -280,38 +338,38 @@ struct ShoppingListView: View {
     // MARK: - Abteilung wechseln
 
     private enum OpenRow: Identifiable {
-        case header(Aisle)
+        case header(ShoppingCategory)
         case item(ShoppingItem)
 
         var id: String {
             switch self {
-            case .header(let aisle): "aisle-\(aisle.rawValue)"
+            case .header(let category): "header-\(category.key.raw)"
             case .item(let item): item.id.uuidString
             }
         }
     }
 
     private var openRows: [OpenRow] {
-        shopping.openByAisle.flatMap { group in [OpenRow.header(group.aisle)] + group.items.map(OpenRow.item) }
+        shopping.openByCategory.flatMap { group in [OpenRow.header(group.category)] + group.items.map(OpenRow.item) }
     }
 
     private func moveRows(from sources: IndexSet, to destination: Int) {
         let rows = openRows
-        var headers: [Int: Aisle] = [:]
+        var headers: [Int: CategoryKey] = [:]
         for (index, row) in rows.enumerated() {
-            if case .header(let aisle) = row { headers[index] = aisle }
+            if case .header(let category) = row { headers[index] = category.key }
         }
         for source in sources {
             guard case .item(let item) = rows[source],
-                  let aisle = AisleMove.aisle(movingFrom: source, to: destination, headers: headers) else { continue }
-            move(item, to: aisle)
+                  let target = CategoryMove.target(movingFrom: source, to: destination, headers: headers) else { continue }
+            move(item, to: target)
         }
     }
 
-    private func move(_ item: ShoppingItem, to aisle: Aisle) {
-        guard item.aisle != aisle else { return }
+    private func move(_ item: ShoppingItem, to target: CategoryKey) {
+        guard item.categoryKey != target else { return }
         moves += 1
-        Task { await shopping.move(item, to: aisle) }
+        Task { await shopping.move(item, to: target) }
     }
 
     private func checkedByPartner(_ item: ShoppingItem) -> HouseholdMember? {
@@ -334,63 +392,71 @@ struct ShoppingListView: View {
 
 /// Standardartikel pflegen: Dinge, die regelmäßig gebraucht werden.
 struct StaplesSheet: View {
-    @Environment(ShoppingStore.self) private var shopping
     @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            StaplesList()
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Fertig") { dismiss() }
+                    }
+                }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+/// Liste der Standardartikel – im eigenen Blatt und in den Einstellungen.
+struct StaplesList: View {
+    @Environment(ShoppingStore.self) private var shopping
     @State private var newStaple = ""
     @FocusState private var focused: Bool
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    HStack(spacing: 10) {
-                        TextField("z. B. 1 l Hafermilch", text: $newStaple)
-                            .focused($focused)
-                            .submitLabel(.done)
-                            .onSubmit(add)
-                        Button("Hinzufügen", action: add)
-                            .font(.bodySansMedium)
-                            .disabled(newStaple.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                    .listRowBackground(Color.surface)
-                } footer: {
-                    Text("Standardartikel erscheinen als Kurzwahl über der Einkaufsliste – ein Tipp, und sie stehen drauf.")
-                        .font(.captionSans)
+        List {
+            Section {
+                HStack(spacing: 10) {
+                    TextField("z. B. 1 l Hafermilch", text: $newStaple)
+                        .focused($focused)
+                        .submitLabel(.done)
+                        .onSubmit(add)
+                    Button("Hinzufügen", action: add)
+                        .font(.bodySansMedium)
+                        .disabled(newStaple.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                .listRowBackground(Color.surface)
+            } footer: {
+                Text("Standardartikel erscheinen als Kurzwahl über der Einkaufsliste – ein Tipp, und sie stehen drauf.")
+                    .font(.captionSans)
+            }
 
-                if !shopping.staples.isEmpty {
-                    Section {
-                        ForEach(shopping.staples) { staple in
-                            HStack {
-                                Text(staple.name).font(.bodySans)
-                                Spacer()
-                                Text(QuantityFormatter.amount(staple.quantity, unit: staple.unit))
-                                    .font(.bodySansMedium)
-                                    .foregroundStyle(Color.inkMuted)
-                            }
-                            .listRowBackground(Color.surface)
+            if !shopping.staples.isEmpty {
+                Section {
+                    ForEach(shopping.staples) { staple in
+                        HStack {
+                            Text(staple.name).font(.bodySans)
+                            Spacer()
+                            Text(QuantityFormatter.amount(staple.quantity, unit: staple.unit))
+                                .font(.bodySansMedium)
+                                .foregroundStyle(Color.inkMuted)
                         }
-                        .onDelete { offsets in
-                            let toDelete = offsets.map { shopping.staples[$0] }
-                            Task { for staple in toDelete { await shopping.deleteStaple(staple) } }
-                        }
-                    } header: {
-                        MetaLabel("Eure Standardartikel")
+                        .listRowBackground(Color.surface)
                     }
+                    .onDelete { offsets in
+                        let toDelete = offsets.map { shopping.staples[$0] }
+                        Task { for staple in toDelete { await shopping.deleteStaple(staple) } }
+                    }
+                } header: {
+                    MetaLabel("Eure Standardartikel")
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.canvas.ignoresSafeArea())
-            .navigationTitle("Standardartikel")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Fertig") { dismiss() }
-                }
-            }
-            .onAppear { focused = shopping.staples.isEmpty }
         }
-        .presentationDetents([.medium, .large])
+        .scrollContentBackground(.hidden)
+        .background(Color.canvas.ignoresSafeArea())
+        .navigationTitle("Standardartikel")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { focused = shopping.staples.isEmpty }
     }
 
     private func add() {

@@ -258,11 +258,17 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 
 ### Einkauf und Woche
 - **Einkauf:**
+  - Toolbar: Zahnrad für die Einstellungen fürs Einkaufen, links vom Profil.
   - Die Liste wird aus Rezepten gefüllt und zusammengeführt (`ShoppingMerge`, Einheiten vergleichbar gemacht), nach Abteilung sortiert und live gemeinsam abgehakt.
   - Wiederkehrende Einträge stehen in `staple_items`.
-  - **Abteilung wechseln:** Einen offenen Eintrag halten und in eine andere Abteilung ziehen. Leere Abteilungen erreicht man per Wischen nach rechts („Abteilung“).
-    - Die offenen Einträge sind dafür eine flache Liste aus Überschriften und Einträgen mit `onMove`; `AisleMove` bestimmt die Abteilung aus der Überschrift über der Ablagestelle.
-    - Der Haushalt merkt sich die Wahl in `aisle_preferences` (Schlüssel `ShoppingMerge.key`). Sie geht beim Hinzufügen vor Rezept, KI und Raten (`ShoppingMerge.applyPreferences`).
+  - **Kategorie wechseln:** Einen offenen Eintrag halten und in eine andere Kategorie ziehen. Leere Kategorien erreicht man per Wischen nach rechts („Abteilung“).
+    - Die offenen Einträge sind dafür eine flache Liste aus Überschriften und Einträgen mit `onMove`; `CategoryMove` bestimmt die Kategorie aus der Überschrift über der Ablagestelle.
+    - Der Haushalt merkt sich die Wahl in `aisle_preferences` (Schlüssel `ShoppingMerge.key`, dazu `category_id` bei eigenen Kategorien). Sie geht beim Hinzufügen vor Rezept, KI und Raten (`ShoppingMerge.applyPreferences`, `applyCategories`).
+  - **Supermärkte und Kategorien** (Zahnrad im Einkauf, `ShoppingSettingsSheet`):
+    - Kategorien = die 11 festen Abteilungen (`Aisle`, Postgres-Enum) plus eigene des Haushalts. `shopping_categories` hält Umbenennungen fester Abteilungen (mit `aisle`) und eigene Kategorien (ohne). Schlüssel in der App: `CategoryKey` (`aisle:<wert>` oder UUID).
+    - Einträge behalten immer ihre feste Abteilung; `shopping_items.category_id` legt sie zusätzlich in eine eigene Kategorie. Wird die gelöscht (`on delete set null`), gilt wieder die Abteilung. KI und Raten ordnen nur in feste Abteilungen ein.
+    - `shopping_stores.category_order` ist die Laufreihenfolge pro Supermarkt; Fehlendes hängt `CategoryCatalog.ordered(for:)` hinten an. Ohne Supermarkt gilt die Standard-Reihenfolge, die Pille „Sortiert für …“ erscheint erst ab einem Supermarkt.
+    - Welcher Supermarkt aktiv ist, gilt pro Person und liegt in den UserDefaults (`activeStore.<haushalt>`); Supermärkte und Reihenfolgen teilt der Haushalt live.
   - **Autovervollständigung:** Beim Tippen ersetzen Vorschlags-Chips die Standardartikel. Ein Tipp setzt den Eintrag direkt auf die Liste, die eingetippte Menge bleibt („2 l Mi“ → „2 l Milch“).
     - Die Logik steht getestet in `ShoppingSuggestions`.
     - Quellen nach Gewicht: eigener Verlauf, Standardartikel, die Liste, Rezeptzutaten, Grundwortschatz.
@@ -400,7 +406,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
-- Live einspielen: Migration `aisle_preferences` (`supabase db push --linked`). Ohne sie scheitert das Verschieben in der Live-App.
+- Live einspielen: Migrationen `aisle_preferences` und `stores_and_categories` (`supabase db push --linked`). Ohne sie scheitern Verschieben, Supermärkte und Kategorien in der Live-App; die Liste selbst lädt weiter.
 - Live deployen: die Edge Functions `account` (neu), `assistant`, `decide`, `import-recipe` und `invite` (Kostenbremse, Mahlzeiten, Demo-Codes).
 - Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
