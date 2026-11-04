@@ -143,3 +143,32 @@ struct MenuStateTests {
         #expect(state.deck(for: alex).count == 1)
     }
 }
+
+struct AislePreferenceTests {
+    @Test func householdAislesWinOverGuessing() {
+        let preferences = ["hafermilch": Aisle.kuehlregal]
+        let ingredients = ShoppingMerge.applyPreferences(preferences, to: [Ingredient(name: "Hafermilch ", quantity: 1, unit: "l"), Ingredient(name: "Brot")])
+        #expect(ingredients[0].aisle == .kuehlregal)
+        #expect(ingredients[1].aisle == nil)
+        let result = ShoppingMerge.merge(ingredients, recipeId: nil, into: [], householdId: UUID())
+        #expect(result.inserts.first { $0.name.hasPrefix("Hafermilch") }?.aisle == .kuehlregal)
+    }
+}
+
+struct AisleMoveTests {
+    // Obst: 0 Bananen: 1 | Kühlregal: 2 Milch: 3 | Sonstiges: 4 Kombucha: 5
+    let headers: [Int: Aisle] = [0: .obstGemuese, 2: .kuehlregal, 4: .sonstiges]
+
+    @Test func takesHeaderAboveDropPoint() {
+        // Kombucha unter die Milch
+        #expect(AisleMove.aisle(movingFrom: 5, to: 4, headers: headers) == .kuehlregal)
+        // Bananen ganz ans Ende
+        #expect(AisleMove.aisle(movingFrom: 1, to: 6, headers: headers) == .sonstiges)
+        // Milch direkt unter die Überschrift „Obst“
+        #expect(AisleMove.aisle(movingFrom: 3, to: 1, headers: headers) == .obstGemuese)
+    }
+
+    @Test func topOfListMeansFirstAisle() {
+        #expect(AisleMove.aisle(movingFrom: 5, to: 0, headers: headers) == .obstGemuese)
+    }
+}

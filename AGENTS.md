@@ -260,6 +260,9 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - **Einkauf:**
   - Die Liste wird aus Rezepten gefüllt und zusammengeführt (`ShoppingMerge`, Einheiten vergleichbar gemacht), nach Abteilung sortiert und live gemeinsam abgehakt.
   - Wiederkehrende Einträge stehen in `staple_items`.
+  - **Abteilung wechseln:** Einen offenen Eintrag halten und in eine andere Abteilung ziehen. Leere Abteilungen erreicht man per Wischen nach rechts („Abteilung“).
+    - Die offenen Einträge sind dafür eine flache Liste aus Überschriften und Einträgen mit `onMove`; `AisleMove` bestimmt die Abteilung aus der Überschrift über der Ablagestelle.
+    - Der Haushalt merkt sich die Wahl in `aisle_preferences` (Schlüssel `ShoppingMerge.key`). Sie geht beim Hinzufügen vor Rezept, KI und Raten (`ShoppingMerge.applyPreferences`).
   - **Autovervollständigung:** Beim Tippen ersetzen Vorschlags-Chips die Standardartikel. Ein Tipp setzt den Eintrag direkt auf die Liste, die eingetippte Menge bleibt („2 l Mi“ → „2 l Milch“).
     - Die Logik steht getestet in `ShoppingSuggestions`.
     - Quellen nach Gewicht: eigener Verlauf, Standardartikel, die Liste, Rezeptzutaten, Grundwortschatz.
@@ -383,6 +386,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 - Mehrzeilige `TextField`s lösen bei „Senden“ kein `onSubmit` aus, sondern fügen einen Umbruch ein. Deshalb schicken die Chat-Felder ab, sobald ein Umbruch auftaucht.
 - Formulare (`FormScreen`) bleiben mit `defaultScrollAnchor(.bottom, for: .sizeChanges)` unten verankert, damit Felder nicht hinter Tastatur und Button verschwinden. `scrollTo` funktionierte dort nicht.
 - Nach dem Eintreffen neuer Inhalte scrollen Ansichten animiert (z. B. zum Kartenstapel). Ein Tipp in dieser Zeit verfehlt den Knopf, ohne Fehler. Im Test vor dem Tippen kurz warten.
+- Ziehen in Listen: `.draggable`/`.dropDestination` zwischen Sections einer `List` kam nicht an, `onMove` in einem einzigen `ForEach` schon. Ein `.contextMenu` an derselben Zeile schluckt das Halten, dann startet kein Zug. Im Test langsam ziehen: `press(forDuration:thenDragTo:withVelocity: .slow, thenHoldForDuration:)`.
 - Eingabefelder nicht bei jedem Tastendruck umschreiben (z. B. Formatieren); XCUITest und schnelles Tippen verlieren sonst Zeichen. Erst formatieren, wenn die Eingabe vollständig ist.
 
 **Swift 6:**
@@ -396,6 +400,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
+- Live einspielen: Migration `aisle_preferences` (`supabase db push --linked`). Ohne sie scheitert das Verschieben in der Live-App.
 - Live deployen: die Edge Functions `account` (neu), `assistant`, `decide`, `import-recipe` und `invite` (Kostenbremse, Mahlzeiten, Demo-Codes).
 - Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.

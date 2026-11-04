@@ -102,6 +102,48 @@ final class ShoppingFlowTests: NomiUITestCase {
     }
 
     @MainActor
+    func testDragItemToAnotherAisleIsRemembered() throws {
+        let app = try launchWithNewHousehold()
+        app.tabBars.buttons["Einkauf"].tap()
+        let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("Kombucha\n")
+        field.typeText("Milch\n")
+        field.typeText("Bananen\n")
+        app.staticTexts["Einkauf"].firstMatch.tap() // Tastatur weg
+        let kombucha = app.buttons["item-Kombucha"]
+        XCTAssertTrue(kombucha.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["SONSTIGES"].exists)
+
+        // Halten und auf die Milch ziehen → Kühlregal
+        // Langsam ziehen: Wer zu schnell ist, bekommt im Simulator nur das Halte-Menü
+        kombucha.press(forDuration: 0.8, thenDragTo: app.buttons["item-Milch"], withVelocity: .slow, thenHoldForDuration: 0.5)
+        let gone = NSPredicate(format: "exists == false")
+        if XCTWaiter.wait(for: [expectation(for: gone, evaluatedWith: app.staticTexts["SONSTIGES"])], timeout: 5) != .completed {
+            snapshot(app, "fail-drag")
+            XCTFail("Kombucha wurde nicht verschoben")
+        }
+        snapshot(app, "34-dragged-aisle")
+
+        // Leere Abteilungen per Wischen nach rechts
+        app.buttons["item-Bananen"].swipeRight()
+        app.buttons["Abteilung"].tap()
+        app.buttons["Getränke"].tap()
+        XCTAssertTrue(app.staticTexts["GETRÄNKE"].waitForExistence(timeout: 5))
+        snapshot(app, "35-aisle-dialog-done")
+
+        // Gemerkt: neu eingetippte Kombucha landet gleich im Kühlregal
+        kombucha.swipeLeft()
+        app.buttons["Löschen"].tap()
+        XCTAssertTrue(XCTWaiter.wait(for: [expectation(for: gone, evaluatedWith: kombucha)], timeout: 5) == .completed)
+        field.tap()
+        field.typeText("Kombucha\n")
+        XCTAssertTrue(kombucha.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["SONSTIGES"].exists, "Abteilung wurde nicht gemerkt")
+    }
+
+    @MainActor
     func testWeekPlanAndShoppingForTheWeek() async throws {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Shakshuka", ingredients: "6 Eier\n1 Dose Tomaten\n1 Paprika")

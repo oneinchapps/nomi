@@ -290,3 +290,41 @@ enum PlanCalendar {
         return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12))
     }
 }
+
+// MARK: - Eigene Abteilungen
+
+/// Eine Abteilung, die der Haushalt per Ziehen festgelegt hat. Gilt für alle künftigen Einträge mit diesem Namen.
+struct AislePreference: Codable, Hashable, Sendable {
+    var householdId: UUID
+    /// `ShoppingMerge.key` des Namens
+    var nameKey: String
+    var aisle: Aisle
+
+    enum CodingKeys: String, CodingKey {
+        case aisle
+        case householdId = "household_id"
+        case nameKey = "name_key"
+    }
+}
+
+extension ShoppingMerge {
+    /// Eigene Abteilungen des Haushalts gehen vor Rezept, KI und Stichwort-Raten.
+    static func applyPreferences(_ preferences: [String: Aisle], to ingredients: [Ingredient]) -> [Ingredient] {
+        guard !preferences.isEmpty else { return ingredients }
+        return ingredients.map { ingredient in
+            var ingredient = ingredient
+            if let aisle = preferences[key(ingredient.name)] { ingredient.aisle = aisle }
+            return ingredient
+        }
+    }
+}
+
+/// Umsortieren in der flachen Liste aus Abteilungs-Überschriften und Einträgen.
+enum AisleMove {
+    /// Abteilung für einen Eintrag, der von `source` nach `destination` gezogen wird (Indizes wie bei
+    /// `onMove`, also vor dem Entfernen). Es gilt die nächste Überschrift darüber; ganz oben die erste.
+    static func aisle(movingFrom source: Int, to destination: Int, headers: [Int: Aisle]) -> Aisle? {
+        let above = headers.filter { $0.key < destination && $0.key != source }.max { $0.key < $1.key }
+        return above?.value ?? headers.min { $0.key < $1.key }?.value
+    }
+}

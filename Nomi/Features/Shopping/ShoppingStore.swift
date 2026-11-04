@@ -10,6 +10,8 @@ final class ShoppingStore {
 
     private(set) var items: [ShoppingItem] = []
     private(set) var staples: [StapleItem] = []
+    /// Per Ziehen festgelegte Abteilungen, nach `ShoppingMerge.key`
+    private(set) var aislePreferences: [String: Aisle] = [:]
     private(set) var hasLoaded = false
     var error: String?
     /// Selbst eingetippte Artikel mit Anzahl – für die Vorschläge beim Tippen
@@ -66,7 +68,17 @@ final class ShoppingStore {
                 .order("position")
                 .execute()
                 .value
+            async let preferences: [AislePreference]? = try? supabase
+                .from("aisle_preferences")
+                .select()
+                .eq("household_id", value: householdId)
+                .execute()
+                .value
             (self.items, self.staples) = try await (items, staples)
+            // Ohne eigene Abteilungen geht die Liste trotzdem – dann gilt das Raten
+            if let preferences = await preferences {
+                aislePreferences = Dictionary(preferences.map { ($0.nameKey, $0.aisle) }) { _, last in last }
+            }
             error = nil
         } catch {
             self.error = userMessage(for: error)
@@ -102,6 +114,7 @@ final class ShoppingStore {
     /// Fügt Zutaten hinzu und führt sie mit vorhandenen offenen Einträgen zusammen.
     @discardableResult
     func add(_ ingredients: [Ingredient], recipeId: UUID?) async -> ShoppingChange {
+        let ingredients = ShoppingMerge.applyPreferences(aislePreferences, to: ingredients)
         let result = ShoppingMerge.merge(ingredients, recipeId: recipeId, into: items, householdId: householdId)
         guard !result.inserts.isEmpty || !result.updates.isEmpty else { return ShoppingChange() }
         let previous = result.updates.compactMap { update in items.first { $0.id == update.id } }
@@ -132,6 +145,27 @@ final class ShoppingStore {
             try await supabase.from("shopping_items")
                 .update(CheckUpdate(checked: changed.checked, checkedBy: changed.checkedBy))
                 .eq("id", value: item.id)
+                .execute()
+        }
+    }
+
+    /// In eine andere Abteilung ziehen. Gilt für alle offenen Einträge mit diesem Namen und wird
+    /// für den Haushalt gemerkt, damit der Artikel künftig gleich dort landet.
+    func move(_ item: ShoppingItem, to aisle: Aisle) async {
+        let key = ShoppingMerge.key(item.name)
+        let moved = items
+            .filter { !$0.checked && ShoppingMerge.key($0.name) == key && $0.aisle != aisle }
+            .map { var changed = $0; changed.aisle = aisle; return changed }
+        guard !moved.isEmpty else { return }
+        apply(moved)
+        aislePreferences[key] = aisle
+        await write {
+            try await supabase.from("shopping_items")
+                .update(["aisle": aisle.rawValue])
+                .in("id", values: moved.map(\.id))
+                .execute()
+            try await supabase.from("aisle_preferences")
+                .upsert(AislePreference(householdId: householdId, nameKey: key, aisle: aisle))
                 .execute()
         }
     }

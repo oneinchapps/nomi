@@ -7,6 +7,10 @@ struct ShoppingListView: View {
 
     @State private var newItem = ""
     @State private var showsStaples = false
+    /// Zählt Verschiebungen, nur für das haptische Feedback
+    @State private var moves = 0
+    /// Eintrag, für den gerade die Abteilung gewählt wird
+    @State private var aisleChoice: ShoppingItem?
     @FocusState private var addFocused: Bool
 
     var body: some View {
@@ -33,15 +37,22 @@ struct ShoppingListView: View {
                     .listRowBackground(Color.canvas)
             }
 
-            ForEach(shopping.openByAisle, id: \.aisle) { group in
-                Section {
-                    ForEach(group.items) { item in
-                        row(item)
-                    }
-                } header: {
-                    MetaLabel(group.aisle.title)
+            // Eine durchgehende Liste aus Überschriften und Einträgen: So lassen sich Einträge
+            // halten und in eine andere Abteilung ziehen (onMove geht nur innerhalb eines ForEach).
+            ForEach(openRows) { entry in
+                switch entry {
+                case .header(let aisle):
+                    MetaLabel(aisle.title)
+                        .padding(.top, 14)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 2, trailing: 20))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.canvas)
+                        .moveDisabled(true)
+                case .item(let item):
+                    row(item)
                 }
             }
+            .onMove(perform: moveRows)
 
             if !shopping.checkedItems.isEmpty {
                 Section {
@@ -69,7 +80,18 @@ struct ShoppingListView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color.canvas.ignoresSafeArea())
-        .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)" })
+        .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)\($0.aisle)" })
+        .sensoryFeedback(.success, trigger: moves)
+        .confirmationDialog(
+            "In welche Abteilung?",
+            isPresented: Binding(get: { aisleChoice != nil }, set: { if !$0 { aisleChoice = nil } }),
+            titleVisibility: .visible,
+            presenting: aisleChoice
+        ) { item in
+            ForEach(Aisle.allCases.filter { $0 != item.aisle }, id: \.self) { aisle in
+                Button(aisle.title) { move(item, to: aisle) }
+            }
+        }
         .refreshable { await shopping.load() }
         .sheet(isPresented: $showsStaples) {
             StaplesSheet()
@@ -245,6 +267,51 @@ struct ShoppingListView: View {
                 Task { await shopping.delete(item) }
             }
         }
+        .swipeActions(edge: .leading) {
+            // Erreicht auch Abteilungen, die gerade leer und deshalb nicht zu sehen sind.
+            // Kein Halte-Menü: Halten ist zum Ziehen da.
+            if !item.checked {
+                Button("Abteilung") { aisleChoice = item }
+                    .tint(Color.ink)
+            }
+        }
+    }
+
+    // MARK: - Abteilung wechseln
+
+    private enum OpenRow: Identifiable {
+        case header(Aisle)
+        case item(ShoppingItem)
+
+        var id: String {
+            switch self {
+            case .header(let aisle): "aisle-\(aisle.rawValue)"
+            case .item(let item): item.id.uuidString
+            }
+        }
+    }
+
+    private var openRows: [OpenRow] {
+        shopping.openByAisle.flatMap { group in [OpenRow.header(group.aisle)] + group.items.map(OpenRow.item) }
+    }
+
+    private func moveRows(from sources: IndexSet, to destination: Int) {
+        let rows = openRows
+        var headers: [Int: Aisle] = [:]
+        for (index, row) in rows.enumerated() {
+            if case .header(let aisle) = row { headers[index] = aisle }
+        }
+        for source in sources {
+            guard case .item(let item) = rows[source],
+                  let aisle = AisleMove.aisle(movingFrom: source, to: destination, headers: headers) else { continue }
+            move(item, to: aisle)
+        }
+    }
+
+    private func move(_ item: ShoppingItem, to aisle: Aisle) {
+        guard item.aisle != aisle else { return }
+        moves += 1
+        Task { await shopping.move(item, to: aisle) }
     }
 
     private func checkedByPartner(_ item: ShoppingItem) -> HouseholdMember? {
