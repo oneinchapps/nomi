@@ -104,6 +104,7 @@ xcrun devicectl device process launch --console --device <ID> de.gregorzoller.no
 - Schemaänderungen nur als neue Datei in `supabase/migrations/`.
 - Lokal einspielen: `supabase migration up --local`.
 - Live einspielen: `supabase db push --linked`.
+- Stand prüfen, bevor man etwas als „noch nicht live“ meldet: `supabase migration list --linked` (nur lesend, vergleicht lokal und live).
 
 **`supabase config push`:** Der Befehl überträgt die **gesamte** `config.toml` sofort und ohne Rückfrage, auch ohne TTY und auch mit `echo n |`. Er ist schon einmal schiefgegangen: Lokale Standardwerte (MFA aus, Mail-Intervall 1 s, Bestätigungen aus) gingen live. Live-Werte, die bleiben müssen:
 - `site_url http://localhost:3000`,
@@ -409,7 +410,6 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
-- Live einspielen: Migrationen `aisle_preferences` und `stores_and_categories` (`supabase db push --linked`). Ohne sie scheitern Verschieben, Supermärkte und Kategorien in der Live-App; die Liste selbst lädt weiter.
 - Live deployen: die Edge Functions `account` (neu), `assistant`, `decide`, `import-recipe` und `invite` (Kostenbremse, Mahlzeiten, Demo-Codes).
 - Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
