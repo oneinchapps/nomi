@@ -112,7 +112,8 @@ xcrun devicectl device process launch --console --device <ID> de.gregorzoller.no
 - E-Mail-Bestätigung an,
 - `max_frequency 60s`,
 - `otp_length 6`,
-- die OTP-Templates mit Betreff „Dein nomi-Code“.
+- die OTP-Templates mit Betreff „Dein nomi-Code“,
+- der eigene SMTP-Versand über Resend (siehe Mailversand); in `config.toml` steht er bewusst nicht.
 
 Einzelne Auth-Werte ändert man besser gezielt im Dashboard oder über die Management API (`PATCH /v1/projects/<ref>/config/auth` nur mit den betroffenen Feldern).
 
@@ -177,7 +178,11 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 ### Anmeldung und Haushalt
 - **Anmeldung** per E-Mail-Code (OTP, 6 Stellen), ohne Passwort. Sign in with Apple braucht einen bezahlten Developer-Account und kommt später.
 - **Haushalt:** `create_household` und `join_household` (RPCs). Alle Daten hängen am Haushalt.
-- **Mailversand:** Der Standard-Mailversand von Supabase erreicht nur Mitglieder des Supabase-Teams. Deshalb gibt es den Einladungsweg ohne Mail.
+- **Mailversand:** Live verschickt Resend die Codes per SMTP, der Standard-Mailversand von Supabase erreicht nur Mitglieder des Supabase-Teams. Lokal landen Mails weiter in Mailpit.
+  - Absender `code@mail.oneinchapps.com`, Name „nomi“. Die DNS-Einträge (DKIM, MX und SPF für `send.mail…`) liegen bei IONOS, Resend sendet aus der Region eu-west-1.
+  - SMTP-Werte im Dashboard (Authentication → Emails → SMTP Settings): Host `smtp.resend.com`, Port 465, Benutzer `resend`, Passwort ist ein Resend-API-Key nur mit Sendezugriff. Der Key liegt nirgends im Repo.
+  - Grenzen: Supabase schickt mit eigenem SMTP höchstens 30 Mails pro Stunde (`rate_limit_email_sent`), Resend kostenlos 100 am Tag.
+  - Einladungen per Code funktionieren auch ohne Mail.
 
 ### Konto löschen
 - In der Haushaltsübersicht gibt es „Konto löschen“ mit Sicherheitsabfrage. Apple verlangt das bei jeder App mit Kontoerstellung.
