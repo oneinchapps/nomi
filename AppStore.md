@@ -38,7 +38,7 @@ Der Plan, um nomi zuerst per TestFlight zu testen und danach im App Store zu ver
 - [ ] **Eigener Mailversand (Claude + Gregor):** Der Standard-Mailversand von Supabase schickt Anmeldecodes nur an Mitglieder des Supabase-Teams. Für fremde Nutzer:innen braucht es eigenen SMTP-Versand, z. B. Resend mit eigener Domain. Einladungen per Code funktionieren schon ohne Mail.
   - [x] Domain `mail.oneinchapps.com` bei Resend, DNS-Einträge bei IONOS gesetzt.
   - [x] SMTP-Werte im Supabase-Dashboard eintragen (Werte in `AGENTS.md`, Abschnitt „Anmeldung und Haushalt“).
-  - [ ] Test: Code kommt bei einer Adresse außerhalb des Supabase-Teams an.
+  - [x] Test: Code kommt bei einer Adresse außerhalb des Supabase-Teams an.
 - [ ] **Supabase-Tarif (Gregor):** Im kostenlosen Tarif wird das Projekt nach einer Woche ohne Nutzung pausiert. Für echten Betrieb den Pro-Tarif nehmen.
 - [x] **Kostenbremse für Claude (Claude):** Tagesbudgets pro Haushalt (2 $) und insgesamt (10 $), Verbrauch protokolliert in `ai_usage` (siehe `AGENTS.md`, Abschnitt „Kosten“).
 - [ ] **Ausgabenlimit in der Anthropic Console (Gregor):** Settings → Limits, als letzte Sicherung.
