@@ -156,7 +156,7 @@ cd supabase/functions/<name> && deno check --config deno.json index.ts && deno t
 supabase functions serve --env-file supabase/functions/.env     # alle Functions lokal, für die UI-Tests
 ```
 
-**Deployen:** `supabase functions deploy <name> --project-ref pohguhbhqvurdhnflpek`. Live-Deployments bestätigt der Nutzer. In automatisierten Sitzungen sind sie teils gesperrt, dann gibt man den Befehl an ihn weiter.
+**Deployen:** `supabase functions deploy <name> --project-ref pohguhbhqvurdhnflpek`. Live-Stand prüfen: `supabase functions list --project-ref pohguhbhqvurdhnflpek` (Version, `updated_at` in ms) mit `git log -1 -- supabase/functions/<name> supabase/functions/_shared` vergleichen. Live-Deployments bestätigt der Nutzer. In automatisierten Sitzungen sind sie teils gesperrt, dann gibt man den Befehl an ihn weiter.
 
 **Nach einer neuen Function:** in `config.toml` einen Block `[functions.<name>]` mit `verify_jwt = false`, `import_map` und `entrypoint` anlegen. Der lokale Server muss neu starten, damit die Konfiguration greift.
 
@@ -410,7 +410,6 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
-- Live deployen: die Edge Functions `account` (neu), `assistant`, `decide`, `import-recipe` und `invite` (Kostenbremse, Mahlzeiten, Demo-Codes).
 - Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
 - Sign in with Apple kommt, sobald es einen bezahlten Developer-Account gibt.
