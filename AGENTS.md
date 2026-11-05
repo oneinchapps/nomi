@@ -182,6 +182,10 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
   - Absender `code@mail.oneinchapps.com`, Name „nomi“. Die DNS-Einträge (DKIM, MX und SPF für `send.mail…`) liegen bei IONOS, Resend sendet aus der Region eu-west-1.
   - SMTP-Werte im Dashboard (Authentication → Emails → SMTP Settings): Host `smtp.resend.com`, Port 465, Benutzer `resend`, Passwort ist ein Resend-API-Key nur mit Sendezugriff. Der Key liegt nirgends im Repo.
   - Grenzen: Supabase schickt mit eigenem SMTP höchstens 30 Mails pro Stunde (`rate_limit_email_sent`), Resend kostenlos 100 am Tag.
+  - **Vorlage** `supabase/templates/otp.html` (Entwurf B aus `design/mail/`): Chefi winkt, Wortmarke, Code als Himbeer-Pille, Vorschauzeile mit Code, nur helles Farbschema. Der Code bleibt eine durchgehende Zahl, damit man ihn kopieren kann. Schriften kommen über Google Fonts (Apple Mail), sonst die Systemschrift.
+  - **Bilder** liegen im öffentlichen Bucket `mail` (`chefi.png`, `wordmark-on-light.png` aus `design/mail/assets/`), die Vorlage verweist fest auf die Live-URLs. Lokal lädt man sie mit dem lokalen `SERVICE_ROLE_KEY` hoch, live über das Dashboard (Storage → mail).
+  - **Live ändern:** Die Vorlage im Dashboard unter Authentication → Emails → Templates bei „Confirm signup“ und „Magic Link“ einfügen, Betreff „Dein nomi-Code“. Nicht per `config push`.
+  - **Lokal prüfen:** Ändert sich `config.toml` oder die Vorlage, `supabase stop && supabase start` (ein Neustart des Auth-Containers liest sie nicht neu). Dann einen Code anfordern, die Mail aus Mailpit holen (`/api/v1/message/<id>`, Feld `HTML`) und mit `swift design/mail/render-mail.swift --einzeln mail.html mail.png` ansehen.
   - Einladungen per Code funktionieren auch ohne Mail.
 
 ### Konto löschen

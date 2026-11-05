@@ -1,6 +1,7 @@
 // Rendert Maskottchen-Entwürfe für nomi:
 // - vorschlaege.png: vier Figuren, jeweils groß, als App-Icon und als Splashscreen
 // - chefi-varianten.png: Ausarbeitung von Chefi (Farben, Icon-Ausschnitte, Ablauf des Splashscreens)
+// - chefi-winkt.png: Chefi winkend, freigestellt (für die Anmelde-Mail)
 // Aufruf: swift design/mascot/render-mascots.swift Nomi/Resources/Fonts design/mascot
 import AppKit
 import CoreText
@@ -453,3 +454,12 @@ ctx = sheet(width: 1024, height: 1024)
 pen = Pen(ctx: ctx)
 appIcon(CGRect(x: 0, y: 0, width: 1024, height: 1024), visible: (62, 182), centerX: 106, rounded: false) { chefi($0, ChefiPose()) }
 save(ctx, "app-icon.png")
+
+// MARK: - Chefi winkt, freigestellt (für die Anmelde-Mail, design/mail)
+
+let chefiCtx = CGContext(data: nil, width: 600, height: 690, bitsPerComponent: 8, bytesPerRow: 0,
+                         space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+chefiCtx.scaleBy(x: 3, y: 3)
+chefi(Pen(ctx: chefiCtx), ChefiPose(waves: true))
+ctx = chefiCtx
+save(ctx, "chefi-winkt.png")
