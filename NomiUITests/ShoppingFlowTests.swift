@@ -37,8 +37,16 @@ final class ShoppingFlowTests: NomiUITestCase {
 
         // Abhaken
         app.buttons["item-Milch"].tap()
-        XCTAssertTrue(app.staticTexts["IM WAGEN · 1"].waitForExistence(timeout: 3))
+        // „Im Wagen“ ist zugeklappt: Milch verschwindet aus der Liste
+        let cart = app.buttons["cart-toggle"]
+        XCTAssertTrue(cart.waitForExistence(timeout: 3))
+        XCTAssertTrue(cart.label.contains("IM WAGEN · 1"), cart.label)
+        XCTAssertEqual(cart.value as? String, "zugeklappt")
+        XCTAssertFalse(app.buttons["item-Milch"].exists)
         snapshot(app, "31-shopping-list")
+        cart.tap()
+        XCTAssertTrue(app.buttons["item-Milch"].waitForExistence(timeout: 3))
+        snapshot(app, "31b-cart-open")
 
         // Zweite Person, live: tritt bei, fügt hinzu, hakt ab, löscht
         let sam = try await apiSignIn(email: "sam-\(run)@nomi.test")
@@ -61,7 +69,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         try await api("PATCH", "/rest/v1/shopping_items?id=eq.\(try XCTUnwrap(tortillas["id"] as? String))",
                       body: ["checked": true, "checked_by": samId], as: sam)
         XCTAssertTrue(app.descendants(matching: .any)["abgehakt von Sam"].waitForExistence(timeout: 10), "Abhaken der anderen Person kommt nicht live an")
-        XCTAssertTrue(app.staticTexts["IM WAGEN · 2"].exists)
+        XCTAssertTrue(app.buttons["cart-toggle"].label.contains("IM WAGEN · 2"))
         snapshot(app, "32-live-partner")
 
         try await api("DELETE", "/rest/v1/shopping_items?id=eq.\(try XCTUnwrap(kaffee["id"] as? String))", as: sam)
@@ -207,6 +215,48 @@ final class ShoppingFlowTests: NomiUITestCase {
         XCTAssertTrue(app.staticTexts["BIO-ECKE"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["KÜHLTHEKE"].exists)
         snapshot(app, "39-list-by-store")
+    }
+
+    @MainActor
+    func testDragPlanEntryToAnotherDay() throws {
+        let app = try launchWithNewHousehold()
+        createRecipe(app, title: "Linsensuppe", ingredients: "200 g rote Linsen")
+
+        app.tabBars.buttons["Woche"].tap()
+        // Montag planen
+        let planMonday = app.buttons["Gericht für Montag planen"]
+        XCTAssertTrue(planMonday.waitForExistence(timeout: 5))
+        planMonday.tap()
+        let pick = app.collectionViews.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Linsensuppe")).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 5))
+        pick.tap()
+
+        let entry = app.buttons["plan-Linsensuppe"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        func header(_ weekday: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", weekday + ",")).firstMatch
+        }
+        XCTAssertLessThan(entry.frame.minY, header("Dienstag").frame.minY)
+
+        // Halten und auf den Mittwoch ziehen
+        entry.press(forDuration: 0.8, thenDragTo: header("Mittwoch"), withVelocity: .slow, thenHoldForDuration: 0.5)
+        let onWednesday = NSPredicate { _, _ in
+            entry.frame.minY > header("Mittwoch").frame.minY && entry.frame.minY < header("Donnerstag").frame.minY
+        }
+        if XCTWaiter.wait(for: [expectation(for: onWednesday, evaluatedWith: entry)], timeout: 5) != .completed {
+            snapshot(app, "fail-plan-drag")
+            XCTFail("Eintrag wurde nicht auf den Mittwoch verschoben")
+        }
+        snapshot(app, "44-week-dragged")
+
+        // Bleibt nach dem Neuladen dort (gespeichert)
+        app.buttons["Nächste Woche"].tap()
+        let back = app.buttons["Zur aktuellen Woche"]
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        sleep(1) // Der Knopf kommt animiert herein; ein früher Tipp geht ins Leere
+        back.tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(entry.frame.minY, header("Mittwoch").frame.minY)
     }
 
     @MainActor

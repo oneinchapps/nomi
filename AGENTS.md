@@ -275,9 +275,12 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
     - Rangfolge: Treffer am Namensanfang vor Treffer am Wortanfang vor Treffer im Wort (ab 3 Zeichen). Groß-/Kleinschreibung und Umlaute zählen nicht.
     - Der Verlauf (`ShoppingHistory`) liegt pro Haushalt in den UserDefaults, nur auf dem Gerät. Erledigtes verschwindet beim „Leeren“ aus der Datenbank.
   - Die Anzahl offener Einträge steht im Kreis.
+  - „Im Wagen“ (Abgehaktes) ist beim Öffnen zugeklappt; der Kopf klappt auf (`cart-toggle`).
 - **Woche:**
   - Die Pfeile stehen neben der Kalenderwoche, die Headline hat die volle Breite.
+  - Tage als Datumsspalte (Entwurf `design/week/`): links Wochentag und Tageszahl, heute im Himbeer-Kreis, rechts die Gerichte.
   - Einträge zeigen die Mahlzeit, die Rezeptauswahl lässt die Mahlzeit wählen.
+  - Einträge lassen sich halten und auf einen anderen Tag ziehen (`.draggable`/`.dropDestination`, hier in einer `ScrollView` problemlos). Sie behalten die Mahlzeit und kommen als letzter Gang ans Ende (`MealPlanEntry.moved`). Die Mahlzeit wechselt man im „…“-Menü.
   - „Zutaten der Woche einkaufen“ füllt die Einkaufsliste.
 
 ### Kochmodus

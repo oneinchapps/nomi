@@ -6,6 +6,10 @@ struct WeekPlanView: View {
 
     @State private var pickingDay: PickDay?
     @State private var shoppingSources: [AddToListSheet.Source]?
+    /// Tag, über dem gerade ein Eintrag schwebt
+    @State private var dropTarget: String?
+    /// Zählt Verschiebungen, nur für das haptische Feedback
+    @State private var moves = 0
 
     struct PickDay: Identifiable {
         let date: Date
@@ -28,8 +32,10 @@ struct WeekPlanView: View {
                     .font(.captionSans)
                     .foregroundStyle(Color.ink)
                 }
-                ForEach(plan.days, id: \.self) { day in
-                    daySection(day)
+                VStack(spacing: 0) {
+                    ForEach(plan.days, id: \.self) { day in
+                        daySection(day)
+                    }
                 }
                 if !plan.weekEntries.isEmpty {
                     Button("Zutaten der Woche einkaufen") {
@@ -60,6 +66,8 @@ struct WeekPlanView: View {
         )) { box in
             AddToListSheet(sources: box.sources)
         }
+        .sensoryFeedback(.success, trigger: moves)
+        .animation(.smooth(duration: 0.3), value: plan.entries.map { "\($0.id)\($0.day)\($0.meal)" })
         .mainToolbar()
     }
 
@@ -113,50 +121,105 @@ struct WeekPlanView: View {
 
     // MARK: - Tage
 
+    /// Ein Tag wie im Kalender: links Wochentag und Tageszahl, rechts die Gerichte
     private func daySection(_ day: Date) -> some View {
         let entries = plan.entries(on: day)
-        let isToday = PlanCalendar.calendar.isDateInToday(day)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                MetaLabel("\(DayFormat.weekday(day)) · \(DayFormat.short(day))")
-                if isToday {
-                    Text("HEUTE")
-                        .font(.meta)
-                        .tracking(1.4)
-                        .foregroundStyle(Color.canvas)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Color.ink, in: .capsule)
-                }
-                Spacer()
-                Button {
-                    pickingDay = PickDay(date: day)
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.ink)
-                        .frame(width: 32, height: 32)
-                        .background(Color.mist, in: .circle)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Gericht für \(DayFormat.weekday(day)) planen")
-            }
-
-            if entries.isEmpty {
-                Text("Noch nichts geplant")
-                    .font(.captionSans)
-                    .foregroundStyle(Color.inkMuted.opacity(0.7))
-            }
-            ForEach(entries) { entry in
-                if let recipe = recipes.recipe(id: entry.recipeId) {
-                    entryRow(entry, recipe: recipe)
+        return HStack(alignment: .top, spacing: 14) {
+            dateColumn(day)
+            VStack(alignment: .leading, spacing: 8) {
+                if entries.isEmpty {
+                    HStack {
+                        Text("Noch nichts geplant")
+                            .font(.bodySans)
+                            .foregroundStyle(Color.inkMuted.opacity(0.75))
+                        Spacer()
+                        addButton(day) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.ink)
+                                .frame(width: 30, height: 30)
+                                .background(Color.mist, in: .circle)
+                        }
+                    }
+                    .frame(minHeight: 44)
+                } else {
+                    ForEach(entries) { entry in
+                        if let recipe = recipes.recipe(id: entry.recipeId) {
+                            entryRow(entry, recipe: recipe)
+                        }
+                    }
+                    addButton(day) {
+                        Label("Gericht", systemImage: "plus")
+                            .font(.captionSans.weight(.medium))
+                            .foregroundStyle(Color.inkMuted)
+                            .padding(.vertical, 4)
+                    }
                 }
             }
+            .padding(.top, 14)
         }
-        .padding(.bottom, 6)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.hairline).frame(height: 1).offset(y: 12)
+            Rectangle().fill(Color.hairline).frame(height: 1).padding(.leading, 60)
         }
+        // Gezogene Einträge (IDs als Text) auf diesen Tag legen
+        .background {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.brand.opacity(0.07))
+                .strokeBorder(Color.brand.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                .padding(-8)
+                .opacity(dropTarget == PlanCalendar.key(for: day) ? 1 : 0)
+        }
+        .contentShape(.rect)
+        .dropDestination(for: String.self) { ids, _ in
+            drop(ids, on: day)
+        } isTargeted: { targeted in
+            let key = PlanCalendar.key(for: day)
+            if targeted { dropTarget = key } else if dropTarget == key { dropTarget = nil }
+        }
+        .animation(.smooth(duration: 0.2), value: dropTarget)
+    }
+
+    /// Wochentag klein, Tageszahl groß; heute im Himbeer-Kreis
+    private func dateColumn(_ day: Date) -> some View {
+        let isToday = PlanCalendar.calendar.isDateInToday(day)
+        return VStack(spacing: 0) {
+            Text(DayFormat.weekdayShort(day).uppercased())
+                .font(.meta)
+                .tracking(1.2)
+                .foregroundStyle(isToday ? Color.brand : Color.inkMuted)
+            Text("\(PlanCalendar.calendar.component(.day, from: day))")
+                .font(.heading(26, relativeTo: .title2))
+                .monospacedDigit()
+                .foregroundStyle(isToday ? Color.onBrand : Color.ink)
+                .frame(width: 44, height: 44)
+                .background(isToday ? Color.brand : .clear, in: .circle)
+        }
+        .frame(width: 46)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(DayFormat.weekday(day)), \(DayFormat.short(day))\(isToday ? ", heute" : "")")
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func addButton(_ day: Date, @ViewBuilder label: () -> some View) -> some View {
+        Button {
+            pickingDay = PickDay(date: day)
+        } label: {
+            label()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Gericht für \(DayFormat.weekday(day)) planen")
+    }
+
+    private func drop(_ ids: [String], on day: Date) -> Bool {
+        dropTarget = nil
+        let dropped = ids.compactMap { id in plan.entries.first { $0.id.uuidString == id } }
+        guard !dropped.isEmpty else { return false }
+        let moving = dropped.filter { $0.day != PlanCalendar.key(for: day) }
+        if !moving.isEmpty { moves += 1 }
+        Task { for entry in moving { await plan.move(entry, to: day) } }
+        return true
     }
 
     private func entryRow(_ entry: MealPlanEntry, recipe: Recipe) -> some View {
@@ -185,6 +248,15 @@ struct WeekPlanView: View {
                             Text(Recipe.servingsLabel(n).replacingOccurrences(of: "für ", with: "Für ")).tag(n)
                         }
                     }
+                    Picker("Mahlzeit", selection: Binding(
+                        get: { entry.meal },
+                        set: { meal in
+                            guard let day = PlanCalendar.date(forKey: entry.day) else { return }
+                            Task { await plan.move(entry, to: day, meal: meal) }
+                        }
+                    )) {
+                        ForEach(Meal.allCases) { Text($0.title).tag($0) }
+                    }
                     Divider()
                     Button("Aus dem Plan nehmen", systemImage: "trash", role: .destructive) {
                         Task { await plan.remove(entry) }
@@ -203,6 +275,22 @@ struct WeekPlanView: View {
             .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(Color.hairline) }
         }
         .buttonStyle(.plain)
+        // Halten und auf einen anderen Tag ziehen
+        .draggable(entry.id.uuidString) {
+            HStack(spacing: 10) {
+                RecipeImage(recipe: recipe)
+                    .frame(width: 36, height: 36)
+                    .clipShape(.rect(cornerRadius: 8))
+                Text(recipe.title)
+                    .font(.heading(16, relativeTo: .headline))
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(1)
+            }
+            .padding(8)
+            .padding(.trailing, 6)
+            .background(Color.surface, in: .rect(cornerRadius: 14))
+        }
+        .accessibilityIdentifier("plan-\(recipe.title)")
     }
 }
 
@@ -344,6 +432,11 @@ enum DayFormat {
 
     static func weekday(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide).locale(locale))
+    }
+
+    /// „Mo“, „Di“ … – ohne Punkt, wie im Kalender
+    static func weekdayShort(_ date: Date) -> String {
+        String(weekday(date).prefix(2))
     }
 
     /// „26.10.“

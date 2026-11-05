@@ -262,6 +262,19 @@ struct MealPlanEntry: Codable, Identifiable, Hashable, Sendable {
     }
 }
 
+extension MealPlanEntry {
+    /// Auf einen anderen Tag oder in eine andere Mahlzeit verschieben. Dort kommt der Eintrag als letzter
+    /// Gang ans Ende, damit nichts Geplantes überschrieben wird.
+    func moved(toDay day: String, meal: Meal? = nil, among entries: [MealPlanEntry]) -> MealPlanEntry {
+        var moved = self
+        moved.day = day
+        moved.meal = meal ?? self.meal
+        let others = entries.filter { $0.id != id && $0.day == day && $0.meal == moved.meal }
+        moved.position = (others.map(\.position).max() ?? -1) + 1
+        return moved
+    }
+}
+
 /// Wochen beginnen montags, Tage werden als „yyyy-MM-dd“ in lokaler Zeit gespeichert.
 enum PlanCalendar {
     static var calendar: Calendar {

@@ -63,3 +63,29 @@ struct ShoppingCategoriesTests {
         #expect(inserts[1].categoryId == nil)
     }
 }
+
+struct MealPlanMoveTests {
+    let household = UUID()
+
+    func entry(_ day: String, _ meal: Meal, _ position: Int = 0) -> MealPlanEntry {
+        MealPlanEntry(householdId: household, day: day, recipeId: UUID(), servings: 2, meal: meal, position: position)
+    }
+
+    @Test func keepsMealAndBecomesLastCourse() {
+        let dal = entry("2026-11-02", .abend)
+        let soup = entry("2026-11-04", .abend, 0)
+        let salad = entry("2026-11-04", .abend, 1)
+        let moved = dal.moved(toDay: "2026-11-04", among: [dal, soup, salad])
+        #expect(moved.day == "2026-11-04")
+        #expect(moved.meal == .abend)
+        #expect(moved.position == 2)
+        #expect(moved.id == dal.id)
+    }
+
+    @Test func emptyMealStartsAtZeroAndMealCanChange() {
+        let dal = entry("2026-11-02", .abend, 3)
+        let moved = dal.moved(toDay: "2026-11-02", meal: .mittag, among: [dal, entry("2026-11-02", .abend)])
+        #expect(moved.meal == .mittag)
+        #expect(moved.position == 0)
+    }
+}

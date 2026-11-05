@@ -8,6 +8,8 @@ struct ShoppingListView: View {
     @State private var newItem = ""
     @State private var showsStaples = false
     @State private var showsSettings = false
+    /// „Im Wagen“ ist beim Öffnen zugeklappt
+    @State private var showsCart = false
     /// Zählt Verschiebungen, nur für das haptische Feedback
     @State private var moves = 0
     /// Eintrag, für den gerade die Abteilung gewählt wird
@@ -57,13 +59,30 @@ struct ShoppingListView: View {
 
             if !shopping.checkedItems.isEmpty {
                 Section {
-                    ForEach(shopping.checkedItems) { item in
-                        row(item)
+                    // Standardmäßig zugeklappt: Erledigtes soll die offene Liste nicht verlängern
+                    if showsCart {
+                        ForEach(shopping.checkedItems) { item in
+                            row(item)
+                        }
                     }
                 } header: {
                     HStack {
-                        MetaLabel("Im Wagen · \(shopping.checkedItems.count)")
-                        Spacer()
+                        Button {
+                            withAnimation(.smooth(duration: 0.25)) { showsCart.toggle() }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(Color.inkMuted)
+                                    .rotationEffect(.degrees(showsCart ? 90 : 0))
+                                MetaLabel("Im Wagen · \(shopping.checkedItems.count)")
+                                Spacer(minLength: 8)
+                            }
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("cart-toggle")
+                        .accessibilityValue(showsCart ? "aufgeklappt" : "zugeklappt")
                         Button("Leeren") {
                             Task { await shopping.clearChecked() }
                         }

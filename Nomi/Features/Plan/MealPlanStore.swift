@@ -85,6 +85,26 @@ final class MealPlanStore {
         }
     }
 
+    /// Auf einen anderen Tag ziehen oder die Mahlzeit wechseln
+    func move(_ entry: MealPlanEntry, to day: Date, meal: Meal? = nil) async {
+        let moved = entry.moved(toDay: PlanCalendar.key(for: day), meal: meal, among: entries)
+        guard moved.day != entry.day || moved.meal != entry.meal,
+              let index = entries.firstIndex(where: { $0.id == entry.id }) else { return }
+        entries[index] = moved
+        await write {
+            try await supabase.from("meal_plan_entries")
+                .update(PlanMove(day: moved.day, meal: moved.meal, position: moved.position))
+                .eq("id", value: entry.id)
+                .execute()
+        }
+    }
+
+    private struct PlanMove: Encodable {
+        let day: String
+        let meal: Meal
+        let position: Int
+    }
+
     func remove(_ entry: MealPlanEntry) async {
         await remove(ids: [entry.id])
     }
