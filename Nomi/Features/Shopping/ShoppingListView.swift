@@ -98,6 +98,8 @@ struct ShoppingListView: View {
             }
         }
         .listStyle(.plain)
+        // Luft unter dem Ende der Liste, sonst klebt „Im Wagen“ an der Tab-Leiste
+        .contentMargins(.bottom, 48, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .background(Color.canvas.ignoresSafeArea())
         .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)\($0.categoryKey.raw)" } + shopping.categoryOrder.map(\.name))

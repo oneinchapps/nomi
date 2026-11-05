@@ -83,6 +83,37 @@ final class ShoppingFlowTests: NomiUITestCase {
     }
 
     @MainActor
+    func testCartHasRoomAtEndOfLongList() async throws {
+        let app = try launchWithNewHousehold()
+        let codeText = inviteCodeText(app)
+        XCTAssertTrue(codeText.waitForExistence(timeout: 10))
+
+        // Lange Liste über die zweite Person, ein Eintrag schon im Wagen
+        let sam = try await apiSignIn(email: "sam-\(run)@nomi.test")
+        let household = try await api("POST", "/rest/v1/rpc/join_household", body: ["code": codeText.label, "display_name": "Sam"], as: sam)
+        let householdId = try XCTUnwrap(household["id"] as? String)
+        let names = ["Äpfel", "Bananen", "Brot", "Butter", "Eier", "Gurke", "Joghurt", "Kaffee", "Käse", "Milch",
+                     "Nudeln", "Paprika", "Reis", "Salat", "Tomaten", "Zwiebeln"]
+        for name in names {
+            _ = try await api("POST", "/rest/v1/shopping_items", body: [
+                "household_id": householdId, "name": name, "aisle": "sonstiges", "checked": name == "Milch",
+            ], as: sam)
+        }
+
+        app.tabBars.buttons["Einkauf"].tap()
+        XCTAssertTrue(app.buttons["item-Äpfel"].waitForExistence(timeout: 10))
+        // Ganz nach unten scrollen; vorher legt die Liste „Im Wagen“ noch gar nicht an
+        for _ in 0..<3 { app.swipeUp() }
+        try await Task.sleep(for: .seconds(1))
+        let cart = app.buttons["cart-toggle"]
+        XCTAssertTrue(cart.waitForExistence(timeout: 5))
+        snapshot(app, "31c-cart-closed-bottom")
+
+        let gap = app.tabBars.firstMatch.frame.minY - cart.frame.maxY
+        XCTAssertGreaterThanOrEqual(gap, 40, "„Im Wagen“ klebt an der Tab-Leiste (Abstand \(gap) pt)")
+    }
+
+    @MainActor
     func testAutocompleteKeepsAmount() throws {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Tomatensuppe", ingredients: "1 Dose San-Marzano-Tomaten\n1 Zwiebel")
