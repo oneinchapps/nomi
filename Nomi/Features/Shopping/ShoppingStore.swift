@@ -22,6 +22,10 @@ final class ShoppingStore {
     }
     private(set) var hasLoaded = false
     var error: String?
+    /// Gerade von der anderen Person abgehakt – leuchtet im Live-Modus kurz auf
+    private(set) var partnerHighlights: Set<UUID> = []
+    /// Eigene Haken, die noch gespeichert werden; sie gehen beim Laden vor dem Server-Stand
+    private var pendingChecks: [UUID: LiveShopping.PendingCheck] = [:]
     /// Selbst eingetippte Artikel mit Anzahl – für die Vorschläge beim Tippen
     private var history: [String: Int]
 
@@ -106,7 +110,12 @@ final class ShoppingStore {
                 .order("created_at")
                 .execute()
                 .value
-            (self.items, self.staples) = try await (items, staples)
+            let (loadedItems, loadedStaples) = try await (items, staples)
+            if hasLoaded {
+                highlight(LiveShopping.newlyCheckedByOthers(old: self.items, new: loadedItems, me: userId))
+            }
+            self.items = LiveShopping.applyPending(pendingChecks, to: loadedItems)
+            self.staples = loadedStaples
             // Ohne die Zusätze geht die Liste trotzdem – dann gelten Raten und Standard-Reihenfolge
             if let preferences = await preferences {
                 aislePreferences = Dictionary(preferences.map { ($0.nameKey, $0) }) { _, last in last }
@@ -182,11 +191,29 @@ final class ShoppingStore {
         changed.checked.toggle()
         changed.checkedBy = changed.checked ? userId : nil
         apply([changed])
+        partnerHighlights.remove(item.id)
+        pendingChecks[item.id] = .init(checked: changed.checked, checkedBy: changed.checkedBy)
         await write {
             try await supabase.from("shopping_items")
                 .update(CheckUpdate(checked: changed.checked, checkedBy: changed.checkedBy))
                 .eq("id", value: item.id)
                 .execute()
+        }
+        // Nur entfernen, wenn nicht inzwischen ein neuerer Tipp auf denselben Eintrag kam
+        if pendingChecks[item.id] == .init(checked: changed.checked, checkedBy: changed.checkedBy) {
+            pendingChecks[item.id] = nil
+            // Speichern fehlgeschlagen: Das Neuladen in `write` lief noch mit dem Haken, also ohne ihn wiederholen
+            if error != nil { await load() }
+        }
+    }
+
+    /// Hervorhebung für ein paar Sekunden, dann wieder normal
+    private func highlight(_ ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        partnerHighlights.formUnion(ids)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            self?.partnerHighlights.subtract(ids)
         }
     }
 

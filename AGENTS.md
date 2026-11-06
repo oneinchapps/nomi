@@ -286,6 +286,12 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
     - Der Verlauf (`ShoppingHistory`) liegt pro Haushalt in den UserDefaults, nur auf dem Gerät. Erledigtes verschwindet beim „Leeren“ aus der Datenbank.
   - Die Anzahl offener Einträge steht im Kreis.
   - „Im Wagen“ (Abgehaktes) ist beim Öffnen zugeklappt; der Kopf klappt auf (`cart-toggle`).
+  - **Live einkaufen** (`LiveShoppingView`, Entwurf B aus `design/shopping/live-einkaufen.png`): „Einkaufen starten“ unter dem Eingabefeld, sobald etwas offen ist und nicht getippt wird.
+    - Vollbild wie der Kochmodus, Bildschirm bleibt an. Eine Seite pro Abteilung in der Reihenfolge des Supermarkts (`LiveShopping.pages`), abgehakte Einträge bleiben an ihrem Platz. Wer das Letzte einer Abteilung abhakt, springt nach 0,6 s zur nächsten mit Offenem.
+    - Abgleich: Realtime wie immer, dazu im Modus alle 3 s `load()` und beim Zurückkehren in die App. Eigene Haken, die noch gespeichert werden, gehen beim Laden vor (`pendingChecks`, `LiveShopping.applyPending`), sonst springen sie kurz zurück.
+    - Haken der anderen Person leuchten 4 s grün (`partnerHighlights`, erkannt in `load()` über `LiveShopping.newlyCheckedByOthers`).
+    - „Sam kauft mit“: Realtime Presence auf dem Kanal `shopping-live-<haushalt>`, Schlüssel ist die User-ID (`ShoppingPresence`), ohne Tabelle.
+    - Ist alles abgehakt: „Alles im Wagen!“ mit „Fertig, Liste leeren“ oder „Liste behalten“.
 - **Woche:**
   - Die Pfeile stehen neben der Kalenderwoche, die Headline hat die volle Breite.
   - Tage als Datumsspalte (Entwurf `design/week/`): links Wochentag und Tageszahl, heute im Himbeer-Kreis, rechts die Gerichte.
@@ -355,7 +361,7 @@ swift design/appicon/render-icon-concepts.swift design/fonts/DynaPuff.ttf Nomi/R
 ## Tests
 
 **Arten:**
-- `NomiTests` (Swift Testing): Parser, Mengen, Skalieren, Zusammenführen, Einkaufsvorschläge, Einladungscodes, Kategorien, Kochhistorie, Function-Datumsformat.
+- `NomiTests` (Swift Testing): Parser, Mengen, Skalieren, Zusammenführen, Einkaufsvorschläge, Live-Einkauf, Einladungscodes, Kategorien, Kochhistorie, Function-Datumsformat.
 - `NomiUITests`: alle Hauptabläufe, mit zweiter Person über die REST-API. Gemeinsame Helfer stehen in `UITestSupport.swift`.
 - Deno-Tests in jeder Function (`deno test`).
 
@@ -420,5 +426,6 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 ## Offen und zu prüfen
 
 - Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
+- „Sam kauft mit“ (Presence im Live-Einkauf) ist nur gebaut, nicht mit zwei Geräten getestet; die UI-Tests steuern die zweite Person über REST, das erreicht Presence nicht.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
 - Sign in with Apple kommt, sobald es einen bezahlten Developer-Account gibt.

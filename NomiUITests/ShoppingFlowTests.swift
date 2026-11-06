@@ -114,6 +114,69 @@ final class ShoppingFlowTests: NomiUITestCase {
     }
 
     @MainActor
+    func testLiveShoppingWithPartner() async throws {
+        let app = try launchWithNewHousehold()
+        let codeText = inviteCodeText(app)
+        XCTAssertTrue(codeText.waitForExistence(timeout: 10))
+
+        let sam = try await apiSignIn(email: "sam-\(run)@nomi.test")
+        let household = try await api("POST", "/rest/v1/rpc/join_household", body: ["code": codeText.label, "display_name": "Sam"], as: sam)
+        let householdId = try XCTUnwrap(household["id"] as? String)
+        var ids: [String: String] = [:]
+        for (name, aisle) in [("Bananen", "obst_gemuese"), ("Äpfel", "obst_gemuese"), ("Brot", "backwaren"),
+                              ("Milch", "kuehlregal"), ("Joghurt", "kuehlregal")] {
+            let row = try await api("POST", "/rest/v1/shopping_items", body: ["household_id": householdId, "name": name, "aisle": aisle], as: sam)
+            ids[name] = row["id"] as? String
+        }
+        let samRow = try await api("GET", "/rest/v1/household_members?display_name=eq.Sam&select=user_id", as: sam)
+        let samId = try XCTUnwrap(samRow["user_id"] as? String)
+
+        app.tabBars.buttons["Einkauf"].tap()
+        let start = app.buttons["live-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        snapshot(app, "36-live-start")
+        start.tap()
+
+        // Erste Abteilung, Fortschritt im Kopf
+        XCTAssertTrue(app.staticTexts["Obst & Gemüse"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["live-progress"].label.contains("0 VON 5"), app.staticTexts["live-progress"].label)
+        snapshot(app, "37-live-first-aisle")
+
+        // Letztes Offene der Abteilung abhaken → weiter zur nächsten
+        app.buttons["live-item-Bananen"].tap()
+        app.buttons["live-item-Äpfel"].tap()
+        XCTAssertTrue(app.staticTexts["Backwaren"].waitForExistence(timeout: 5), "Nicht zur nächsten Abteilung gesprungen")
+
+        // Sam hakt im Kühlregal ab und kommt live an
+        app.buttons["live-next"].tap()
+        XCTAssertTrue(app.staticTexts["Kühlregal"].waitForExistence(timeout: 5))
+        try await api("PATCH", "/rest/v1/shopping_items?id=eq.\(try XCTUnwrap(ids["Milch"]))",
+                      body: ["checked": true, "checked_by": samId], as: sam)
+        let milk = app.buttons["live-item-Milch"]
+        await fulfillment(of: [expectation(for: NSPredicate(format: "value == 'erledigt'"), evaluatedWith: milk)], timeout: 6)
+        XCTAssertTrue(app.descendants(matching: .any)["abgehakt von Sam"].exists)
+        XCTAssertTrue(app.staticTexts["live-progress"].label.contains("3 VON 5"), app.staticTexts["live-progress"].label)
+        snapshot(app, "38-live-partner")
+
+        // Rest abhaken → alles im Wagen
+        app.buttons["live-item-Joghurt"].tap()
+        app.buttons["live-prev"].tap()
+        XCTAssertTrue(app.staticTexts["Backwaren"].waitForExistence(timeout: 5))
+        app.buttons["live-item-Brot"].tap()
+        XCTAssertTrue(app.staticTexts["Alles im Wagen!"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["5 Dinge, Sam hat 1 davon geholt."].exists)
+        snapshot(app, "39-live-done")
+
+        // Liste leeren und zurück
+        app.buttons["live-finish-clear"].tap()
+        XCTAssertTrue(app.staticTexts["Einkauf"].firstMatch.waitForExistence(timeout: 5))
+        let gone = NSPredicate(format: "exists == false")
+        await fulfillment(of: [expectation(for: gone, evaluatedWith: app.buttons["item-Brot"])], timeout: 5)
+        let left = try await apiList("/rest/v1/shopping_items?household_id=eq.\(householdId)&select=id", as: sam)
+        XCTAssertTrue(left.isEmpty, "Liste wurde nicht geleert")
+    }
+
+    @MainActor
     func testAutocompleteKeepsAmount() throws {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Tomatensuppe", ingredients: "1 Dose San-Marzano-Tomaten\n1 Zwiebel")

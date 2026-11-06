@@ -8,6 +8,7 @@ struct ShoppingListView: View {
     @State private var newItem = ""
     @State private var showsStaples = false
     @State private var showsSettings = false
+    @State private var showsLive = false
     /// „Im Wagen“ ist beim Öffnen zugeklappt
     @State private var showsCart = false
     /// Zählt Verschiebungen, nur für das haptische Feedback
@@ -121,6 +122,9 @@ struct ShoppingListView: View {
         .sheet(isPresented: $showsSettings) {
             ShoppingSettingsSheet()
         }
+        .fullScreenCover(isPresented: $showsLive) {
+            LiveShoppingView()
+        }
         .mainToolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -159,6 +163,17 @@ struct ShoppingListView: View {
                 .buttonStyle(.plain)
                 .disabled(newItem.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityLabel("Auf die Liste")
+            }
+
+            // Im Laden: Vollbild nur zum Abhaken. Beim Tippen weg, dann zählen die Vorschläge.
+            if !shopping.openItems.isEmpty && !addFocused {
+                Button {
+                    showsLive = true
+                } label: {
+                    Label("Einkaufen starten", systemImage: "cart.fill")
+                }
+                .buttonStyle(.primary)
+                .accessibilityIdentifier("live-start")
             }
 
             // Beim Tippen stehen hier Vorschläge statt der Standardartikel
