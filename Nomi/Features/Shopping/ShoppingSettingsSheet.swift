@@ -9,6 +9,7 @@ struct ShoppingSettingsSheet: View {
     private enum Route: Hashable {
         case store(UUID)
         case categories
+        case mappings
         case staples
     }
 
@@ -69,6 +70,11 @@ struct ShoppingSettingsSheet: View {
                         row(icon: "square.grid.2x2", title: "Kategorien bearbeiten", detail: "\(shopping.categories.categories.count)")
                     }
                     .listRowBackground(Color.surface)
+                    NavigationLink(value: Route.mappings) {
+                        row(icon: "arrow.triangle.branch", title: "Zuordnungen", detail: "\(shopping.aislePreferences.count)")
+                    }
+                    .listRowBackground(Color.surface)
+                    .accessibilityIdentifier("settings-mappings")
                     NavigationLink(value: Route.staples) {
                         row(icon: "pin", title: "Standardartikel", detail: "\(shopping.staples.count)")
                     }
@@ -76,7 +82,7 @@ struct ShoppingSettingsSheet: View {
                 } header: {
                     MetaLabel("Kategorien")
                 } footer: {
-                    Text("Namen und eigene Kategorien gelten für alle Supermärkte.")
+                    Text("Namen und eigene Kategorien gelten für alle Supermärkte. Zuordnungen: welcher Artikel in welcher Kategorie landet – nomi merkt sie sich, wenn ihr umsortiert.")
                         .font(.captionSans)
                 }
             }
@@ -93,6 +99,7 @@ struct ShoppingSettingsSheet: View {
                 switch route {
                 case .store(let id): StoreOrderView(storeId: id)
                 case .categories: CategoriesView()
+                case .mappings: CategoryMappingsView()
                 case .staples: StaplesList()
                 }
             }

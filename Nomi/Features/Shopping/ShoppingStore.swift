@@ -220,28 +220,56 @@ final class ShoppingStore {
     /// In eine andere Kategorie ziehen. Gilt für alle offenen Einträge mit diesem Namen und wird
     /// für den Haushalt gemerkt, damit der Artikel künftig gleich dort landet.
     func move(_ item: ShoppingItem, to target: CategoryKey) async {
-        let key = ShoppingMerge.key(item.name)
+        await assign(name: item.name, to: target, aisleHint: item.aisle)
+    }
+
+    /// Legt fest, in welcher Kategorie ein Artikel landet: Offene Einträge mit diesem Namen wandern sofort,
+    /// und der Haushalt merkt es sich für alle künftigen. Geht auch für Artikel, die gerade nicht auf der Liste stehen.
+    func assign(name: String, to target: CategoryKey, aisleHint: Aisle? = nil) async {
+        let key = ShoppingMerge.key(name)
+        guard !key.isEmpty else { return }
+        // Auch eigene Kategorien brauchen eine feste Abteilung als Rückfall, falls sie gelöscht werden
+        let aisle: Aisle = switch target {
+        case .aisle(let aisle): aisle
+        case .custom: aislePreferences[key]?.aisle ?? aisleHint ?? Aisle.guess(for: name)
+        }
+        let categoryId: UUID? = if case .custom(let id) = target { id } else { nil }
         let moved = items
             .filter { !$0.checked && ShoppingMerge.key($0.name) == key && $0.categoryKey != target }
             .map { old in
                 var changed = old
-                switch target {
-                case .aisle(let aisle): changed.aisle = aisle; changed.categoryId = nil
-                case .custom(let id): changed.categoryId = id
-                }
+                changed.aisle = aisle
+                changed.categoryId = categoryId
                 return changed
             }
-        guard let first = moved.first else { return }
         apply(moved)
-        let preference = AislePreference(householdId: householdId, nameKey: key, aisle: first.aisle, categoryId: first.categoryId)
+        let preference = AislePreference(householdId: householdId, nameKey: key, aisle: aisle, categoryId: categoryId)
         aislePreferences[key] = preference
         await write {
-            try await supabase.from("shopping_items")
-                .update(CategoryUpdate(aisle: first.aisle, categoryId: first.categoryId))
-                .in("id", values: moved.map(\.id))
-                .execute()
+            if !moved.isEmpty {
+                try await supabase.from("shopping_items")
+                    .update(CategoryUpdate(aisle: aisle, categoryId: categoryId))
+                    .in("id", values: moved.map(\.id))
+                    .execute()
+            }
             try await supabase.from("aisle_preferences").upsert(preference).execute()
         }
+    }
+
+    /// Vergisst eine Zuordnung; Einträge auf der Liste bleiben, wo sie sind.
+    func forget(nameKey: String) async {
+        aislePreferences[nameKey] = nil
+        await write {
+            try await supabase.from("aisle_preferences").delete()
+                .eq("household_id", value: householdId)
+                .eq("name_key", value: nameKey)
+                .execute()
+        }
+    }
+
+    /// Namen in Originalschreibweise, damit Zuordnungen nicht kleingeschrieben erscheinen
+    func knownNames(recipes: [Recipe]) -> [String] {
+        items.map(\.name) + staples.map(\.name) + recipes.flatMap { $0.ingredients.map(\.name) }
     }
 
     func delete(_ item: ShoppingItem) async {

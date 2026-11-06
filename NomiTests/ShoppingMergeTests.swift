@@ -52,12 +52,25 @@ struct ShoppingMergeTests {
         #expect(again == ShoppingMerge.Result())
     }
 
-    @Test func ignoresCheckedItemsFromEarlierShopping() {
-        let existing = [item("Milch", 1, "l", checked: true)]
+    @Test func reopensDoneItemInsteadOfDuplicating() {
+        var milk = item("Milch", 1, "l", checked: true)
+        milk.checkedBy = UUID()
+        let result = ShoppingMerge.merge([ingredient("milch", 2, "l"), ingredient("Milch", 500, "ml")], recipeId: recipeA, into: [milk], householdId: household)
+        #expect(result.inserts.isEmpty)
+        #expect(result.updates.count == 1)
+        let reopened = result.updates[0]
+        #expect(reopened.id == milk.id)
+        #expect(!reopened.checked && reopened.checkedBy == nil)
+        // Alte Menge war schon gekauft: zählt nur das Neue, im selben Schwung wird weiter zusammengeführt
+        #expect(reopened.quantity == 2500 && reopened.unit == "ml")
+    }
+
+    @Test func openItemGoesBeforeDoneOne() {
+        let existing = [item("Milch", 1, "l", checked: true), item("Milch", 1, "l")]
         let result = ShoppingMerge.merge([ingredient("Milch", 1, "l")], recipeId: nil, into: existing, householdId: household)
-        #expect(result.updates.isEmpty)
-        #expect(result.inserts.count == 1)
-        #expect(result.inserts[0].checked == false)
+        #expect(result.updates.count == 1)
+        #expect(result.updates[0].id == existing[1].id)
+        #expect(result.updates[0].quantity == 2000)
     }
 
     @Test func mergesWithinOneBatch() {

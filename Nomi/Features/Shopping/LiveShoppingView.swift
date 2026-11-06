@@ -14,13 +14,31 @@ struct LiveShoppingView: View {
     @State private var presence = ShoppingPresence()
     /// Abgehaktes ausblenden; gilt pro Gerät, damit es beim nächsten Einkauf so bleibt
     @AppStorage("liveShopping.hidesCart") private var hidesCart = false
+    /// Abteilungen mit Offenem beim Start; schon Erledigtes bekommt keine Seite
+    @State private var startCategories: Set<CategoryKey>?
+    /// Eintrag, für den gerade die Abteilung gewählt wird (Halten)
+    @State private var categoryChoice: ShoppingItem?
+    /// Hinweis nach dem Umsortieren: „Vesper Käse → Kühlregal“
+    @State private var movedNotice: MovedNotice?
+    /// Nach dem Halten löst das Loslassen sonst noch einen Tipp aus und hakt ab
+    @State private var swallowTap: UUID?
+
+    private struct MovedNotice: Equatable {
+        let id = UUID()
+        let name: String
+        let target: CategoryKey
+    }
 
     /// Abgleich im Modus: Realtime kommt sofort, das hier fängt verpasste Änderungen auf
     private static let syncInterval: Duration = .seconds(3)
 
-    private var pages: [LiveShopping.Page] { LiveShopping.pages(shopping.items, order: shopping.categoryOrder) }
-    private var total: Int { shopping.items.count }
-    private var done: Int { shopping.checkedItems.count }
+    private var pages: [LiveShopping.Page] {
+        LiveShopping.pages(shopping.items, order: shopping.categoryOrder, startedWith: startCategories ?? [])
+    }
+    /// Fortschritt nur über die gezeigten Abteilungen
+    private var shownItems: [ShoppingItem] { pages.flatMap(\.items) }
+    private var total: Int { shownItems.count }
+    private var done: Int { shownItems.filter(\.checked).count }
     private var isFinished: Bool { shopping.hasLoaded && total > 0 && done == total }
 
     var body: some View {
@@ -74,6 +92,7 @@ struct LiveShoppingView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.smooth, value: page)
+                .overlay(alignment: .bottom) { movedBanner }
                 bottomBar
             }
         }
@@ -94,13 +113,76 @@ struct LiveShoppingView: View {
             }
         }
         .task { await presence.run(householdId: shopping.householdId, userId: shopping.userId) }
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        // Kam nach dem Halten kein Tipp mehr, darf der nächste echte Tipp nicht verschluckt werden
+        .sheet(item: $categoryChoice, onDismiss: { swallowTap = nil }) { item in
+            CategoryPickerSheet(itemName: item.name, current: item.categoryKey, categories: shopping.categoryOrder) { key in
+                Task { await shopping.move(item, to: key) }
+                withAnimation(.smooth) { movedNotice = MovedNotice(name: item.name, target: key) }
+            }
+        }
+        // Hinweis nach ein paar Sekunden wieder weg
+        .task(id: movedNotice?.id) {
+            guard movedNotice != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            if !Task.isCancelled { withAnimation(.smooth) { movedNotice = nil } }
+        }
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
+            captureStart()
+        }
+        .onChange(of: shopping.hasLoaded) { captureStart() }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+    }
+
+    /// Welche Abteilungen beim Start noch Offenes haben – nur einmal, sobald die Liste da ist
+    private func captureStart() {
+        guard startCategories == nil, shopping.hasLoaded else { return }
+        startCategories = LiveShopping.openCategories(shopping.items, order: shopping.categoryOrder)
+    }
+
+    @ViewBuilder
+    private var movedBanner: some View {
+        if let notice = movedNotice {
+            let name = shopping.categoryOrder.first { $0.key == notice.target }?.name ?? ""
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.turn.down.right")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.95, green: 0.70, blue: 0.24))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(notice.name) → \(name)")
+                        .font(.custom("DMSans-SemiBold", size: 15, relativeTo: .subheadline))
+                        .lineLimit(1)
+                    Text("Gemerkt für euren Haushalt")
+                        .font(.captionSans)
+                        .opacity(0.7)
+                }
+                Spacer(minLength: 8)
+                if let index = pages.firstIndex(where: { $0.category.key == notice.target }), index != page {
+                    Button("Hinspringen") {
+                        withAnimation { page = index }
+                        withAnimation(.smooth) { movedNotice = nil }
+                    }
+                    .font(.custom("DMSans-SemiBold", size: 14, relativeTo: .footnote))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.canvas.opacity(0.16), in: .capsule)
+                    .accessibilityIdentifier("live-moved-jump")
+                }
+            }
+            .foregroundStyle(Color.canvas)
+            .padding(14)
+            .background(Color.ink, in: .rect(cornerRadius: 18))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("live-moved")
+        }
     }
 
     // MARK: - Kopf & Fuß
 
-    /// Auge: „Im Wagen“ ein- und ausblenden
+    /// Auge: Erledigtes ein- und ausblenden
     private var cartToggle: some View {
         Button {
             withAnimation(.smooth(duration: 0.3)) { hidesCart.toggle() }
@@ -112,7 +194,7 @@ struct LiveShoppingView: View {
                 .frame(width: 36, height: 36)
                 .background(Color.onBrand.opacity(0.18), in: .circle)
         }
-        .accessibilityLabel(hidesCart ? "Im Wagen einblenden" : "Im Wagen ausblenden")
+        .accessibilityLabel(hidesCart ? "Erledigtes einblenden" : "Erledigtes ausblenden")
         .accessibilityIdentifier("live-toggle-cart")
     }
 
@@ -250,7 +332,7 @@ struct LiveShoppingView: View {
                         .transition(.opacity.combined(with: .move(edge: .trailing)))
                 }
                 if hidesCart && page.openCount == 0 && page.items.allSatisfy({ !shopping.partnerHighlights.contains($0.id) }) {
-                    Label("Alles aus dieser Abteilung ist im Wagen.", systemImage: "checkmark.circle")
+                    Label("Alles aus dieser Abteilung ist erledigt.", systemImage: "checkmark.circle")
                         .font(.bodySans)
                         .foregroundStyle(Color.sage)
                         .padding(.horizontal, 10)
@@ -269,12 +351,16 @@ struct LiveShoppingView: View {
         let count = page.items.count
         let inCart = count - page.openCount
         let things = count == 1 ? "1 Ding" : "\(count) Dinge"
-        return inCart == 0 ? things : "\(things) · \(inCart) im Wagen"
+        return inCart == 0 ? things : "\(things) · \(inCart) erledigt"
     }
 
     private func row(_ item: ShoppingItem, pageIndex: Int) -> some View {
         let highlighted = shopping.partnerHighlights.contains(item.id)
         return Button {
+            if swallowTap == item.id {
+                swallowTap = nil
+                return
+            }
             toggle(item, pageIndex: pageIndex)
         } label: {
             HStack(spacing: 16) {
@@ -329,7 +415,14 @@ struct LiveShoppingView: View {
             .animation(.smooth(duration: 0.4), value: highlighted)
         }
         .buttonStyle(.plain)
+        // Halten: Abteilung ändern
+        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+            swallowTap = item.id
+            categoryChoice = item
+        })
         .sensoryFeedback(.impact(weight: .light), trigger: item.checked)
+        .sensoryFeedback(.selection, trigger: categoryChoice?.id) { _, new in new == item.id }
+        .accessibilityAction(named: "Abteilung ändern") { categoryChoice = item }
         .accessibilityIdentifier("live-item-\(item.name)")
         .accessibilityValue(item.checked ? "erledigt" : "offen")
     }
@@ -357,7 +450,7 @@ struct LiveShoppingView: View {
         VStack(spacing: 14) {
             Spacer()
             ReactionIllustration(reaction: .korb).frame(width: 130, height: 130)
-            Text("Alles im Wagen!")
+            Text("Alles erledigt!")
                 .font(.display)
                 .tracking(-1)
                 .foregroundStyle(Color.ink)
@@ -387,7 +480,7 @@ struct LiveShoppingView: View {
     /// „12 Dinge, Sam hat 5 davon geholt.“
     private var finishedText: String {
         let things = total == 1 ? "1 Ding" : "\(total) Dinge"
-        let byPartner = Dictionary(grouping: shopping.items.compactMap(\.checkedBy).filter { $0 != shopping.userId }) { $0 }
+        let byPartner = Dictionary(grouping: shownItems.compactMap(\.checkedBy).filter { $0 != shopping.userId }) { $0 }
         guard let (id, ids) = byPartner.max(by: { $0.value.count < $1.value.count }),
               let member = app.members.first(where: { $0.userId == id }) else {
             return "\(things), alles drin."

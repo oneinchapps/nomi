@@ -9,7 +9,7 @@ struct ShoppingListView: View {
     @State private var showsStaples = false
     @State private var showsSettings = false
     @State private var showsLive = false
-    /// „Im Wagen“ ist beim Öffnen zugeklappt
+    /// „Erledigt“ ist beim Öffnen zugeklappt
     @State private var showsCart = false
     /// Zählt Verschiebungen, nur für das haptische Feedback
     @State private var moves = 0
@@ -76,7 +76,7 @@ struct ShoppingListView: View {
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundStyle(Color.inkMuted)
                                     .rotationEffect(.degrees(showsCart ? 90 : 0))
-                                MetaLabel("Im Wagen · \(shopping.checkedItems.count)")
+                                MetaLabel("Erledigt · \(shopping.checkedItems.count)")
                                 Spacer(minLength: 8)
                             }
                             .contentShape(.rect)
@@ -99,20 +99,15 @@ struct ShoppingListView: View {
             }
         }
         .listStyle(.plain)
-        // Luft unter dem Ende der Liste, sonst klebt „Im Wagen“ an der Tab-Leiste
+        // Luft unter dem Ende der Liste, sonst klebt „Erledigt“ an der Tab-Leiste
         .contentMargins(.bottom, 48, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .background(Color.canvas.ignoresSafeArea())
         .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)\($0.categoryKey.raw)" } + shopping.categoryOrder.map(\.name))
         .sensoryFeedback(.success, trigger: moves)
-        .confirmationDialog(
-            "In welche Abteilung?",
-            isPresented: Binding(get: { aisleChoice != nil }, set: { if !$0 { aisleChoice = nil } }),
-            titleVisibility: .visible,
-            presenting: aisleChoice
-        ) { item in
-            ForEach(shopping.categoryOrder.filter { $0.key != item.categoryKey }) { category in
-                Button(category.name) { move(item, to: category.key) }
+        .sheet(item: $aisleChoice) { item in
+            CategoryPickerSheet(itemName: item.name, current: item.categoryKey, categories: shopping.categoryOrder) { key in
+                move(item, to: key)
             }
         }
         .refreshable { await shopping.load() }

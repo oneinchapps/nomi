@@ -150,8 +150,10 @@ enum ShoppingMerge {
         into existing: [ShoppingItem],
         householdId: UUID
     ) -> Result {
-        // Arbeitsliste aus offenen Einträgen; abgehakte bleiben unberührt (das war ein früherer Einkauf)
+        // Arbeitsliste aus offenen Einträgen. Erledigte werden nicht zusammengezählt (das war ein früherer
+        // Einkauf), aber wieder geöffnet statt doppelt angelegt – jeder Artikel steht nur einmal auf der Liste.
         var open = existing.filter { !$0.checked }
+        var done = existing.filter(\.checked)
         var updatedIds = Set<UUID>()
         var insertedIds = Set<UUID>()
 
@@ -166,7 +168,17 @@ enum ShoppingMerge {
                 return key(item.name) == key(name)
                     && (existingUnit == unit || existingQuantity == nil || quantity == nil)
             }
-            if let index = match {
+            if match == nil, let doneIndex = done.firstIndex(where: { key($0.name) == key(name) }) {
+                // Zurück aus „Erledigt“, mit der neu gebrauchten Menge
+                var item = done.remove(at: doneIndex)
+                item.checked = false
+                item.checkedBy = nil
+                item.quantity = quantity
+                item.unit = unit
+                item.recipeId = recipeId
+                open.append(item)
+                updatedIds.insert(item.id)
+            } else if let index = match {
                 var item = open[index]
                 let (existingQuantity, _) = base(item.quantity, item.unit)
                 if let quantity, let existingQuantity {

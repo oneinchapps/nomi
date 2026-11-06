@@ -270,9 +270,12 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - **Einkauf:**
   - Toolbar: Zahnrad für die Einstellungen fürs Einkaufen, links vom Profil.
   - Die Liste wird aus Rezepten gefüllt und zusammengeführt (`ShoppingMerge`, Einheiten vergleichbar gemacht), nach Abteilung sortiert und live gemeinsam abgehakt.
+  - Jeder Artikel steht nur einmal auf der Liste: Kommt etwas dazu, das schon unter „Erledigt“ liegt, öffnet `ShoppingMerge.merge` diesen Eintrag wieder, mit der neuen Menge (die alte war schon gekauft). Ein offener Eintrag geht dabei vor; „Rückgängig“ legt ihn zurück zu „Erledigt“.
   - Wiederkehrende Einträge stehen in `staple_items`.
   - **Kategorie wechseln:** Einen offenen Eintrag halten und in eine andere Kategorie ziehen. Leere Kategorien erreicht man per Wischen nach rechts („Abteilung“).
     - Die offenen Einträge sind dafür eine flache Liste aus Überschriften und Einträgen mit `onMove`; `CategoryMove` bestimmt die Kategorie aus der Überschrift über der Ablagestelle.
+    - Gewählt wird überall im selben Blatt `CategoryPickerSheet`: alle Kategorien als Chips, die aktuelle mit Haken, `Aisle.guess` als dunkler Vorschlag.
+    - **Zuordnungen** im Zahnrad (`CategoryMappingsView`, Entwurf `design/shopping/zuordnungen.png`): alle gemerkten Artikel nach Kategorie, mit Suche. Tippen ändert (`ShoppingStore.assign`, offene Einträge wandern mit), Wischen vergisst (`forget`), „+“ legt vorab an. Gespeichert ist nur der kleingeschriebene Name; angezeigt wird die Schreibweise von Liste, Standardartikeln oder Rezepten (`CategoryMappings.displayName`).
     - Der Haushalt merkt sich die Wahl in `aisle_preferences` (Schlüssel `ShoppingMerge.key`, dazu `category_id` bei eigenen Kategorien). Sie geht beim Hinzufügen vor Rezept, KI und Raten (`ShoppingMerge.applyPreferences`, `applyCategories`).
   - **Supermärkte und Kategorien** (Zahnrad im Einkauf, `ShoppingSettingsSheet`):
     - Kategorien = die 11 festen Abteilungen (`Aisle`, Postgres-Enum) plus eigene des Haushalts. `shopping_categories` hält Umbenennungen fester Abteilungen (mit `aisle`) und eigene Kategorien (ohne). Schlüssel in der App: `CategoryKey` (`aisle:<wert>` oder UUID).
@@ -285,14 +288,16 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
     - Rangfolge: Treffer am Namensanfang vor Treffer am Wortanfang vor Treffer im Wort (ab 3 Zeichen). Groß-/Kleinschreibung und Umlaute zählen nicht.
     - Der Verlauf (`ShoppingHistory`) liegt pro Haushalt in den UserDefaults, nur auf dem Gerät. Erledigtes verschwindet beim „Leeren“ aus der Datenbank.
   - Die Anzahl offener Einträge steht im Kreis.
-  - „Im Wagen“ (Abgehaktes) ist beim Öffnen zugeklappt; der Kopf klappt auf (`cart-toggle`).
+  - „Erledigt“ (Abgehaktes) ist beim Öffnen zugeklappt; der Kopf klappt auf (`cart-toggle`).
   - **Live einkaufen** (`LiveShoppingView`, Entwurf B aus `design/shopping/live-einkaufen.png`): „Einkaufen starten“ unter dem Eingabefeld, sobald etwas offen ist und nicht getippt wird.
     - Vollbild wie der Kochmodus, Bildschirm bleibt an. Eine Seite pro Abteilung in der Reihenfolge des Supermarkts (`LiveShopping.pages`), abgehakte Einträge bleiben an ihrem Platz. Wer das Letzte einer Abteilung abhakt, springt nach 0,6 s zur nächsten mit Offenem.
     - Abgleich: Realtime wie immer, dazu im Modus alle 3 s `load()` und beim Zurückkehren in die App. Eigene Haken, die noch gespeichert werden, gehen beim Laden vor (`pendingChecks`, `LiveShopping.applyPending`), sonst springen sie kurz zurück.
     - Haken der anderen Person leuchten 4 s grün (`partnerHighlights`, erkannt in `load()` über `LiveShopping.newlyCheckedByOthers`).
     - „Sam kauft mit“: Realtime Presence auf dem Kanal `shopping-live-<haushalt>`, Schlüssel ist die User-ID (`ShoppingPresence`), ohne Tabelle.
     - Auge oben rechts blendet Abgehaktes aus und ein (`@AppStorage("liveShopping.hidesCart")`, pro Gerät; `NOMI_RESET_SESSION` setzt es zurück). Was die andere Person gerade abgehakt hat, bleibt sichtbar, solange es aufleuchtet (`LiveShopping.visibleItems`).
-    - Ist alles abgehakt: „Alles im Wagen!“ mit „Fertig, Liste leeren“ oder „Liste behalten“.
+    - Seiten gibt es nur für Abteilungen, in denen beim Start etwas offen ist (`startedWith`); kommt während des Einkaufs Offenes in eine andere Abteilung, bekommt sie eine Seite. Der Fortschritt zählt nur die gezeigten Abteilungen.
+    - Halten öffnet die Kategorie-Wahl (`CategoryPickerSheet`), danach zeigt ein Hinweis „Vesper Käse → Kühlregal“ mit „Hinspringen“. Das Loslassen nach dem Halten würde sonst abhaken, darum `swallowTap`.
+    - Ist alles abgehakt: „Alles erledigt!“ mit „Fertig, Liste leeren“ oder „Liste behalten“.
 - **Woche:**
   - Die Pfeile stehen neben der Kalenderwoche, die Headline hat die volle Breite.
   - Tage als Datumsspalte (Entwurf `design/week/`): links Wochentag und Tageszahl, heute im Himbeer-Kreis, rechts die Gerichte.
@@ -362,7 +367,7 @@ swift design/appicon/render-icon-concepts.swift design/fonts/DynaPuff.ttf Nomi/R
 ## Tests
 
 **Arten:**
-- `NomiTests` (Swift Testing): Parser, Mengen, Skalieren, Zusammenführen, Einkaufsvorschläge, Live-Einkauf, Einladungscodes, Kategorien, Kochhistorie, Function-Datumsformat.
+- `NomiTests` (Swift Testing): Parser, Mengen, Skalieren, Zusammenführen, Einkaufsvorschläge, Live-Einkauf, Zuordnungen, Einladungscodes, Kategorien, Kochhistorie, Function-Datumsformat.
 - `NomiUITests`: alle Hauptabläufe, mit zweiter Person über die REST-API. Gemeinsame Helfer stehen in `UITestSupport.swift`.
 - Deno-Tests in jeder Function (`deno test`).
 

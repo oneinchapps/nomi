@@ -27,6 +27,24 @@ struct LiveShoppingTests {
         #expect(pages[1].openCount == 2)
     }
 
+    @Test func nurAbteilungenMitOffenemVomStart() {
+        var items = [
+            item("Bananen", .obstGemuese),
+            item("Brot", .backwaren, checked: true, by: me),
+            item("Milch", .kuehlregal),
+        ]
+        let start = LiveShopping.openCategories(items, order: order)
+        #expect(start == [.aisle(.obstGemuese), .aisle(.kuehlregal)])
+        // Schon erledigte Backwaren bekommen keine Seite
+        #expect(LiveShopping.pages(items, order: order, startedWith: start).map(\.category.key) == [.aisle(.obstGemuese), .aisle(.kuehlregal)])
+        // Abhaken lässt die Seite stehen
+        items[0].checked = true
+        #expect(LiveShopping.pages(items, order: order, startedWith: start).count == 2)
+        // Neues Offenes in einer anderen Abteilung bekommt eine Seite
+        items.append(item("Kaffee", .getraenke))
+        #expect(LiveShopping.pages(items, order: order, startedWith: start).map(\.category.key).contains(.aisle(.getraenke)))
+    }
+
     @Test func naechsteSeiteUeberspringtErledigteAbteilungen() {
         let pages = LiveShopping.pages([
             item("Bananen", .obstGemuese),
@@ -38,7 +56,7 @@ struct LiveShoppingTests {
         #expect(LiveShopping.nextOpenPage(after: 2, in: pages) == nil)
     }
 
-    @Test func imWagenAusblendenLaesstAufleuchtendesStehen() {
+    @Test func erledigtesAusblendenLaesstAufleuchtendesStehen() {
         let milch = item("Milch", .kuehlregal, at: 1)
         let joghurt = item("Joghurt", .kuehlregal, checked: true, by: me, at: 2)
         let kaese = item("Käse", .kuehlregal, checked: true, by: sam, at: 3)

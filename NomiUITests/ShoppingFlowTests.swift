@@ -37,10 +37,10 @@ final class ShoppingFlowTests: NomiUITestCase {
 
         // Abhaken
         app.buttons["item-Milch"].tap()
-        // „Im Wagen“ ist zugeklappt: Milch verschwindet aus der Liste
+        // „Erledigt“ ist zugeklappt: Milch verschwindet aus der Liste
         let cart = app.buttons["cart-toggle"]
         XCTAssertTrue(cart.waitForExistence(timeout: 3))
-        XCTAssertTrue(cart.label.contains("IM WAGEN · 1"), cart.label)
+        XCTAssertTrue(cart.label.contains("ERLEDIGT · 1"), cart.label)
         XCTAssertEqual(cart.value as? String, "zugeklappt")
         XCTAssertFalse(app.buttons["item-Milch"].exists)
         snapshot(app, "31-shopping-list")
@@ -69,7 +69,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         try await api("PATCH", "/rest/v1/shopping_items?id=eq.\(try XCTUnwrap(tortillas["id"] as? String))",
                       body: ["checked": true, "checked_by": samId], as: sam)
         XCTAssertTrue(app.descendants(matching: .any)["abgehakt von Sam"].waitForExistence(timeout: 10), "Abhaken der anderen Person kommt nicht live an")
-        XCTAssertTrue(app.buttons["cart-toggle"].label.contains("IM WAGEN · 2"))
+        XCTAssertTrue(app.buttons["cart-toggle"].label.contains("ERLEDIGT · 2"))
         snapshot(app, "32-live-partner")
 
         try await api("DELETE", "/rest/v1/shopping_items?id=eq.\(try XCTUnwrap(kaffee["id"] as? String))", as: sam)
@@ -88,7 +88,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         let codeText = inviteCodeText(app)
         XCTAssertTrue(codeText.waitForExistence(timeout: 10))
 
-        // Lange Liste über die zweite Person, ein Eintrag schon im Wagen
+        // Lange Liste über die zweite Person, ein Eintrag schon erledigt
         let sam = try await apiSignIn(email: "sam-\(run)@nomi.test")
         let household = try await api("POST", "/rest/v1/rpc/join_household", body: ["code": codeText.label, "display_name": "Sam"], as: sam)
         let householdId = try XCTUnwrap(household["id"] as? String)
@@ -102,7 +102,7 @@ final class ShoppingFlowTests: NomiUITestCase {
 
         app.tabBars.buttons["Einkauf"].tap()
         XCTAssertTrue(app.buttons["item-Äpfel"].waitForExistence(timeout: 10))
-        // Ganz nach unten scrollen; vorher legt die Liste „Im Wagen“ noch gar nicht an
+        // Ganz nach unten scrollen; vorher legt die Liste „Erledigt“ noch gar nicht an
         for _ in 0..<3 { app.swipeUp() }
         try await Task.sleep(for: .seconds(1))
         let cart = app.buttons["cart-toggle"]
@@ -110,7 +110,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         snapshot(app, "31c-cart-closed-bottom")
 
         let gap = app.tabBars.firstMatch.frame.minY - cart.frame.maxY
-        XCTAssertGreaterThanOrEqual(gap, 40, "„Im Wagen“ klebt an der Tab-Leiste (Abstand \(gap) pt)")
+        XCTAssertGreaterThanOrEqual(gap, 40, "„Erledigt“ klebt an der Tab-Leiste (Abstand \(gap) pt)")
     }
 
     @MainActor
@@ -158,27 +158,27 @@ final class ShoppingFlowTests: NomiUITestCase {
         XCTAssertTrue(app.staticTexts["live-progress"].label.contains("3 VON 5"), app.staticTexts["live-progress"].label)
         snapshot(app, "38-live-partner")
 
-        // Auge: „Im Wagen“ ausblenden – Milch verschwindet, sobald sie nicht mehr aufleuchtet
+        // Auge: Erledigtes ausblenden – Milch verschwindet, sobald sie nicht mehr aufleuchtet
         let eye = app.buttons["live-toggle-cart"]
-        XCTAssertEqual(eye.label, "Im Wagen ausblenden")
+        XCTAssertEqual(eye.label, "Erledigtes ausblenden")
         eye.tap()
         let gone = NSPredicate(format: "exists == false")
         await fulfillment(of: [expectation(for: gone, evaluatedWith: milk)], timeout: 8)
         XCTAssertTrue(app.buttons["live-item-Joghurt"].exists)
-        XCTAssertEqual(eye.label, "Im Wagen einblenden")
+        XCTAssertEqual(eye.label, "Erledigtes einblenden")
         snapshot(app, "38b-live-cart-hidden")
         eye.tap()
         XCTAssertTrue(milk.waitForExistence(timeout: 3))
         eye.tap() // für den Rest wieder ausgeblendet: Abgehaktes verschwindet beim Tippen
 
-        // Rest abhaken → alles im Wagen
+        // Rest abhaken → alles erledigt
         app.buttons["live-item-Joghurt"].tap()
         await fulfillment(of: [expectation(for: gone, evaluatedWith: app.buttons["live-item-Joghurt"])], timeout: 3)
-        XCTAssertTrue(app.staticTexts["Alles aus dieser Abteilung ist im Wagen."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Alles aus dieser Abteilung ist erledigt."].waitForExistence(timeout: 3))
         app.buttons["live-prev"].tap()
         XCTAssertTrue(app.staticTexts["Backwaren"].waitForExistence(timeout: 5))
         app.buttons["live-item-Brot"].tap()
-        XCTAssertTrue(app.staticTexts["Alles im Wagen!"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Alles erledigt!"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["5 Dinge, Sam hat 1 davon geholt."].exists)
         snapshot(app, "39-live-done")
 
@@ -188,6 +188,99 @@ final class ShoppingFlowTests: NomiUITestCase {
         await fulfillment(of: [expectation(for: gone, evaluatedWith: app.buttons["item-Brot"])], timeout: 5)
         let left = try await apiList("/rest/v1/shopping_items?household_id=eq.\(householdId)&select=id", as: sam)
         XCTAssertTrue(left.isEmpty, "Liste wurde nicht geleert")
+    }
+
+    @MainActor
+    func testLiveShoppingMoveAndMappings() async throws {
+        let app = try launchWithNewHousehold()
+        let codeText = inviteCodeText(app)
+        XCTAssertTrue(codeText.waitForExistence(timeout: 10))
+        let sam = try await apiSignIn(email: "sam-\(run)@nomi.test")
+        let household = try await api("POST", "/rest/v1/rpc/join_household", body: ["code": codeText.label, "display_name": "Sam"], as: sam)
+        let householdId = try XCTUnwrap(household["id"] as? String)
+        // Vesper Käse falsch einsortiert, Kaffee schon erledigt
+        for (name, aisle, checked) in [("Bananen", "obst_gemuese", false), ("Vesper Käse", "obst_gemuese", false), ("Kaffee", "getraenke", true)] {
+            _ = try await api("POST", "/rest/v1/shopping_items", body: ["household_id": householdId, "name": name, "aisle": aisle, "checked": checked], as: sam)
+        }
+
+        app.tabBars.buttons["Einkauf"].tap()
+        let start = app.buttons["live-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        start.tap()
+
+        // Nur Abteilungen mit Offenem: Getränke (nur Kaffee, schon erledigt) fehlt
+        XCTAssertTrue(app.staticTexts["Obst & Gemüse"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Abteilung 1 von 1"].exists || app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Abteilung 1 von 1'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["live-progress"].label.contains("0 VON 2"), app.staticTexts["live-progress"].label)
+
+        // Halten → Kategorien als Chips, ohne abzuhaken
+        let cheese = app.buttons["live-item-Vesper Käse"]
+        cheese.press(forDuration: 1.0)
+        XCTAssertTrue(app.staticTexts["In welche Abteilung?"].waitForExistence(timeout: 5))
+        XCTAssertEqual(cheese.value as? String, "offen", "Halten hat abgehakt")
+        snapshot(app, "40-live-category-picker")
+        app.buttons["Kühlregal"].tap()
+
+        // Hinweis, dann hinspringen
+        let jump = app.buttons["live-moved-jump"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 5))
+        snapshot(app, "41-live-moved")
+        jump.tap()
+        XCTAssertTrue(app.staticTexts["Kühlregal"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["live-item-Vesper Käse"].exists)
+        app.buttons["live-close"].tap()
+
+        // Zahnrad → Zuordnungen: Vesper Käse ist gemerkt
+        app.buttons["Einstellungen fürs Einkaufen"].tap()
+        app.buttons["settings-mappings"].tap()
+        let mapping = app.buttons["mapping-Vesper Käse"]
+        XCTAssertTrue(mapping.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["KÜHLREGAL"].exists)
+        snapshot(app, "42-mappings")
+
+        // Vorab anlegen: Laugenbrezel → Backwaren
+        app.buttons["mapping-add"].tap()
+        app.alerts.textFields.firstMatch.typeText("Laugenbrezel")
+        app.alerts.buttons["Sichern"].tap()
+        XCTAssertTrue(app.staticTexts["In welche Abteilung?"].waitForExistence(timeout: 5))
+        app.buttons["Backwaren"].tap()
+        XCTAssertTrue(app.buttons["mapping-Laugenbrezel"].waitForExistence(timeout: 5))
+
+        // Vergessen per Wischen
+        mapping.swipeLeft()
+        app.buttons["Vergessen"].tap()
+        let gone = NSPredicate(format: "exists == false")
+        await fulfillment(of: [expectation(for: gone, evaluatedWith: mapping)], timeout: 5)
+
+        let prefs = try await apiList("/rest/v1/aisle_preferences?household_id=eq.\(householdId)&select=name_key,aisle", as: sam)
+        XCTAssertEqual(prefs.count, 1)
+        XCTAssertEqual(prefs.first?["name_key"] as? String, "laugenbrezel")
+        XCTAssertEqual(prefs.first?["aisle"] as? String, "backwaren")
+    }
+
+    @MainActor
+    func testDoneItemComesBackInsteadOfDuplicate() async throws {
+        let app = try launchWithNewHousehold()
+        app.tabBars.buttons["Einkauf"].tap()
+        let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("1 l Milch\n")
+        let milk = app.buttons["item-Milch"]
+        XCTAssertTrue(milk.waitForExistence(timeout: 5))
+        milk.tap()
+        let cart = app.buttons["cart-toggle"]
+        XCTAssertTrue(cart.waitForExistence(timeout: 3))
+        XCTAssertTrue(cart.label.contains("ERLEDIGT · 1"), cart.label)
+
+        // Noch mal Milch: kommt aus „Erledigt“ zurück, mit der neuen Menge, kein zweiter Eintrag
+        field.tap()
+        field.typeText("2 l Milch\n")
+        await fulfillment(of: [expectation(for: NSPredicate(format: "value == 'offen'"), evaluatedWith: milk)], timeout: 5)
+        XCTAssertTrue(milk.label.contains("2 l"), milk.label)
+        await fulfillment(of: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: cart)], timeout: 5)
+        XCTAssertEqual(app.buttons.matching(identifier: "item-Milch").count, 1)
+        snapshot(app, "43-done-item-reopened")
     }
 
     @MainActor

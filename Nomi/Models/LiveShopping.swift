@@ -11,12 +11,21 @@ enum LiveShopping {
         var openCount: Int { items.filter { !$0.checked }.count }
     }
 
-    /// Alle Abteilungen mit Einträgen, in der Laufreihenfolge des Supermarkts
-    static func pages(_ items: [ShoppingItem], order: [ShoppingCategory]) -> [Page] {
-        ShoppingGrouping.group(items, order: order).map { Page(category: $0.category, items: $0.items) }
+    /// Abteilungen in der Laufreihenfolge des Supermarkts. Mit `startedWith` nur die, in denen beim Start
+    /// etwas offen war oder jetzt etwas offen ist; schon erledigte Abteilungen bleiben weg, und eine
+    /// Seite verschwindet nicht, sobald man sie abgehakt hat.
+    static func pages(_ items: [ShoppingItem], order: [ShoppingCategory], startedWith: Set<CategoryKey>? = nil) -> [Page] {
+        let all = ShoppingGrouping.group(items, order: order).map { Page(category: $0.category, items: $0.items) }
+        guard let startedWith else { return all }
+        return all.filter { $0.openCount > 0 || startedWith.contains($0.category.key) }
     }
 
-    /// Was auf einer Seite zu sehen ist. Ist „Im Wagen“ ausgeblendet, bleibt gerade von der anderen Person
+    /// Abteilungen mit Offenem, gemerkt beim Start des Modus
+    static func openCategories(_ items: [ShoppingItem], order: [ShoppingCategory]) -> Set<CategoryKey> {
+        Set(pages(items, order: order).filter { $0.openCount > 0 }.map(\.category.key))
+    }
+
+    /// Was auf einer Seite zu sehen ist. Ist „Erledigt“ ausgeblendet, bleibt gerade von der anderen Person
     /// Abgehaktes trotzdem stehen, solange es aufleuchtet – sonst verschwände es spurlos.
     static func visibleItems(_ page: Page, hidesCart: Bool, highlighted: Set<UUID>) -> [ShoppingItem] {
         guard hidesCart else { return page.items }
