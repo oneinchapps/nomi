@@ -12,6 +12,8 @@ struct LiveShoppingView: View {
 
     @State private var page = 0
     @State private var presence = ShoppingPresence()
+    /// Abgehaktes ausblenden; gilt pro Gerät, damit es beim nächsten Einkauf so bleibt
+    @AppStorage("liveShopping.hidesCart") private var hidesCart = false
 
     /// Abgleich im Modus: Realtime kommt sofort, das hier fängt verpasste Änderungen auf
     private static let syncInterval: Duration = .seconds(3)
@@ -41,11 +43,14 @@ struct LiveShoppingView: View {
                     }
                     .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .topBarTrailing) {
-                        MetaLabel("\(done) von \(total)", font: .eyebrow, tracking: 2)
-                            .environment(\.onBrandSurface, true)
-                            .fixedSize()
-                            .contentTransition(.numericText())
-                            .accessibilityIdentifier("live-progress")
+                        HStack(spacing: 12) {
+                            MetaLabel("\(done) von \(total)", font: .eyebrow, tracking: 2)
+                                .environment(\.onBrandSurface, true)
+                                .fixedSize()
+                                .contentTransition(.numericText())
+                                .accessibilityIdentifier("live-progress")
+                            cartToggle
+                        }
                     }
                     .sharedBackgroundVisibility(.hidden)
                 }
@@ -94,6 +99,22 @@ struct LiveShoppingView: View {
     }
 
     // MARK: - Kopf & Fuß
+
+    /// Auge: „Im Wagen“ ein- und ausblenden
+    private var cartToggle: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.3)) { hidesCart.toggle() }
+        } label: {
+            Image(systemName: hidesCart ? "eye.slash" : "eye")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.onBrand)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 36, height: 36)
+                .background(Color.onBrand.opacity(0.18), in: .circle)
+        }
+        .accessibilityLabel(hidesCart ? "Im Wagen einblenden" : "Im Wagen ausblenden")
+        .accessibilityIdentifier("live-toggle-cart")
+    }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -224,13 +245,23 @@ struct LiveShoppingView: View {
                 MetaLabel(countLabel(page))
                     .padding(.top, 6)
                     .padding(.bottom, 10)
-                ForEach(page.items) { item in
+                ForEach(LiveShopping.visibleItems(page, hidesCart: hidesCart, highlighted: shopping.partnerHighlights)) { item in
                     row(item, pageIndex: index)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                }
+                if hidesCart && page.openCount == 0 && page.items.allSatisfy({ !shopping.partnerHighlights.contains($0.id) }) {
+                    Label("Alles aus dieser Abteilung ist im Wagen.", systemImage: "checkmark.circle")
+                        .font(.bodySans)
+                        .foregroundStyle(Color.sage)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 14)
                 }
             }
             .padding(.horizontal, Metrics.gutter - 10)
             .padding(.top, 22)
             .padding(.bottom, 24)
+            // Abhaken passiert in einer Task ohne withAnimation; so gleiten ausgeblendete Zeilen trotzdem weg
+            .animation(.smooth(duration: 0.3), value: LiveShopping.visibleItems(page, hidesCart: hidesCart, highlighted: shopping.partnerHighlights).map(\.id))
         }
     }
 

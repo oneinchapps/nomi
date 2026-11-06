@@ -158,8 +158,23 @@ final class ShoppingFlowTests: NomiUITestCase {
         XCTAssertTrue(app.staticTexts["live-progress"].label.contains("3 VON 5"), app.staticTexts["live-progress"].label)
         snapshot(app, "38-live-partner")
 
+        // Auge: „Im Wagen“ ausblenden – Milch verschwindet, sobald sie nicht mehr aufleuchtet
+        let eye = app.buttons["live-toggle-cart"]
+        XCTAssertEqual(eye.label, "Im Wagen ausblenden")
+        eye.tap()
+        let gone = NSPredicate(format: "exists == false")
+        await fulfillment(of: [expectation(for: gone, evaluatedWith: milk)], timeout: 8)
+        XCTAssertTrue(app.buttons["live-item-Joghurt"].exists)
+        XCTAssertEqual(eye.label, "Im Wagen einblenden")
+        snapshot(app, "38b-live-cart-hidden")
+        eye.tap()
+        XCTAssertTrue(milk.waitForExistence(timeout: 3))
+        eye.tap() // für den Rest wieder ausgeblendet: Abgehaktes verschwindet beim Tippen
+
         // Rest abhaken → alles im Wagen
         app.buttons["live-item-Joghurt"].tap()
+        await fulfillment(of: [expectation(for: gone, evaluatedWith: app.buttons["live-item-Joghurt"])], timeout: 3)
+        XCTAssertTrue(app.staticTexts["Alles aus dieser Abteilung ist im Wagen."].waitForExistence(timeout: 3))
         app.buttons["live-prev"].tap()
         XCTAssertTrue(app.staticTexts["Backwaren"].waitForExistence(timeout: 5))
         app.buttons["live-item-Brot"].tap()
@@ -170,7 +185,6 @@ final class ShoppingFlowTests: NomiUITestCase {
         // Liste leeren und zurück
         app.buttons["live-finish-clear"].tap()
         XCTAssertTrue(app.staticTexts["Einkauf"].firstMatch.waitForExistence(timeout: 5))
-        let gone = NSPredicate(format: "exists == false")
         await fulfillment(of: [expectation(for: gone, evaluatedWith: app.buttons["item-Brot"])], timeout: 5)
         let left = try await apiList("/rest/v1/shopping_items?household_id=eq.\(householdId)&select=id", as: sam)
         XCTAssertTrue(left.isEmpty, "Liste wurde nicht geleert")

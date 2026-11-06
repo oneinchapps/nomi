@@ -29,6 +29,8 @@ final class AppModel {
         // UI-Tests starten jeweils frisch abgemeldet
         if ProcessInfo.processInfo.environment["NOMI_RESET_SESSION"] == "1" {
             try? await supabase.auth.signOut(scope: .local)
+            // Einstellungen aus früheren Läufen nicht mitschleppen
+            UserDefaults.standard.removeObject(forKey: "liveShopping.hidesCart")
         }
         #endif
         for await (event, session) in supabase.auth.authStateChanges {

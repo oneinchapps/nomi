@@ -38,6 +38,16 @@ struct LiveShoppingTests {
         #expect(LiveShopping.nextOpenPage(after: 2, in: pages) == nil)
     }
 
+    @Test func imWagenAusblendenLaesstAufleuchtendesStehen() {
+        let milch = item("Milch", .kuehlregal, at: 1)
+        let joghurt = item("Joghurt", .kuehlregal, checked: true, by: me, at: 2)
+        let kaese = item("Käse", .kuehlregal, checked: true, by: sam, at: 3)
+        let page = LiveShopping.pages([milch, joghurt, kaese], order: order)[0]
+        #expect(LiveShopping.visibleItems(page, hidesCart: false, highlighted: []).count == 3)
+        #expect(LiveShopping.visibleItems(page, hidesCart: true, highlighted: []).map(\.name) == ["Milch"])
+        #expect(LiveShopping.visibleItems(page, hidesCart: true, highlighted: [kaese.id]).map(\.name) == ["Milch", "Käse"])
+    }
+
     @Test func erkenntNurHakenDerAnderenPerson() {
         let milch = item("Milch", .kuehlregal)
         let brot = item("Brot", .backwaren)

@@ -16,6 +16,13 @@ enum LiveShopping {
         ShoppingGrouping.group(items, order: order).map { Page(category: $0.category, items: $0.items) }
     }
 
+    /// Was auf einer Seite zu sehen ist. Ist „Im Wagen“ ausgeblendet, bleibt gerade von der anderen Person
+    /// Abgehaktes trotzdem stehen, solange es aufleuchtet – sonst verschwände es spurlos.
+    static func visibleItems(_ page: Page, hidesCart: Bool, highlighted: Set<UUID>) -> [ShoppingItem] {
+        guard hidesCart else { return page.items }
+        return page.items.filter { !$0.checked || highlighted.contains($0.id) }
+    }
+
     /// Nächste Seite nach `index`, auf der noch etwas offen ist; sonst nil
     static func nextOpenPage(after index: Int, in pages: [Page]) -> Int? {
         pages.indices.first { $0 > index && pages[$0].openCount > 0 }

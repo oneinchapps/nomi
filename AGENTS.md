@@ -291,6 +291,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
     - Abgleich: Realtime wie immer, dazu im Modus alle 3 s `load()` und beim Zurückkehren in die App. Eigene Haken, die noch gespeichert werden, gehen beim Laden vor (`pendingChecks`, `LiveShopping.applyPending`), sonst springen sie kurz zurück.
     - Haken der anderen Person leuchten 4 s grün (`partnerHighlights`, erkannt in `load()` über `LiveShopping.newlyCheckedByOthers`).
     - „Sam kauft mit“: Realtime Presence auf dem Kanal `shopping-live-<haushalt>`, Schlüssel ist die User-ID (`ShoppingPresence`), ohne Tabelle.
+    - Auge oben rechts blendet Abgehaktes aus und ein (`@AppStorage("liveShopping.hidesCart")`, pro Gerät; `NOMI_RESET_SESSION` setzt es zurück). Was die andere Person gerade abgehakt hat, bleibt sichtbar, solange es aufleuchtet (`LiveShopping.visibleItems`).
     - Ist alles abgehakt: „Alles im Wagen!“ mit „Fertig, Liste leeren“ oder „Liste behalten“.
 - **Woche:**
   - Die Pfeile stehen neben der Kalenderwoche, die Headline hat die volle Breite.
