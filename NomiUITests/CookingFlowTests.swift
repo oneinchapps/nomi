@@ -54,6 +54,14 @@ final class CookingFlowTests: NomiUITestCase {
         snapshot(app, "63-cooking-step2")
 
         app.buttons["Weiter"].tap()
+        // Chefi tanzt vor Glück: Bildfolge ohne Warten auf „idle“
+        for index in 0..<12 {
+            let frame = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            frame.name = String(format: "64-done-%02d", index)
+            frame.lifetime = .keepAlways
+            add(frame)
+            Thread.sleep(forTimeInterval: 0.3)
+        }
         XCTAssertTrue(app.staticTexts["Guten Appetit!"].waitForExistence(timeout: 3))
         app.buttons["Fertig"].tap()
         XCTAssertTrue(cook.waitForExistence(timeout: 3), "Nach dem Kochen zurück in der Rezeptansicht")

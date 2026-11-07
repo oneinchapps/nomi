@@ -16,11 +16,22 @@ struct ChefiView: View, Animatable {
     /// Linke Pfote fehlt, weil sie gerade an der Scheibe klebt (`GlassPaw` davor)
     var pawOnGlass = false
     var mouth: Mouth = .smile
+    var eyes: Eyes = .open
 
     enum Mouth {
         case smile
         /// Rundes „Oh!“ beim Klopfen
         case oh
+        /// Großes, offenes Lachen
+        case laugh
+    }
+
+    enum Eyes {
+        case open
+        /// Lachaugen ^^
+        case happy
+        /// Verliebt: Herzen in Himbeere
+        case hearts
     }
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
@@ -92,17 +103,30 @@ private struct ChefiDrawing {
 
     private func face(eyeY: CGFloat) {
         let spacing: CGFloat = 18
+        // Glücklich: Bäckchen als Herzen
+        let happy = pose.eyes != .open
         for side in [-1.0, 1.0] as [CGFloat] {
             let x = cx + side * spacing
-            if pose.winks && side > 0 {
-                line(curve(x - 5.5, eyeY - 1.5, x, eyeY + 5, x + 5.5, eyeY - 1.5), width: 3.5)
-            } else {
-                fill(ellipse(x, eyeY, 10.4, 10.4), ChefiColor.ink)
-                fill(ellipse(x + 1.6, eyeY + 1.9, 3.4, 3.4), .white)
+            switch pose.eyes {
+            case .happy:
+                line(curve(x - 6, eyeY - 2, x, eyeY + 7, x + 6, eyeY - 2), width: 3.8)
+            case .hearts:
+                fill(heart(x, eyeY + 1, 6.5), ChefiColor.band)
+            case .open:
+                if pose.winks && side > 0 {
+                    line(curve(x - 5.5, eyeY - 1.5, x, eyeY + 5, x + 5.5, eyeY - 1.5), width: 3.5)
+                } else {
+                    fill(ellipse(x, eyeY, 10.4, 10.4), ChefiColor.ink)
+                    fill(ellipse(x + 1.6, eyeY + 1.9, 3.4, 3.4), .white)
+                }
             }
-            fill(ellipse(cx + side * spacing * 1.75, eyeY - 9, 15, 9), ChefiColor.blush)
+            if happy {
+                fill(heart(cx + side * spacing * 1.8, eyeY - 10, 6), ChefiColor.blush)
+            } else {
+                fill(ellipse(cx + side * spacing * 1.75, eyeY - 9, 15, 9), ChefiColor.blush)
+            }
         }
-        let top = eyeY - 4, r: CGFloat = 10
+        let top = eyeY - 4, r: CGFloat = pose.mouth == .laugh ? 15 : 10
         if pose.mouth == .oh {
             shape(ellipse(cx, top - 6, 11, 13), ChefiColor.mouth)
             return
@@ -125,6 +149,18 @@ private struct ChefiDrawing {
     }
 
     // MARK: Formen
+
+    /// Herz mit Spitze unten (im y-oben-Raster)
+    private func heart(_ x: CGFloat, _ y: CGFloat, _ s: CGFloat) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: x, y: y - 0.9 * s))
+        p.addCurve(to: CGPoint(x: x - s, y: y + 0.15 * s), control1: CGPoint(x: x - 0.35 * s, y: y - 0.45 * s), control2: CGPoint(x: x - s, y: y - 0.3 * s))
+        p.addCurve(to: CGPoint(x: x, y: y + 0.35 * s), control1: CGPoint(x: x - s, y: y + 0.75 * s), control2: CGPoint(x: x - 0.2 * s, y: y + 0.8 * s))
+        p.addCurve(to: CGPoint(x: x + s, y: y + 0.15 * s), control1: CGPoint(x: x + 0.2 * s, y: y + 0.8 * s), control2: CGPoint(x: x + s, y: y + 0.75 * s))
+        p.addCurve(to: CGPoint(x: x, y: y - 0.9 * s), control1: CGPoint(x: x + s, y: y - 0.3 * s), control2: CGPoint(x: x + 0.35 * s, y: y - 0.45 * s))
+        p.closeSubpath()
+        return p
+    }
 
     private func bean() -> Path {
         var p = Path()

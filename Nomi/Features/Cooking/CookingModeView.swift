@@ -253,20 +253,7 @@ struct CookingModeView: View {
     }
 
     private var donePage: some View {
-        VStack(spacing: 14) {
-            Spacer()
-            ReactionIllustration(reaction: .lecker).frame(width: 120, height: 120)
-            Text("Guten Appetit!")
-                .font(.display)
-                .tracking(-1)
-                .foregroundStyle(Color.ink)
-            Text("\(recipe.title) ist fertig. Lasst es euch schmecken.")
-                .font(.bodySans)
-                .foregroundStyle(Color.inkMuted)
-                .multilineTextAlignment(.center)
-            Spacer()
-        }
-        .padding(Metrics.gutter)
+        CookingDoneView(recipeTitle: recipe.title, isActive: page == lastPage)
     }
 
     @ViewBuilder

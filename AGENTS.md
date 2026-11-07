@@ -314,6 +314,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - Ohne AlarmKit-Erlaubnis: lokale Mitteilung für den Hintergrund (bei Stummschaltung lautlos) und in der offenen App ein eigener Ton (`TimerChime`, Audio-Sitzung `.playback`, übergeht den Stummschalter).
 - Start aus der Rezeptansicht oder per „Jetzt kochen“ im Heute-Tab.
 - **Timer-Alarm** (`TimerAlarmView`, Entwurf A in `design/cooking/timer-alarm.png`): Vollbild über allem, auch über der Leiste. Chefi hüpft hinter der „Scheibe“ hoch, klopft zweimal (Wackeln per `keyframeAnimator`, Haptik), drückt Pfoten (`GlassPaw`) und Nase ans Glas und winkt dann neben der Karte „Alles klar“. Die Lage richtet sich nach dem Gesicht (60 % von oben im Raster). Mit „Bewegung reduzieren“ gleich das letzte Bild.
+- **Rezept fertig** (`CookingDoneView`, Entwurf B in `design/cooking/rezept-fertig.png`): Chefi tanzt mit Lachaugen und Löffel (sechs Wipper), Herzen steigen links und rechts auf (`RisingHearts`, rein aus der Zeit berechnet), dann bleibt er mit Herzaugen stehen und atmet leise. Startet erst, wenn die letzte Seite wirklich gezeigt wird (`isActive`), weil die Seitenansicht Seiten vorab anlegt. Die Herz-Zeitleiste hält danach an, sonst rendert sie endlos weiter.
 
 ## Design
 
@@ -348,7 +349,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - Alle Motive zeigt der Start mit `NOMI_GALLERY=1`.
 
 **Maskottchen Chefi** (kleiner Koch in Mint, Kochmütze mit Himbeer-Band, Holzlöffel):
-- Entwürfe liegen in `design/mascot/`. `ChefiView` zeichnet dieselben Formen; Löffel-Neigung und -Höhe sind animierbar, dazu gibt es Zwinkern, Winken, eine Pfote an der Scheibe (`pawOnGlass` + `GlassPaw`) und den „Oh!“-Mund (`mouth: .oh`).
+- Entwürfe liegen in `design/mascot/`. `ChefiView` zeichnet dieselben Formen; Löffel-Neigung und -Höhe sind animierbar, dazu gibt es Zwinkern, Winken, eine Pfote an der Scheibe (`pawOnGlass` + `GlassPaw`), Münder (`mouth: .oh`, `.laugh`) und Augen (`eyes: .happy` für ^^, `.hearts`; glückliche Augen bekommen Herzbäckchen).
 - Chefi trägt überall die Mütze, nur im App-Icon nicht.
 
 **Splash:**
