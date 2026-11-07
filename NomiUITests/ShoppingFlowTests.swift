@@ -337,6 +337,8 @@ final class ShoppingFlowTests: NomiUITestCase {
 
         // Leere Abteilungen per Wischen nach rechts
         app.buttons["item-Bananen"].swipeRight()
+        XCTAssertTrue(app.buttons["Abteilung"].waitForExistence(timeout: 3))
+        snapshot(app, "34b-swipe-aisle")
         app.buttons["Abteilung"].tap()
         app.buttons["Getränke"].tap()
         XCTAssertTrue(app.staticTexts["GETRÄNKE"].waitForExistence(timeout: 5))

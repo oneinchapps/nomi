@@ -47,4 +47,32 @@ final class CookingFlowTests: NomiUITestCase {
         app.buttons["Fertig"].tap()
         XCTAssertTrue(cook.waitForExistence(timeout: 3), "Nach dem Kochen zurück in der Rezeptansicht")
     }
+
+    /// Mit Erlaubnis klingelt der Timer als System-Timer (AlarmKit) – auch wenn nomi im Hintergrund ist.
+    @MainActor
+    func testTimerRingsAsSystemAlarm() throws {
+        let app = try launchWithNewHousehold(extraEnvironment: ["NOMI_DISABLE_NOTIFICATIONS": "0"])
+        createRecipe(app, title: "Tee", ingredients: "1 Beutel Tee", steps: ["Tee 6 Sekunden ziehen lassen."])
+        app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Tee")).firstMatch.tap()
+        let cook = app.buttons["Jetzt kochen"]
+        XCTAssertTrue(cook.waitForExistence(timeout: 5))
+        cook.tap()
+        app.buttons["Los geht's"].tap()
+        app.buttons["Timer starten"].tap()
+
+        // Einmalige Rückfrage von AlarmKit
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons.matching(NSPredicate(format: "label IN {'Erlauben', 'Allow'}")).firstMatch
+        if allow.waitForExistence(timeout: 5) { allow.tap() }
+
+        // nomi in den Hintergrund – geklingelt wird trotzdem
+        XCUIDevice.shared.press(.home)
+        let alarm = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Schritt 1 ist fertig")).firstMatch
+        let rang = alarm.waitForExistence(timeout: 15)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "63-cooking-system-alarm"
+        shot.lifetime = .keepAlways
+        add(shot)
+        XCTAssertTrue(rang, "Kein System-Timer im Hintergrund")
+    }
 }

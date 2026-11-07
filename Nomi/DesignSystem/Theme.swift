@@ -23,6 +23,9 @@ extension Color {
     static let tomato = Color(light: 0xD9573B, dark: 0xE8704F)
     /// Akzent für „Ja“-Swipes und Matches.
     static let sage = Color(light: 0x6F8F6A, dark: 0x8FB089)
+    /// Neutrale Wischaktionen (z. B. „Abteilung“): System-Swipes schreiben immer weiß, darum auch im
+    /// Dunkelmodus ein dunkler Ton statt `ink`, das dort fast weiß ist.
+    static let swipeNeutral = Color(light: 0x262B28, dark: 0x4A524D)
 
     /// `nonisolated` + `@Sendable`: SwiftUI löst dynamische Farben auch auf seinem Render-Thread auf.
     /// Mit MainActor-Isolation würde die Laufzeitprüfung dort die App beenden.

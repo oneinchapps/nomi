@@ -1,12 +1,12 @@
-import AudioToolbox
 import Foundation
 import Observation
 import UIKit
 import UserNotifications
 
 /// Timer im Kochmodus, einer pro Schritt. Läuft über einen Endzeitpunkt statt Herunterzählen –
-/// so stimmt die Restzeit auch nach dem Wechsel in eine andere App. Für den Hintergrund
-/// wird zusätzlich eine Mitteilung eingeplant.
+/// so stimmt die Restzeit auch nach dem Wechsel in eine andere App.
+/// Geklingelt wird über AlarmKit (auch stumm und im Hintergrund). Ohne Erlaubnis gibt es eine
+/// Mitteilung für den Hintergrund und in der offenen App einen eigenen Ton, der die Stummschaltung übergeht.
 @Observable
 final class CookingTimers {
     struct Timer: Identifiable, Equatable {
@@ -30,6 +30,9 @@ final class CookingTimers {
     private(set) var timers: [Int: Timer] = [:]
     /// Gerade abgelaufener Timer, für den Hinweis oben.
     private(set) var justFinished: Timer?
+    /// System-Timer (AlarmKit) pro Schritt; fehlt einer, klingelt die App selbst
+    @ObservationIgnored private var alarmIds: [Int: UUID] = [:]
+    @ObservationIgnored private lazy var chime = TimerChime()
 
     init(recipeTitle: String) {
         self.recipeTitle = recipeTitle
@@ -49,7 +52,21 @@ final class CookingTimers {
         timer.pausedRemaining = nil
         timer.isFinished = false
         timers[step] = timer
-        Task { await scheduleNotification(for: timer, in: remaining) }
+        let alarmId = UUID()
+        cancelAlarm(step)
+        alarmIds[step] = alarmId
+        Task {
+            let scheduled = await CookingAlarm.schedule(id: alarmId, title: "\(recipeTitle): \(timer.label) ist fertig", in: remaining)
+            // Inzwischen pausiert oder zurückgesetzt? Dann den gerade geplanten wieder weg
+            guard alarmIds[step] == alarmId, timers[step]?.isRunning == true else {
+                if scheduled { CookingAlarm.cancel(alarmId) }
+                return
+            }
+            if !scheduled {
+                alarmIds[step] = nil
+                await scheduleNotification(for: timer, in: remaining)
+            }
+        }
     }
 
     func pause(step: Int) {
@@ -58,16 +75,22 @@ final class CookingTimers {
         timer.endDate = nil
         timers[step] = timer
         cancelNotification(step)
+        cancelAlarm(step)
     }
 
     func reset(step: Int) {
         timers[step] = nil
         if justFinished?.id == step { justFinished = nil }
         cancelNotification(step)
+        cancelAlarm(step)
     }
 
+    /// „OK“ in der App: Hinweis weg und ein noch klingelnder System-Timer verstummt
     func dismissFinished() {
-        if let id = justFinished?.id { timers[id] = nil }
+        if let id = justFinished?.id {
+            timers[id] = nil
+            if let alarm = alarmIds.removeValue(forKey: id) { CookingAlarm.stop(alarm) }
+        }
         justFinished = nil
     }
 
@@ -80,12 +103,15 @@ final class CookingTimers {
             timers[step] = done
             justFinished = done
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
-            AudioServicesPlayAlertSound(SystemSoundID(1005))
+            // Läuft ein System-Timer, klingelt der schon; sonst eigener Ton, der auch stumm hörbar ist
+            if alarmIds[step] == nil { chime.play() }
         }
     }
 
     func cancelAll() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: timers.keys.map(notificationId))
+        for id in alarmIds.values { CookingAlarm.cancel(id) }
+        alarmIds = [:]
         timers = [:]
         justFinished = nil
     }
@@ -111,6 +137,10 @@ final class CookingTimers {
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
         )
         try? await center.add(request)
+    }
+
+    private func cancelAlarm(_ step: Int) {
+        if let id = alarmIds.removeValue(forKey: step) { CookingAlarm.cancel(id) }
     }
 
     private func cancelNotification(_ step: Int) {

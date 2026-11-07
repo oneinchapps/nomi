@@ -361,7 +361,7 @@ struct ShoppingListView: View {
             // Kein Halte-Menü: Halten ist zum Ziehen da.
             if !item.checked {
                 Button("Abteilung") { aisleChoice = item }
-                    .tint(Color.ink)
+                    .tint(Color.swipeNeutral)
             }
         }
     }

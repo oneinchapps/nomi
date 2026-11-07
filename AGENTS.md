@@ -307,7 +307,11 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 
 ### Kochmodus
 - `Features/Cooking`: Vollbild, der Bildschirm bleibt an, Portionen sind einstellbar.
-- Timer laufen über einen Endzeitpunkt (`CookingTimers`), dazu kommt eine lokale Mitteilung für den Hintergrund.
+- Timer laufen über einen Endzeitpunkt (`CookingTimers`).
+- Geklingelt wird über **AlarmKit** (`CookingAlarm`, iOS 26): ein System-Timer pro Schritt, der auch bei Stummschaltung, gesperrt und im Hintergrund klingelt. Die Rückfrage kommt beim ersten Timer (`NSAlarmKitUsageDescription` in `project.yml`). „OK“ in der App lässt ihn verstummen, Pause und Zurücksetzen brechen ihn ab.
+  - Unter iOS 26.0 braucht `AlarmPresentation.Alert` noch einen `stopButton`, ab 26.1 ist der veraltet; darum `#available`.
+  - `AlarmAttributes` werden kodiert: feste Farbe statt `Color.brand` (dynamische Farben gehen verloren).
+- Ohne AlarmKit-Erlaubnis: lokale Mitteilung für den Hintergrund (bei Stummschaltung lautlos) und in der offenen App ein eigener Ton (`TimerChime`, Audio-Sitzung `.playback`, übergeht den Stummschalter).
 - Start aus der Rezeptansicht oder per „Jetzt kochen“ im Heute-Tab.
 
 ## Design
@@ -325,6 +329,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 **Hauptscreens:**
 - Sie beginnen mit `BrandHeader` und `.brandNavigationBar()`. Die Leiste bleibt durchsichtig, darunter liegt eine Fläche in Markenfarbe; ein eigener Leisten-Hintergrund wirkt unter iOS 26 dunkler.
 - Toolbar-Elemente auf Himbeere haben keine Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`).
+- Wischaktionen schreiben immer weiß: nie mit `Color.ink` einfärben (im Dunkelmodus fast weiß), sondern mit `Color.swipeNeutral`.
 
 **Gleiche Kopfhöhe:** Rezepte, Einkauf und Woche haben exakt gleich hohe Köpfe:
 - `BrandHeader(bottomPadding: 22)` mit einer Zeile `DisplayHeadline`, rechts daneben höchstens kleine Elemente (Anzahl-Kreis, Wochenpfeile).
@@ -418,10 +423,12 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 - Formulare (`FormScreen`) bleiben mit `defaultScrollAnchor(.bottom, for: .sizeChanges)` unten verankert, damit Felder nicht hinter Tastatur und Button verschwinden. `scrollTo` funktionierte dort nicht.
 - Nach dem Eintreffen neuer Inhalte scrollen Ansichten animiert (z. B. zum Kartenstapel). Ein Tipp in dieser Zeit verfehlt den Knopf, ohne Fehler. Im Test vor dem Tippen kurz warten.
 - Ziehen in Listen: `.draggable`/`.dropDestination` zwischen Sections einer `List` kam nicht an, `onMove` in einem einzigen `ForEach` schon. Ein `.contextMenu` an derselben Zeile schluckt das Halten, dann startet kein Zug. Im Test langsam ziehen: `press(forDuration:thenDragTo:withVelocity: .slow, thenHoldForDuration:)`.
+- `launchFresh(extraEnvironment:)`: Werte des Tests gehen vor den Standards, z. B. `NOMI_DISABLE_NOTIFICATIONS: "0"`, um AlarmKit im Test zu nutzen. Die Rückfrage tippt der Test auf dem Springboard weg („Erlauben“/„Allow“).
 - Eingabefelder nicht bei jedem Tastendruck umschreiben (z. B. Formatieren); XCUITest und schnelles Tippen verlieren sonst Zeichen. Erst formatieren, wenn die Eingabe vollständig ist.
 
 **Swift 6:**
 - Mit Default-Isolation `MainActor` müssen Closures, die Frameworks auf anderen Threads aufrufen, `nonisolated` bzw. `@Sendable` sein. Sonst stürzt die App zur Laufzeit ab. Betroffen sind z. B. `UIColor { traits in }`, Decoder-Datumsclosures, Speech-Callbacks und Audio-Taps.
+- `AVAudioPCMBuffer`: `frameLength` nie größer als `frameCapacity`. Kapazität aus denselben gerundeten Einzelwerten berechnen wie das Füllen, sonst bricht AVFoundation mit einer Exception ab.
 - Laufende `.task`-Closures sehen eine Kopie der View; Werte, die sich ändern, über `@State` spiegeln (siehe `SplashView.ready`).
 
 **SwiftUI und iOS:**
@@ -431,7 +438,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
-- Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen) und der Farbübergang vom Startbildschirm zum Splash.
+- Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen), der Farbübergang vom Startbildschirm zum Splash und die Koch-Timer per AlarmKit bei Stummschaltung (im Simulator klingeln sie im Hintergrund).
 - „Sam kauft mit“ (Presence im Live-Einkauf) ist nur gebaut, nicht mit zwei Geräten getestet; die UI-Tests steuern die zweite Person über REST, das erreicht Presence nicht.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
 - Sign in with Apple kommt, sobald es einen bezahlten Developer-Account gibt.

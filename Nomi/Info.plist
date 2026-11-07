@@ -22,6 +22,8 @@
 	<false/>
 	<key>KeychainAccessGroup</key>
 	<string>$(AppIdentifierPrefix)de.gregorzoller.nomi.shared</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>nomi klingelt, wenn ein Koch-Timer abläuft – auch wenn dein iPhone stumm ist.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

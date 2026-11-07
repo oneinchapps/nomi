@@ -67,6 +67,7 @@ targets:
         # Nur für `supabase start` auf 127.0.0.1 während der Entwicklung
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSAlarmKitUsageDescription: nomi klingelt, wenn ein Koch-Timer abläuft – auch wenn dein iPhone stumm ist.
         NSCameraUsageDescription: nomi fotografiert Rezepte aus Kochbüchern oder von Karteikarten, um sie auszulesen.
         NSMicrophoneUsageDescription: nomi hört zu, wenn du per Sprache mit nomi sprichst.
         NSSpeechRecognitionUsageDescription: Damit nomi versteht, was du sagst. Die Erkennung läuft wenn möglich direkt auf deinem iPhone.
