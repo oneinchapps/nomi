@@ -30,10 +30,21 @@ final class CookingFlowTests: NomiUITestCase {
         app.buttons["Timer starten"].tap()
         XCTAssertTrue(app.buttons["Timer Schritt 1"].waitForExistence(timeout: 2), "Laufender Timer erscheint nicht oben")
         snapshot(app, "61-cooking-timer")
-        let banner = app.buttons["Timer abgelaufen, Schritt 1"]
-        XCTAssertTrue(banner.waitForExistence(timeout: 6), "Kein Hinweis, als der Timer abgelaufen ist")
+        // Chefi klopft von innen ans Display: Bildfolge, ohne auf „idle“ zu warten (die Animation läuft)
+        for index in 0..<14 {
+            let frame = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            frame.name = String(format: "62-alarm-%02d", index)
+            frame.lifetime = .keepAlways
+            add(frame)
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        let ok = app.buttons["timer-alarm-ok"]
+        XCTAssertTrue(ok.waitForExistence(timeout: 8), "Kein Alarm, als der Timer abgelaufen ist")
+        XCTAssertEqual(app.staticTexts["timer-alarm-title"].label, "Schritt 1 ist fertig!")
         snapshot(app, "62-cooking-timer-done")
-        banner.tap()
+        ok.tap()
+        let gone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation(for: gone, evaluatedWith: ok)], timeout: 3), .completed, "Alarm geht nicht weg")
 
         // Schritt 2 zeigt beide Zutaten
         app.buttons["Weiter"].tap()

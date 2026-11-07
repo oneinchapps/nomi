@@ -313,6 +313,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
   - `AlarmAttributes` werden kodiert: feste Farbe statt `Color.brand` (dynamische Farben gehen verloren).
 - Ohne AlarmKit-Erlaubnis: lokale Mitteilung für den Hintergrund (bei Stummschaltung lautlos) und in der offenen App ein eigener Ton (`TimerChime`, Audio-Sitzung `.playback`, übergeht den Stummschalter).
 - Start aus der Rezeptansicht oder per „Jetzt kochen“ im Heute-Tab.
+- **Timer-Alarm** (`TimerAlarmView`, Entwurf A in `design/cooking/timer-alarm.png`): Vollbild über allem, auch über der Leiste. Chefi hüpft hinter der „Scheibe“ hoch, klopft zweimal (Wackeln per `keyframeAnimator`, Haptik), drückt Pfoten (`GlassPaw`) und Nase ans Glas und winkt dann neben der Karte „Alles klar“. Die Lage richtet sich nach dem Gesicht (60 % von oben im Raster). Mit „Bewegung reduzieren“ gleich das letzte Bild.
 
 ## Design
 
@@ -347,7 +348,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - Alle Motive zeigt der Start mit `NOMI_GALLERY=1`.
 
 **Maskottchen Chefi** (kleiner Koch in Mint, Kochmütze mit Himbeer-Band, Holzlöffel):
-- Entwürfe liegen in `design/mascot/`. `ChefiView` zeichnet dieselben Formen; Löffel-Neigung und -Höhe sind animierbar, dazu gibt es Zwinkern und Winken.
+- Entwürfe liegen in `design/mascot/`. `ChefiView` zeichnet dieselben Formen; Löffel-Neigung und -Höhe sind animierbar, dazu gibt es Zwinkern, Winken, eine Pfote an der Scheibe (`pawOnGlass` + `GlassPaw`) und den „Oh!“-Mund (`mouth: .oh`).
 - Chefi trägt überall die Mütze, nur im App-Icon nicht.
 
 **Splash:**
@@ -400,7 +401,7 @@ xcrun xcresulttool export attachments --path build/run.xcresult --output-path <o
 ```
 Die Dateinamen stehen in `manifest.json` unter `suggestedHumanReadableName`.
 
-**Animationen:** Lassen sie sich per Test nicht greifen (zu schnell), nimmt man den Start als Video auf und zieht Einzelbilder heraus:
+**Animationen:** In der App lassen sie sich im Test als Bildfolge festhalten: `XCUIScreen.main.screenshot()` in einer Schleife mit kurzer Pause wartet nicht auf „idle“ (siehe `CookingFlowTests`, `62-alarm-…`). Für den Start vor der App nimmt man ein Video auf und zieht Einzelbilder heraus:
 ```sh
 xcrun simctl io <sim> recordVideo …
 xcrun simctl launch …              # Umgebungsvariablen mit Präfix SIMCTL_CHILD_

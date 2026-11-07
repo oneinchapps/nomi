@@ -13,6 +13,15 @@ struct ChefiView: View, Animatable {
     var winks = false
     /// Linke Pfote winkt neben dem Kopf statt am Bauch zu liegen
     var waves = false
+    /// Linke Pfote fehlt, weil sie gerade an der Scheibe klebt (`GlassPaw` davor)
+    var pawOnGlass = false
+    var mouth: Mouth = .smile
+
+    enum Mouth {
+        case smile
+        /// Rundes „Oh!“ beim Klopfen
+        case oh
+    }
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(spoonTilt, spoonLift) }
@@ -61,7 +70,7 @@ private struct ChefiDrawing {
                 line(curve(cx - 66 + dx, b + 96 + dy, cx - 72 + dx, b + 102 + dy, cx - 70 + dx, b + 110 + dy), width: 3)
             }
             paw(cx - 56, b + 96)
-        } else {
+        } else if !pose.pawOnGlass {
             paw(cx - 50, b + 50)
         }
 
@@ -94,6 +103,10 @@ private struct ChefiDrawing {
             fill(ellipse(cx + side * spacing * 1.75, eyeY - 9, 15, 9), ChefiColor.blush)
         }
         let top = eyeY - 4, r: CGFloat = 10
+        if pose.mouth == .oh {
+            shape(ellipse(cx, top - 6, 11, 13), ChefiColor.mouth)
+            return
+        }
         var mouth = Path()
         mouth.move(to: CGPoint(x: cx - r, y: top))
         mouth.addLine(to: CGPoint(x: cx + r, y: top))
@@ -148,6 +161,28 @@ private struct ChefiDrawing {
 
     private func line(_ path: Path, width: CGFloat) {
         context.stroke(path, with: .color(ChefiColor.ink), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+    }
+}
+
+/// Chefis Pfote platt an der Scheibe, von außen gesehen: hell mit rosa Ballen wie eine Katzenpfote am Fenster.
+struct GlassPaw: View {
+    var body: some View {
+        Canvas { context, size in
+            let w = size.width, h = size.height
+            let rect = CGRect(x: w * 0.02, y: h * 0.02, width: w * 0.96, height: h * 0.96)
+            let outline = Path(ellipseIn: rect)
+            context.fill(outline, with: .color(Color(red: 0xE6 / 255, green: 0xF3 / 255, blue: 0xDF / 255)))
+            context.stroke(outline, with: .color(ChefiColor.ink), lineWidth: max(2, w * 0.045))
+            // Ballen: einer groß in der Mitte, vier kleine oben
+            let pads: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [(0.5, 0.6, 0.46, 0.42), (0.2, 0.3, 0.18, 0.18), (0.4, 0.17, 0.18, 0.18),
+                                                                 (0.6, 0.17, 0.18, 0.18), (0.8, 0.3, 0.18, 0.18)]
+            for (x, y, pw, ph) in pads {
+                context.fill(Path(ellipseIn: CGRect(x: w * x - w * pw / 2, y: h * y - h * ph / 2, width: w * pw, height: h * ph)),
+                             with: .color(ChefiColor.blush))
+            }
+        }
+        .aspectRatio(1.17, contentMode: .fit)
+        .accessibilityHidden(true)
     }
 }
 

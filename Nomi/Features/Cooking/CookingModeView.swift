@@ -52,6 +52,9 @@ struct CookingModeView: View {
                 }
                 .brandNavigationBar()
         }
+        // Über allem, auch über der Leiste: Chefi klopft von innen ans Display
+        .overlay { timerAlarm }
+        .animation(.smooth(duration: 0.3), value: timers.justFinished?.id)
     }
 
     private var content: some View {
@@ -69,7 +72,6 @@ struct CookingModeView: View {
             bottomBar
         }
         .background(Color.canvas.ignoresSafeArea())
-        .overlay(alignment: .top) { finishedBanner }
         // Restzeiten jede Sekunde neu prüfen; abgelaufene Timer klingeln
         .background {
             TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -268,32 +270,17 @@ struct CookingModeView: View {
     }
 
     @ViewBuilder
-    private var finishedBanner: some View {
+    private var timerAlarm: some View {
         if let finished = timers.justFinished {
-            Button {
+            TimerAlarmView(
+                title: "\(finished.label) ist fertig!",
+                detail: steps.indices.contains(finished.id) ? steps[finished.id].text : nil
+            ) {
                 withAnimation { page = finished.id + 1 }
                 timers.dismissFinished()
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "bell.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .symbolEffect(.wiggle, options: .repeating)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Timer abgelaufen").font(.buttonSans)
-                        Text(finished.label).font(.captionSans)
-                    }
-                    Spacer()
-                    Text("OK").font(.buttonSans)
-                }
-                .foregroundStyle(Color.canvas)
-                .padding(16)
-                .background(Color.ink, in: .rect(cornerRadius: 20))
-                .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
-                .padding(.horizontal, Metrics.gutter)
             }
-            .buttonStyle(.plain)
-            .transition(.move(edge: .top).combined(with: .opacity))
-            .accessibilityLabel("Timer abgelaufen, \(finished.label)")
+            .id(finished.id)
+            .transition(.opacity)
         }
     }
 }
