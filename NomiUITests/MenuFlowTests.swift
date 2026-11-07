@@ -13,7 +13,7 @@ final class MenuFlowTests: NomiUITestCase {
         let householdId = try XCTUnwrap(household["id"] as? String)
 
         // Menüwunsch an nomi – nomi übergibt an den Heute-Tab
-        app.tabBars.buttons["nomi"].tap()
+        app.tab("nomi").tap()
         let input = app.textFields["Frag nomi"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         input.tap()
@@ -72,7 +72,7 @@ final class MenuFlowTests: NomiUITestCase {
         snapshot(app, "83b-menu-today")
 
         // Im Wochenplan stehen alle drei Gänge, mit Gang als Hinweis
-        app.tabBars.buttons["Woche"].tap()
+        app.tab("Woche").tap()
         for course in courses {
             let entry = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", course)).firstMatch
             XCTAssertTrue(entry.waitForExistence(timeout: 5), "\(course) fehlt im Wochenplan")

@@ -342,6 +342,7 @@ struct LiveShoppingView: View {
             .padding(.horizontal, Metrics.gutter - 10)
             .padding(.top, 22)
             .padding(.bottom, 24)
+            .readableColumn()
             // Abhaken passiert in einer Task ohne withAnimation; so gleiten ausgeblendete Zeilen trotzdem weg
             .animation(.smooth(duration: 0.3), value: LiveShopping.visibleItems(page, hidesCart: hidesCart, highlighted: shopping.partnerHighlights).map(\.id))
         }

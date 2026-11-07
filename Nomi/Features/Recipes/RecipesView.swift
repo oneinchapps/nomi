@@ -40,7 +40,14 @@ struct RecipesView: View {
         RecipeFilter.categories.filter { !recipes(for: $0).isEmpty }
     }
 
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+    @State private var width: CGFloat = 0
+
+    /// iPhone zwei Spalten, iPad so viele Kacheln, wie Platz ist
+    private var columns: [GridItem] {
+        width >= Metrics.wideWidth
+            ? [GridItem(.adaptive(minimum: 200, maximum: 300), spacing: 22)]
+            : [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+    }
 
     var body: some View {
         ScrollView {
@@ -76,6 +83,7 @@ struct RecipesView: View {
             .padding(.bottom, 32)
         }
         .background(Color.canvas.ignoresSafeArea())
+        .trackWidth($width)
         .animation(.smooth(duration: 0.25), value: filter)
         .refreshable {
             await store.load()
@@ -220,6 +228,8 @@ struct RecipesView: View {
             }
             .background(Color.surface, in: .rect(cornerRadius: 18))
             .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(Color.hairline) }
+            .frame(maxWidth: Metrics.readableWidth)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Metrics.gutter)
         }
     }

@@ -40,6 +40,7 @@ Die App hieß früher „nomnom“ und darf so nicht mehr heißen. Sichtbar und 
 ## Stack und Struktur
 
 - SwiftUI, iOS 26+ (für Liquid-Glass-APIs wie `sharedBackgroundVisibility`), Swift 6 mit Default-Isolation `MainActor`.
+- iPhone und iPad (`TARGETED_DEVICE_FAMILY "1,2"`): iPhone nur hochkant, iPad in allen Ausrichtungen (Pflicht für Split View und Stage Manager). Layouts siehe „iPad“ unter Design.
 - Das Projekt erzeugt XcodeGen aus `project.yml`; `Nomi.xcodeproj` ist nicht eingecheckt.
 - **Targets:**
 
@@ -333,6 +334,14 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - Toolbar-Elemente auf Himbeere haben keine Glas-Kapsel (`.sharedBackgroundVisibility(.hidden)`).
 - Wischaktionen schreiben immer weiß: nie mit `Color.ink` einfärben (im Dunkelmodus fast weiß), sondern mit `Color.swipeNeutral`.
 
+**iPad** (Entwurf B in `design/ipad/vorschlaege.png`): Entschieden wird nach verfügbarer Breite, nicht nach Gerät – ein schmales Fenster im Split View sieht aus wie das iPhone. Hilfen in `DesignSystem/Layout.swift`: `trackWidth($width)`, `readableColumn()`, `Metrics.readableWidth` (680), `.wideWidth` (900), `.boardWidth` (1100).
+- **Lesespalte** für nomi-Chat, Heute, Formulare, Willkommen und die Seiten im Live-Einkauf. `BrandHeader(contentWidth:)` setzt den Text im Kopf über die Spalte, die Fläche bleibt voll breit.
+- **Rezepte:** Raster mit `.adaptive(minimum: 200)` ab 900 pt; Rezept zweispaltig (links Bild, Portionen, Zutaten; rechts Aktionen, Schritte), beide Seiten scrollen getrennt.
+- **Kochmodus:** ab 900 pt Zutaten links fest (die des aktuellen Schritts hervorgehoben), Schritte rechts mit 34-pt-Text.
+- **Woche:** Board mit sieben Spalten erst ab 1100 pt (quer); hochkant die Liste in der Lesespalte. Ziehen zwischen Tagen geht in beiden.
+- **Einkauf:** ab 900 pt Abteilungen in zwei bzw. ab 1100 pt drei Spalten (`ShoppingColumns.split`, Laufreihenfolge bleibt), „Einkaufen starten“ im Kopf. Ziehen zwischen Abteilungen gibt es dort nicht (`onMove` geht nur in einer `List`); Halten öffnet ein Menü mit „Abteilung“ und „Löschen“.
+- Die Tab-Leiste ist auf dem iPad die iOS-26-Kapsel oben (nur Text, ohne unsere Icons).
+
 **Gleiche Kopfhöhe:** Rezepte, Einkauf und Woche haben exakt gleich hohe Köpfe:
 - `BrandHeader(bottomPadding: 22)` mit einer Zeile `DisplayHeadline`, rechts daneben höchstens kleine Elemente (Anzahl-Kreis, Wochenpfeile).
 - Zusätzliche Zeilen gehören in den Inhalt darunter, nicht in den Kopf (z. B. „Zur aktuellen Woche“).
@@ -418,6 +427,8 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 ## Fallen
 
 **UI-Tests:**
+- **iPad:** Tabs über `app.tab("Heute")` ansprechen – auf dem iPad gibt es kein `tabBars`-Element, die Kapsel-Knöpfe hängen direkt in der Hierarchie. „Abteilung“ im Einkauf über `chooseAisle(app, item:)` (iPhone wischen, iPad halten). Querformat-Screenshots mit `XCUIScreen.main.screenshot()`; `app.screenshot()` liefert quer ein verschobenes Bild. Beim Verkleinern solcher PNGs `ffmpeg` statt `sips` nehmen, `sips` wertet die Ausrichtung falsch aus.
+- iPad-Tests: `-destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)'`; `IPadLayoutTests` dreht ins Querformat und prüft Raster, Board, Spalten und Kochmodus (auf dem iPhone übersprungen).
 - Die `TabView` hält verborgene Tabs im Accessibility-Baum. `app.buttons[...]` kann eine unsichtbare Kachel treffen; Abfragen eingrenzen, z. B. `app.collectionViews.buttons`, oder eindeutige Labels vergeben.
 - Zeilen-Buttons brauchen einen `Spacer`, sonst endet die Tippfläche am Textende.
 - In Sheets keine zufälligen IDs als Schlüssel für `@State` verwenden: Das Sheet wird neu erzeugt, der State bleibt.

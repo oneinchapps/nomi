@@ -13,6 +13,7 @@ struct RecipeDetailView: View {
     @State private var showsAddToList = false
     @State private var showsPlanDay = false
     @State private var isCooking = false
+    @State private var width: CGFloat = 0
 
     var body: some View {
         if let recipe = store.recipe(id: recipeId) {
@@ -26,45 +27,14 @@ struct RecipeDetailView: View {
 
     private func content(_ recipe: Recipe) -> some View {
         let currentServings = servings ?? recipe.servings
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                RecipeImage(recipe: recipe)
-                    .frame(height: 340)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-
-                VStack(alignment: .leading, spacing: 28) {
-                    header(recipe)
-                    VStack(spacing: 10) {
-                        ServingsStepper(servings: Binding(
-                            get: { currentServings },
-                            set: { servings = $0 }
-                        ))
-                        HStack(spacing: 10) {
-                            Button("Einkaufen", systemImage: "basket") { showsAddToList = true }
-                                .disabled(recipe.ingredients.isEmpty)
-                            Button("Einplanen", systemImage: "calendar.badge.plus") { showsPlanDay = true }
-                        }
-                        .buttonStyle(.secondary)
-                        if !recipe.steps.isEmpty {
-                            Button("Jetzt kochen") { isCooking = true }
-                                .buttonStyle(.primary)
-                        }
-                    }
-                    ingredients(recipe.scaledIngredients(for: currentServings))
-                    if !recipe.steps.isEmpty {
-                        steps(recipe.scaledSteps(for: currentServings))
-                    }
-                    InlineError(message: error)
-                }
-                .padding(.horizontal, Metrics.gutter)
-                .padding(.top, 28)
-                .padding(.bottom, 40)
-                .background(Color.canvas, in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
-                .offset(y: -28)
+        return Group {
+            if width >= Metrics.wideWidth {
+                wideLayout(recipe, servings: currentServings)
+            } else {
+                compactLayout(recipe, servings: currentServings)
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .trackWidth($width)
         .background(Color.canvas.ignoresSafeArea())
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -107,6 +77,90 @@ struct RecipeDetailView: View {
             }
         } message: {
             Text("Das Rezept verschwindet für euch beide.")
+        }
+    }
+
+    /// iPhone: eine Spalte, Bild randlos oben
+    private func compactLayout(_ recipe: Recipe, servings currentServings: Int) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                RecipeImage(recipe: recipe)
+                    .frame(height: 340)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+
+                VStack(alignment: .leading, spacing: 28) {
+                    header(recipe)
+                    VStack(spacing: 10) {
+                        servingsStepper(recipe, current: currentServings)
+                        actions(recipe)
+                    }
+                    ingredients(recipe.scaledIngredients(for: currentServings))
+                    if !recipe.steps.isEmpty {
+                        steps(recipe.scaledSteps(for: currentServings))
+                    }
+                    InlineError(message: error)
+                }
+                .padding(.horizontal, Metrics.gutter)
+                .padding(.top, 28)
+                .padding(.bottom, 40)
+                .background(Color.canvas, in: UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
+                .offset(y: -28)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+    }
+
+    /// iPad: links Bild, Portionen und Zutaten, rechts Aktionen und Schritte – beide Seiten scrollen für sich
+    private func wideLayout(_ recipe: Recipe, servings currentServings: Int) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    RecipeImage(recipe: recipe)
+                        .frame(height: 280)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(.rect(cornerRadius: 26))
+                    header(recipe)
+                    servingsStepper(recipe, current: currentServings)
+                    ingredients(recipe.scaledIngredients(for: currentServings))
+                }
+                .padding(32)
+            }
+            .frame(width: min(460, width * 0.42))
+            .background(Color.surface.ignoresSafeArea(edges: .bottom))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    VStack(spacing: 10) { actions(recipe) }
+                    if !recipe.steps.isEmpty {
+                        steps(recipe.scaledSteps(for: currentServings))
+                    }
+                    InlineError(message: error)
+                }
+                .padding(32)
+                .frame(maxWidth: Metrics.readableWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func servingsStepper(_ recipe: Recipe, current: Int) -> some View {
+        ServingsStepper(servings: Binding(
+            get: { current },
+            set: { servings = $0 }
+        ))
+    }
+
+    @ViewBuilder
+    private func actions(_ recipe: Recipe) -> some View {
+        HStack(spacing: 10) {
+            Button("Einkaufen", systemImage: "basket") { showsAddToList = true }
+                .disabled(recipe.ingredients.isEmpty)
+            Button("Einplanen", systemImage: "calendar.badge.plus") { showsPlanDay = true }
+        }
+        .buttonStyle(.secondary)
+        if !recipe.steps.isEmpty {
+            Button("Jetzt kochen") { isCooking = true }
+                .buttonStyle(.primary)
         }
     }
 

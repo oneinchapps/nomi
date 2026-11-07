@@ -20,7 +20,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         app.buttons["2 Zutaten hinzufügen"].tap()
 
         // Einkaufsliste nach Abteilungen
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         XCTAssertTrue(app.buttons["item-Halloumi"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["item-kleine Tortillas"].exists)
         XCTAssertTrue(app.staticTexts["KÜHLREGAL"].exists)
@@ -58,10 +58,10 @@ final class ShoppingFlowTests: NomiUITestCase {
         ], as: sam)
         XCTAssertTrue(app.buttons["item-Kaffee"].waitForExistence(timeout: 10), "Eintrag der anderen Person kommt nicht live an")
         // Beitritt kommt ebenfalls live an: Einladungskarte im Heute-Tab ist weg
-        app.tabBars.buttons["Heute"].tap()
+        app.tab("Heute").tap()
         let invite = app.staticTexts["EINLADUNGSCODE"]
         await fulfillment(of: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: invite)], timeout: 10)
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
 
         let tortillas = try await api("GET", "/rest/v1/shopping_items?name=eq.kleine%20Tortillas&select=id", as: sam)
         let samRow = try await api("GET", "/rest/v1/household_members?display_name=eq.Sam&select=user_id", as: sam)
@@ -84,6 +84,8 @@ final class ShoppingFlowTests: NomiUITestCase {
 
     @MainActor
     func testCartHasRoomAtEndOfLongList() async throws {
+        // Prüft den Abstand zur Tab-Leiste unten – die gibt es auf dem iPad nicht
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "Keine Tab-Leiste unten auf dem iPad")
         let app = try launchWithNewHousehold()
         let codeText = inviteCodeText(app)
         XCTAssertTrue(codeText.waitForExistence(timeout: 10))
@@ -100,7 +102,7 @@ final class ShoppingFlowTests: NomiUITestCase {
             ], as: sam)
         }
 
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         XCTAssertTrue(app.buttons["item-Äpfel"].waitForExistence(timeout: 10))
         // Ganz nach unten scrollen; vorher legt die Liste „Erledigt“ noch gar nicht an
         for _ in 0..<3 { app.swipeUp() }
@@ -131,7 +133,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         let samRow = try await api("GET", "/rest/v1/household_members?display_name=eq.Sam&select=user_id", as: sam)
         let samId = try XCTUnwrap(samRow["user_id"] as? String)
 
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         let start = app.buttons["live-start"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         snapshot(app, "36-live-start")
@@ -203,7 +205,7 @@ final class ShoppingFlowTests: NomiUITestCase {
             _ = try await api("POST", "/rest/v1/shopping_items", body: ["household_id": householdId, "name": name, "aisle": aisle, "checked": checked], as: sam)
         }
 
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         let start = app.buttons["live-start"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         start.tap()
@@ -261,7 +263,7 @@ final class ShoppingFlowTests: NomiUITestCase {
     @MainActor
     func testDoneItemComesBackInsteadOfDuplicate() async throws {
         let app = try launchWithNewHousehold()
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
@@ -287,7 +289,7 @@ final class ShoppingFlowTests: NomiUITestCase {
     func testAutocompleteKeepsAmount() throws {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Tomatensuppe", ingredients: "1 Dose San-Marzano-Tomaten\n1 Zwiebel")
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
 
         // Menge tippen, Name aus den Vorschlägen – auch Zutaten aus euren Rezepten
         let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
@@ -312,8 +314,10 @@ final class ShoppingFlowTests: NomiUITestCase {
 
     @MainActor
     func testDragItemToAnotherAisleIsRemembered() throws {
+        // Ziehen zwischen Abteilungen gibt es nur in der Liste (iPhone); das iPad nutzt das Menü beim Halten
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "Auf dem iPad: Abteilung über das Menü, siehe testStoresWithOwnOrderAndCategories")
         let app = try launchWithNewHousehold()
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
@@ -357,7 +361,7 @@ final class ShoppingFlowTests: NomiUITestCase {
     @MainActor
     func testStoresWithOwnOrderAndCategories() throws {
         let app = try launchWithNewHousehold()
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         let field = app.textFields["Was fehlt? z. B. 2 l Milch"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
@@ -412,8 +416,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         XCTAssertTrue(app.staticTexts["KÜHLTHEKE"].exists)
 
         // In die eigene Kategorie legen
-        app.buttons["item-Milch"].swipeRight()
-        app.buttons["Abteilung"].tap()
+        chooseAisle(app, item: app.buttons["item-Milch"])
         app.buttons["Bio-Ecke"].tap()
         XCTAssertTrue(app.staticTexts["BIO-ECKE"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["KÜHLTHEKE"].exists)
@@ -425,7 +428,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Linsensuppe", ingredients: "200 g rote Linsen")
 
-        app.tabBars.buttons["Woche"].tap()
+        app.tab("Woche").tap()
         // Montag planen
         let planMonday = app.buttons["Gericht für Montag planen"]
         XCTAssertTrue(planMonday.waitForExistence(timeout: 5))
@@ -439,13 +442,18 @@ final class ShoppingFlowTests: NomiUITestCase {
         func header(_ weekday: String) -> XCUIElement {
             app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", weekday + ",")).firstMatch
         }
-        XCTAssertLessThan(entry.frame.minY, header("Dienstag").frame.minY)
+        // iPad quer: Tage als Spalten nebeneinander (Board), sonst untereinander
+        let board = app.windows.firstMatch.frame.width >= 1100
+        func isOn(_ day: String, before next: String) -> Bool {
+            board
+                ? entry.frame.midX > header(day).frame.minX && entry.frame.midX < header(next).frame.minX
+                : entry.frame.minY > header(day).frame.minY && entry.frame.minY < header(next).frame.minY
+        }
+        XCTAssertTrue(isOn("Montag", before: "Dienstag"))
 
         // Halten und auf den Mittwoch ziehen
         entry.press(forDuration: 0.8, thenDragTo: header("Mittwoch"), withVelocity: .slow, thenHoldForDuration: 0.5)
-        let onWednesday = NSPredicate { _, _ in
-            entry.frame.minY > header("Mittwoch").frame.minY && entry.frame.minY < header("Donnerstag").frame.minY
-        }
+        let onWednesday = NSPredicate { _, _ in isOn("Mittwoch", before: "Donnerstag") }
         if XCTWaiter.wait(for: [expectation(for: onWednesday, evaluatedWith: entry)], timeout: 5) != .completed {
             snapshot(app, "fail-plan-drag")
             XCTFail("Eintrag wurde nicht auf den Mittwoch verschoben")
@@ -459,7 +467,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         sleep(1) // Der Knopf kommt animiert herein; ein früher Tipp geht ins Leere
         back.tap()
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
-        XCTAssertGreaterThan(entry.frame.minY, header("Mittwoch").frame.minY)
+        XCTAssertTrue(isOn("Mittwoch", before: "Donnerstag"))
     }
 
     @MainActor
@@ -467,7 +475,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Shakshuka", ingredients: "6 Eier\n1 Dose Tomaten\n1 Paprika")
 
-        app.tabBars.buttons["Woche"].tap()
+        app.tab("Woche").tap()
         if !app.staticTexts["Diese Woche"].waitForExistence(timeout: 5) {
             snapshot(app, "fail-week")
             XCTFail("Wochenplan nicht sichtbar: \(app.staticTexts.allElementsBoundByIndex.prefix(12).map(\.label))")
@@ -497,7 +505,7 @@ final class ShoppingFlowTests: NomiUITestCase {
         shopWeek.tap()
         app.buttons["3 Zutaten hinzufügen"].tap()
 
-        app.tabBars.buttons["Einkauf"].tap()
+        app.tab("Einkauf").tap()
         XCTAssertTrue(app.buttons["item-Eier"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["item-Tomaten"].exists)
         XCTAssertTrue(app.buttons["item-Paprika"].exists)

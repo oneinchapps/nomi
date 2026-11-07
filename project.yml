@@ -40,11 +40,13 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.gregorzoller.nomi
         PRODUCT_NAME: nomi
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: nomi
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # iPhone nur hochkant; iPad in allen Ausrichtungen (Pflicht für Split View und Stage Manager)
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     info:
       path: Nomi/Info.plist
@@ -103,7 +105,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.gregorzoller.nomi.share
         PRODUCT_NAME: NomiShare
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         APPLICATION_EXTENSION_API_ONLY: YES
     info:
       path: NomiShare/Info.plist

@@ -13,6 +13,10 @@ struct CookingModeView: View {
     @State private var page = 0
     @State private var checked: Set<Int> = []
     @State private var timers: CookingTimers
+    @State private var width: CGFloat = 0
+
+    /// iPad: Zutaten links fest, Schritte rechts
+    private var isWide: Bool { width >= Metrics.wideWidth }
 
     init(recipe: Recipe, servings: Int) {
         self.recipe = recipe
@@ -60,17 +64,25 @@ struct CookingModeView: View {
     private var content: some View {
         VStack(spacing: 0) {
             header
-            TabView(selection: $page) {
-                prepPage.tag(0)
-                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                    stepPage(index: index, step: step).tag(index + 1)
+            HStack(spacing: 0) {
+                if isWide {
+                    ingredientPanel
                 }
-                donePage.tag(lastPage)
+                VStack(spacing: 0) {
+                    TabView(selection: $page) {
+                        prepPage.tag(0)
+                        ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                            stepPage(index: index, step: step).tag(index + 1)
+                        }
+                        donePage.tag(lastPage)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .animation(.smooth, value: page)
+                    bottomBar
+                }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.smooth, value: page)
-            bottomBar
         }
+        .trackWidth($width)
         .background(Color.canvas.ignoresSafeArea())
         // Restzeiten jede Sekunde neu prüfen; abgelaufene Timer klingeln
         .background {
@@ -180,41 +192,78 @@ struct CookingModeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Erst mal alles bereitstellen")
-                    .font(.heading(26, relativeTo: .title2))
+                    .font(.heading(isWide ? 40 : 26, relativeTo: .title2))
                     .foregroundStyle(Color.ink)
                     .padding(.bottom, 8)
-                // Mengen in Zutaten und Schritten rechnen sich mit
-                ServingsStepper(servings: $servings)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("cooking-servings")
-                    .padding(.bottom, 10)
-                ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
-                    Button {
-                        if checked.contains(index) { checked.remove(index) } else { checked.insert(index) }
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: checked.contains(index) ? "checkmark.circle.fill" : "circle")
-                                .font(.system(size: 24))
-                                .foregroundStyle(checked.contains(index) ? Color.sage : Color.hairline)
-                            Text(ingredient.name)
-                                .font(.bodySans)
-                                .strikethrough(checked.contains(index), color: .inkMuted)
-                                .foregroundStyle(checked.contains(index) ? Color.inkMuted : Color.ink)
-                            Spacer(minLength: 8)
-                            Text(ingredient.amountText)
-                                .font(.bodySansMedium)
-                                .monospacedDigit()
-                                .foregroundStyle(Color.ink)
-                        }
-                        .padding(.vertical, 10)
-                        .contentShape(.rect)
+                if isWide {
+                    // Die Liste steht links und bleibt beim Kochen stehen
+                    Text("Hak links ab, was schon bereitsteht. Die Liste bleibt beim Kochen neben den Schritten stehen.")
+                        .font(.custom("DMSans-Regular", size: 22, relativeTo: .title3))
+                        .foregroundStyle(Color.inkMuted)
+                } else {
+                    servingsStepper.padding(.bottom, 10)
+                    ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
+                        ingredientRow(index, ingredient)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityValue(checked.contains(index) ? "bereit" : "")
                 }
             }
-            .padding(Metrics.gutter)
+            .padding(isWide ? 40 : Metrics.gutter)
         }
+    }
+
+    // Mengen in Zutaten und Schritten rechnen sich mit
+    private var servingsStepper: some View {
+        ServingsStepper(servings: $servings)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("cooking-servings")
+    }
+
+    private func ingredientRow(_ index: Int, _ ingredient: Ingredient, highlighted: Bool = false) -> some View {
+        Button {
+            if checked.contains(index) { checked.remove(index) } else { checked.insert(index) }
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: checked.contains(index) ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 24))
+                    .foregroundStyle(checked.contains(index) ? Color.sage : Color.hairline)
+                Text(ingredient.name)
+                    .font(highlighted ? .bodySansMedium : .bodySans)
+                    .strikethrough(checked.contains(index), color: .inkMuted)
+                    .foregroundStyle(checked.contains(index) ? Color.inkMuted : Color.ink)
+                Spacer(minLength: 8)
+                Text(ingredient.amountText)
+                    .font(.bodySansMedium)
+                    .monospacedDigit()
+                    .foregroundStyle(Color.ink)
+            }
+            .padding(.vertical, 10)
+            .padding(.horizontal, highlighted ? 10 : 0)
+            .background(highlighted ? Color.mist : .clear, in: .rect(cornerRadius: 12))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(checked.contains(index) ? "bereit" : "")
+    }
+
+    /// iPad: Zutaten links, die des aktuellen Schritts hervorgehoben
+    private var ingredientPanel: some View {
+        let current = page >= 1 && page <= steps.count ? steps[page - 1].mentionedIngredients(from: ingredients) : []
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Zutaten")
+                    .font(.heading(24, relativeTo: .title2))
+                    .foregroundStyle(Color.ink)
+                    .padding(.bottom, 6)
+                servingsStepper.padding(.bottom, 10)
+                ForEach(Array(ingredients.enumerated()), id: \.offset) { index, ingredient in
+                    ingredientRow(index, ingredient, highlighted: current.contains(ingredient))
+                }
+            }
+            .padding(28)
+            .animation(.smooth, value: page)
+        }
+        .frame(width: min(380, width * 0.34))
+        .background(Color.surface.ignoresSafeArea(edges: .bottom))
     }
 
     private func stepPage(index: Int, step: Recipe.Step) -> some View {
@@ -222,11 +271,11 @@ struct CookingModeView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 Text("\(index + 1)")
-                    .font(.heading(72, relativeTo: .largeTitle))
+                    .font(.heading(isWide ? 96 : 72, relativeTo: .largeTitle))
                     .foregroundStyle(Color.brand)
                     .accessibilityHidden(true)
                 Text(step.text)
-                    .font(.custom("DMSans-Regular", size: 25, relativeTo: .title2))
+                    .font(.custom("DMSans-Regular", size: isWide ? 34 : 25, relativeTo: .title2))
                     .foregroundStyle(Color.ink)
                     .lineSpacing(6)
                     .fixedSize(horizontal: false, vertical: true)
@@ -247,8 +296,9 @@ struct CookingModeView: View {
                     StepTimerCard(timers: timers, step: index, label: "Schritt \(index + 1)", duration: TimeInterval(seconds))
                 }
             }
+            .frame(maxWidth: isWide ? 760 : .infinity, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Metrics.gutter)
+            .padding(isWide ? 40 : Metrics.gutter)
         }
     }
 

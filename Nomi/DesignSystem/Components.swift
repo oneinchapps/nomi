@@ -30,6 +30,8 @@ extension EnvironmentValues {
 /// und endet unten mit runden Ecken.
 struct BrandHeader<Content: View>: View {
     var bottomPadding: CGFloat = 30
+    /// Auf dem iPad: Text über der Lesespalte statt ganz links. Die Fläche bleibt voll breit.
+    var contentWidth: CGFloat? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -41,6 +43,8 @@ struct BrandHeader<Content: View>: View {
         .tint(Color.onBrand)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Metrics.gutter)
+        .frame(maxWidth: contentWidth ?? .infinity)
+        .frame(maxWidth: .infinity)
         .padding(.top, 10)
         .padding(.bottom, bottomPadding)
         .background(alignment: .bottom) {

@@ -5,7 +5,7 @@ final class RecipeFlowTests: NomiUITestCase {
     func testCreateRecipeAndScaleServings() throws {
         let app = try launchWithNewHousehold()
 
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         XCTAssertTrue(app.staticTexts["Noch keine Rezepte"].waitForExistence(timeout: 5))
         snapshot(app, "10-recipes-empty")
         app.buttons["Erstes Rezept anlegen"].tap()
@@ -80,7 +80,7 @@ final class RecipeFlowTests: NomiUITestCase {
 
         // Nach Neustart weiterhin angemeldet, Rezept noch da
         let again = relaunchKeepingSession(app)
-        let recipesTab = again.tabBars.buttons["Rezepte"]
+        let recipesTab = again.tab("Rezepte")
         XCTAssertTrue(recipesTab.waitForExistence(timeout: 10), "Nach Neustart nicht mehr angemeldet")
         recipesTab.tap()
         XCTAssertTrue(

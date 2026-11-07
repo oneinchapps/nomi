@@ -9,6 +9,10 @@ struct ShoppingListView: View {
     @State private var showsStaples = false
     @State private var showsSettings = false
     @State private var showsLive = false
+    @State private var width: CGFloat = 0
+
+    /// iPad: Abteilungen in Spalten statt einer langen Liste
+    private var isWide: Bool { width >= Metrics.wideWidth }
     /// „Erledigt“ ist beim Öffnen zugeklappt
     @State private var showsCart = false
     /// Zählt Verschiebungen, nur für das haptische Feedback
@@ -18,90 +22,14 @@ struct ShoppingListView: View {
     @FocusState private var addFocused: Bool
 
     var body: some View {
-        List {
-            BrandHeader(bottomPadding: 22) {
-                HStack(spacing: 12) {
-                    DisplayHeadline(lines: ["Einkauf"])
-                    if !shopping.openItems.isEmpty {
-                        CountBadge(count: shopping.openItems.count, accessibilityLabel: "\(shopping.openItems.count) offen")
-                    }
-                }
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-
-            header
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.canvas)
-
-            if shopping.hasLoaded && shopping.openItems.isEmpty {
-                emptyState
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.canvas)
-            }
-
-            // Eine durchgehende Liste aus Überschriften und Einträgen: So lassen sich Einträge
-            // halten und in eine andere Abteilung ziehen (onMove geht nur innerhalb eines ForEach).
-            ForEach(openRows) { entry in
-                switch entry {
-                case .header(let category):
-                    MetaLabel(category.name)
-                        .padding(.top, 14)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 2, trailing: 20))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.canvas)
-                        .moveDisabled(true)
-                case .item(let item):
-                    row(item)
-                }
-            }
-            .onMove(perform: moveRows)
-
-            if !shopping.checkedItems.isEmpty {
-                Section {
-                    // Standardmäßig zugeklappt: Erledigtes soll die offene Liste nicht verlängern
-                    if showsCart {
-                        ForEach(shopping.checkedItems) { item in
-                            row(item)
-                        }
-                    }
-                } header: {
-                    HStack {
-                        Button {
-                            withAnimation(.smooth(duration: 0.25)) { showsCart.toggle() }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(Color.inkMuted)
-                                    .rotationEffect(.degrees(showsCart ? 90 : 0))
-                                MetaLabel("Erledigt · \(shopping.checkedItems.count)")
-                                Spacer(minLength: 8)
-                            }
-                            .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("cart-toggle")
-                        .accessibilityValue(showsCart ? "aufgeklappt" : "zugeklappt")
-                        Button("Leeren") {
-                            Task { await shopping.clearChecked() }
-                        }
-                        .font(.captionSans)
-                        .foregroundStyle(Color.ink)
-                    }
-                }
-            }
-
-            if let error = shopping.error {
-                InlineError(message: error)
-                    .listRowBackground(Color.canvas)
+        Group {
+            if isWide {
+                wideLayout
+            } else {
+                compactList
             }
         }
-        .listStyle(.plain)
-        // Luft unter dem Ende der Liste, sonst klebt „Erledigt“ an der Tab-Leiste
-        .contentMargins(.bottom, 48, for: .scrollContent)
-        .scrollContentBackground(.hidden)
+        .trackWidth($width)
         .background(Color.canvas.ignoresSafeArea())
         .animation(.smooth(duration: 0.3), value: shopping.items.map { "\($0.id)\($0.checked)\($0.categoryKey.raw)" } + shopping.categoryOrder.map(\.name))
         .sensoryFeedback(.success, trigger: moves)
@@ -137,10 +65,192 @@ struct ShoppingListView: View {
         }
     }
 
+    /// iPhone: eine Liste; Einträge per Halten und Ziehen in andere Abteilungen
+    private var compactList: some View {
+        List {
+            BrandHeader(bottomPadding: 22) {
+                HStack(spacing: 12) {
+                    DisplayHeadline(lines: ["Einkauf"])
+                    if !shopping.openItems.isEmpty {
+                        CountBadge(count: shopping.openItems.count, accessibilityLabel: "\(shopping.openItems.count) offen")
+                    }
+                }
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+
+            header()
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.canvas)
+
+            if shopping.hasLoaded && shopping.openItems.isEmpty {
+                emptyState
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.canvas)
+            }
+
+            // Eine durchgehende Liste aus Überschriften und Einträgen: So lassen sich Einträge
+            // halten und in eine andere Abteilung ziehen (onMove geht nur innerhalb eines ForEach).
+            ForEach(openRows) { entry in
+                switch entry {
+                case .header(let category):
+                    MetaLabel(category.name)
+                        .padding(.top, 14)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 2, trailing: 20))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.canvas)
+                        .moveDisabled(true)
+                case .item(let item):
+                    row(item)
+                }
+            }
+            .onMove(perform: moveRows)
+
+            if !shopping.checkedItems.isEmpty {
+                Section {
+                    // Standardmäßig zugeklappt: Erledigtes soll die offene Liste nicht verlängern
+                    if showsCart {
+                        ForEach(shopping.checkedItems) { item in
+                            row(item)
+                        }
+                    }
+                } header: {
+                    cartHeader
+                }
+            }
+
+            if let error = shopping.error {
+                InlineError(message: error)
+                    .listRowBackground(Color.canvas)
+            }
+        }
+        .listStyle(.plain)
+        // Luft unter dem Ende der Liste, sonst klebt „Erledigt“ an der Tab-Leiste
+        .contentMargins(.bottom, 48, for: .scrollContent)
+        .scrollContentBackground(.hidden)
+    }
+
+    /// iPad: Eingabe in der Lesespalte, Abteilungen in zwei oder drei Spalten. Halten öffnet ein Menü
+    /// (Abteilung, Löschen) – Ziehen zwischen Spalten gibt es nicht, `onMove` geht nur in einer Liste.
+    private var wideLayout: some View {
+        let columnCount = width >= 1100 ? 3 : 2
+        let groups = shopping.openByCategory
+        let columns = ShoppingColumns.split(groups.map { $0.items.count + 1 }, into: columnCount)
+        return ScrollView {
+            BrandHeader(bottomPadding: 22) {
+                HStack(spacing: 12) {
+                    DisplayHeadline(lines: ["Einkauf"])
+                    if !shopping.openItems.isEmpty {
+                        CountBadge(count: shopping.openItems.count, accessibilityLabel: "\(shopping.openItems.count) offen")
+                    }
+                    Spacer()
+                    if !shopping.openItems.isEmpty {
+                        Button {
+                            showsLive = true
+                        } label: {
+                            Label("Einkaufen starten", systemImage: "cart.fill")
+                                .font(.buttonSans)
+                                .foregroundStyle(Color.ink)
+                                .padding(.horizontal, 18)
+                                .frame(minHeight: 44)
+                                .background(Color.onBrand, in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("live-start")
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 18) {
+                header(showsLiveButton: false)
+                    .frame(maxWidth: Metrics.readableWidth, alignment: .leading)
+                if shopping.hasLoaded && shopping.openItems.isEmpty {
+                    emptyState
+                }
+                HStack(alignment: .top, spacing: 36) {
+                    ForEach(0..<columnCount, id: \.self) { column in
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(columns.indices.contains(column) ? columns[column] : [], id: \.self) { index in
+                                MetaLabel(groups[index].category.name)
+                                    .padding(.top, 16)
+                                    .padding(.bottom, 2)
+                                ForEach(groups[index].items) { item in
+                                    wideRow(item)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
+                    }
+                }
+                if !shopping.checkedItems.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        cartHeader
+                            .padding(.vertical, 10)
+                        if showsCart {
+                            ForEach(shopping.checkedItems) { item in
+                                wideRow(item)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: Metrics.readableWidth, alignment: .leading)
+                    .padding(.top, 12)
+                }
+                InlineError(message: shopping.error)
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 16)
+            .padding(.bottom, 48)
+        }
+    }
+
+    /// Zeile im Spaltenlayout: wie in der Liste, Wischen ersetzt durch ein Menü beim Halten
+    private func wideRow(_ item: ShoppingItem) -> some View {
+        row(item)
+            .padding(.vertical, 6)
+            .contextMenu {
+                if !item.checked {
+                    Button("Abteilung", systemImage: "arrow.triangle.branch") { aisleChoice = item }
+                }
+                Button("Löschen", systemImage: "trash", role: .destructive) {
+                    Task { await shopping.delete(item) }
+                }
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.hairline).frame(height: 1).padding(.leading, 38)
+            }
+    }
+
+    /// „Erledigt · 3“ zum Auf- und Zuklappen, daneben „Leeren“
+    private var cartHeader: some View {
+        HStack {
+            Button {
+                withAnimation(.smooth(duration: 0.25)) { showsCart.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.inkMuted)
+                        .rotationEffect(.degrees(showsCart ? 90 : 0))
+                    MetaLabel("Erledigt · \(shopping.checkedItems.count)")
+                    Spacer(minLength: 8)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("cart-toggle")
+            .accessibilityValue(showsCart ? "aufgeklappt" : "zugeklappt")
+            Button("Leeren") {
+                Task { await shopping.clearChecked() }
+            }
+            .font(.captionSans)
+            .foregroundStyle(Color.ink)
+        }
+    }
+
     // MARK: - Kopf
 
-    /// Eingabe und Kurzwahl unter dem Markenkopf.
-    private var header: some View {
+    /// Eingabe und Kurzwahl unter dem Markenkopf. Auf dem iPad sitzt „Einkaufen starten“ im Kopf.
+    private func header(showsLiveButton: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 10) {
                 TextField("Was fehlt? z. B. 2 l Milch", text: $newItem)
@@ -161,7 +271,7 @@ struct ShoppingListView: View {
             }
 
             // Im Laden: Vollbild nur zum Abhaken. Beim Tippen weg, dann zählen die Vorschläge.
-            if !shopping.openItems.isEmpty && !addFocused {
+            if showsLiveButton && !shopping.openItems.isEmpty && !addFocused {
                 Button {
                     showsLive = true
                 } label: {

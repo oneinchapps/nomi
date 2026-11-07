@@ -49,7 +49,7 @@ struct FormScreen<Content: View, Footer: View>: View {
 
     var body: some View {
         ScrollView {
-            BrandHeader {
+            BrandHeader(contentWidth: Metrics.readableWidth) {
                 MetaLabel(eyebrow, font: .eyebrow, tracking: 2.4)
                 DisplayHeadline(lines: headline)
                 if let text {
@@ -64,6 +64,7 @@ struct FormScreen<Content: View, Footer: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.top, 24)
+                .readableColumn()
         }
         .scrollDismissesKeyboard(.interactively)
         // Kommt die Tastatur, bleibt das Formular unten verankert: Der Kopf rutscht nach oben weg,
@@ -73,6 +74,7 @@ struct FormScreen<Content: View, Footer: View>: View {
             footer
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.bottom, 8)
+                .readableColumn()
                 .background(Color.canvas)
         }
         .background(Color.canvas.ignoresSafeArea())

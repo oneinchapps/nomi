@@ -72,7 +72,7 @@ class NomiUITestCase: XCTestCase {
         field.typeText(name)
         app.buttons["Haushalt anlegen"].tap()
         // Die App startet im nomi-Tab; die meisten Tests beginnen im Heute-Tab
-        let today = app.tabBars.buttons["Heute"]
+        let today = app.tab("Heute")
         XCTAssertTrue(today.waitForExistence(timeout: 10))
         today.tap()
         XCTAssertTrue(app.staticTexts["Was gibt es heute?"].waitForExistence(timeout: 10))
@@ -88,7 +88,7 @@ class NomiUITestCase: XCTestCase {
     /// Rezept über den Editor anlegen; endet in der Rezeptsammlung.
     @MainActor
     func createRecipe(_ app: XCUIApplication, title: String, ingredients: String, steps: [String] = []) {
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         let firstRecipe = app.buttons["Erstes Rezept anlegen"]
         if firstRecipe.waitForExistence(timeout: 5) {
             firstRecipe.tap()
@@ -186,5 +186,28 @@ class NomiUITestCase: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+}
+
+extension NomiUITestCase {
+    /// „Abteilung“ für einen Einkaufseintrag öffnen: iPhone per Wischen nach rechts, iPad (Spalten) per Halten
+    @MainActor
+    func chooseAisle(_ app: XCUIApplication, item: XCUIElement) {
+        if app.windows.firstMatch.frame.width >= 900 {
+            item.press(forDuration: 1.0)
+        } else {
+            item.swipeRight()
+        }
+        app.buttons["Abteilung"].tap()
+    }
+}
+
+extension XCUIApplication {
+    /// Tab-Knopf: auf dem iPhone in der Tab-Leiste unten, auf dem iPad (iOS 26) oben als Kapsel –
+    /// dort gibt es kein `tabBars`-Element, die Knöpfe hängen direkt in der Hierarchie.
+    func tab(_ name: String) -> XCUIElement {
+        UIDevice.current.userInterfaceIdiom == .pad
+            ? buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
+            : tabBars.buttons[name]
     }
 }

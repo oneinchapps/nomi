@@ -51,6 +51,7 @@ struct TodayView: View {
             .padding(.horizontal, Metrics.gutter)
             .padding(.top, 20)
             .padding(.bottom, 28)
+            .readableColumn()
         }
         .background(Color.canvas.ignoresSafeArea())
         .refreshable {
@@ -78,7 +79,7 @@ struct TodayView: View {
     }
 
     private var header: some View {
-        BrandHeader(bottomPadding: 22) {
+        BrandHeader(bottomPadding: 22, contentWidth: Metrics.readableWidth) {
             MetaLabel(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "de_DE"))), font: .eyebrow, tracking: 2.4)
             DisplayHeadline(lines: ["Was gibt es heute?"])
         }

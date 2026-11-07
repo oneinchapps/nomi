@@ -24,7 +24,7 @@ final class CategoriesFlowTests: NomiUITestCase {
             ], as: sam)
         }
 
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         if !app.staticTexts["3 Rezepte"].waitForExistence(timeout: 20) {
             snapshot(app, "fail-categories")
             XCTFail("Rezepte fehlen: \(app.staticTexts.allElementsBoundByIndex.prefix(15).map(\.label))")

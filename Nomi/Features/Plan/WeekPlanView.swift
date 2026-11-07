@@ -10,6 +10,10 @@ struct WeekPlanView: View {
     @State private var dropTarget: String?
     /// Zählt Verschiebungen, nur für das haptische Feedback
     @State private var moves = 0
+    @State private var width: CGFloat = 0
+
+    /// iPad quer: Tage als Spalten nebeneinander
+    private var isWide: Bool { width >= Metrics.boardWidth }
 
     struct PickDay: Identifiable {
         let date: Date
@@ -32,9 +36,17 @@ struct WeekPlanView: View {
                     .font(.captionSans)
                     .foregroundStyle(Color.ink)
                 }
-                VStack(spacing: 0) {
-                    ForEach(plan.days, id: \.self) { day in
-                        daySection(day)
+                if isWide {
+                    HStack(alignment: .top, spacing: 10) {
+                        ForEach(plan.days, id: \.self) { day in
+                            boardColumn(day)
+                        }
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(plan.days, id: \.self) { day in
+                            daySection(day)
+                        }
                     }
                 }
                 if !plan.weekEntries.isEmpty {
@@ -44,6 +56,8 @@ struct WeekPlanView: View {
                         }
                     }
                     .buttonStyle(.primary)
+                    .frame(maxWidth: isWide ? 440 : .infinity)
+                    .frame(maxWidth: .infinity)
                     .padding(.top, 6)
                 }
                 InlineError(message: plan.error)
@@ -51,8 +65,11 @@ struct WeekPlanView: View {
             .padding(.horizontal, Metrics.gutter)
             .padding(.top, 20)
             .padding(.bottom, 32)
+            // Hochkant auf dem iPad: Liste in der Lesespalte
+            .readableColumn(isWide ? .infinity : Metrics.readableWidth)
         }
         .background(Color.canvas.ignoresSafeArea())
+        .trackWidth($width)
         .refreshable { await plan.load() }
         .navigationDestination(for: UUID.self) { id in
             RecipeDetailView(recipeId: id)
@@ -80,7 +97,7 @@ struct WeekPlanView: View {
 
     /// Gleich hoch wie Rezepte und Einkauf: Überschrift links, Pfeile rechts daneben
     private var header: some View {
-        BrandHeader(bottomPadding: 22) {
+        BrandHeader(bottomPadding: 22, contentWidth: isWide ? nil : Metrics.readableWidth) {
             HStack(spacing: 12) {
                 DisplayHeadline(lines: [weekTitle])
                 Spacer(minLength: 0)
@@ -181,10 +198,88 @@ struct WeekPlanView: View {
         .animation(.smooth(duration: 0.2), value: dropTarget)
     }
 
+    /// iPad: ein Tag als Spalte mit Gerichten als Karten; Ablegen wie in der Liste
+    private func boardColumn(_ day: Date) -> some View {
+        let entries = plan.entries(on: day)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                dateColumn(day, horizontal: true)
+                Spacer(minLength: 0)
+            }
+            ForEach(entries) { entry in
+                if let recipe = recipes.recipe(id: entry.recipeId) {
+                    boardCard(entry, recipe: recipe)
+                }
+            }
+            addButton(day) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.inkMuted)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(Color.hairline, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                    }
+                    .contentShape(.rect)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, minHeight: 260, alignment: .top)
+        .background {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.brand.opacity(0.07))
+                .strokeBorder(Color.brand.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                .opacity(dropTarget == PlanCalendar.key(for: day) ? 1 : 0)
+        }
+        .contentShape(.rect)
+        .dropDestination(for: String.self) { ids, _ in
+            drop(ids, on: day)
+        } isTargeted: { targeted in
+            let key = PlanCalendar.key(for: day)
+            if targeted { dropTarget = key } else if dropTarget == key { dropTarget = nil }
+        }
+        .animation(.smooth(duration: 0.2), value: dropTarget)
+    }
+
+    /// Gericht im Board: Bild oben, darunter Mahlzeit und Titel
+    private func boardCard(_ entry: MealPlanEntry, recipe: Recipe) -> some View {
+        NavigationLink(value: recipe.id) {
+            VStack(alignment: .leading, spacing: 6) {
+                RecipeImage(recipe: recipe)
+                    .frame(height: 80)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(.rect(cornerRadius: 10))
+                    // „…“ als Knopf auf dem Bild, damit Titel und Mahlzeit die ganze Breite haben
+                    .overlay(alignment: .topTrailing) {
+                        entryMenu(entry, recipe: recipe)
+                            .frame(width: 34, height: 34)
+                            .background(Color.surface.opacity(0.9), in: .circle)
+                            .padding(4)
+                    }
+                Text(recipe.title)
+                    .font(.heading(16, relativeTo: .headline))
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                MetaLabel([entry.meal.short, entry.note, Recipe.servingsLabel(entry.servings)].compactMap { $0 }.joined(separator: " · "))
+            }
+            .padding(10)
+            .background(Color.surface, in: .rect(cornerRadius: 14))
+            .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(Color.hairline) }
+        }
+        .buttonStyle(.plain)
+        .draggable(entry.id.uuidString) { dragPreview(recipe) }
+        .accessibilityIdentifier("plan-\(recipe.title)")
+    }
+
     /// Wochentag klein, Tageszahl groß; heute im Himbeer-Kreis
-    private func dateColumn(_ day: Date) -> some View {
+    private func dateColumn(_ day: Date, horizontal: Bool = false) -> some View {
         let isToday = PlanCalendar.calendar.isDateInToday(day)
-        return VStack(spacing: 0) {
+        // Im Board nebeneinander, in der Liste untereinander
+        let layout = horizontal ? AnyLayout(HStackLayout(spacing: 6)) : AnyLayout(VStackLayout(spacing: 0))
+        return layout {
             Text(DayFormat.weekdayShort(day).uppercased())
                 .font(.meta)
                 .tracking(1.2)
@@ -196,7 +291,7 @@ struct WeekPlanView: View {
                 .frame(width: 44, height: 44)
                 .background(isToday ? Color.brand : .clear, in: .circle)
         }
-        .frame(width: 46)
+        .frame(width: horizontal ? nil : 46)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(DayFormat.weekday(day)), \(DayFormat.short(day))\(isToday ? ", heute" : "")")
         .accessibilityAddTraits(.isHeader)
@@ -222,6 +317,55 @@ struct WeekPlanView: View {
         return true
     }
 
+    /// Portionen, Mahlzeit, aus dem Plan nehmen
+    private func entryMenu(_ entry: MealPlanEntry, recipe: Recipe) -> some View {
+        Menu {
+            Picker("Portionen", selection: Binding(
+                get: { entry.servings },
+                set: { value in Task { await plan.setServings(value, for: entry) } }
+            )) {
+                ForEach(1...8, id: \.self) { n in
+                    Text(Recipe.servingsLabel(n).replacingOccurrences(of: "für ", with: "Für ")).tag(n)
+                }
+            }
+            Picker("Mahlzeit", selection: Binding(
+                get: { entry.meal },
+                set: { meal in
+                    guard let day = PlanCalendar.date(forKey: entry.day) else { return }
+                    Task { await plan.move(entry, to: day, meal: meal) }
+                }
+            )) {
+                ForEach(Meal.allCases) { Text($0.title).tag($0) }
+            }
+            Divider()
+            Button("Aus dem Plan nehmen", systemImage: "trash", role: .destructive) {
+                Task { await plan.remove(entry) }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.inkMuted)
+                .frame(width: 36, height: 44)
+                .contentShape(.rect)
+        }
+        .accessibilityLabel("\(recipe.title) bearbeiten")
+    }
+
+    private func dragPreview(_ recipe: Recipe) -> some View {
+        HStack(spacing: 10) {
+            RecipeImage(recipe: recipe)
+                .frame(width: 36, height: 36)
+                .clipShape(.rect(cornerRadius: 8))
+            Text(recipe.title)
+                .font(.heading(16, relativeTo: .headline))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+        }
+        .padding(8)
+        .padding(.trailing, 6)
+        .background(Color.surface, in: .rect(cornerRadius: 14))
+    }
+
     private func entryRow(_ entry: MealPlanEntry, recipe: Recipe) -> some View {
         NavigationLink(value: recipe.id) {
             HStack(spacing: 14) {
@@ -239,36 +383,7 @@ struct WeekPlanView: View {
                         .compactMap { $0 }.joined(separator: " · "))
                 }
                 Spacer(minLength: 0)
-                Menu {
-                    Picker("Portionen", selection: Binding(
-                        get: { entry.servings },
-                        set: { value in Task { await plan.setServings(value, for: entry) } }
-                    )) {
-                        ForEach(1...8, id: \.self) { n in
-                            Text(Recipe.servingsLabel(n).replacingOccurrences(of: "für ", with: "Für ")).tag(n)
-                        }
-                    }
-                    Picker("Mahlzeit", selection: Binding(
-                        get: { entry.meal },
-                        set: { meal in
-                            guard let day = PlanCalendar.date(forKey: entry.day) else { return }
-                            Task { await plan.move(entry, to: day, meal: meal) }
-                        }
-                    )) {
-                        ForEach(Meal.allCases) { Text($0.title).tag($0) }
-                    }
-                    Divider()
-                    Button("Aus dem Plan nehmen", systemImage: "trash", role: .destructive) {
-                        Task { await plan.remove(entry) }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.inkMuted)
-                        .frame(width: 36, height: 44)
-                        .contentShape(.rect)
-                }
-                .accessibilityLabel("\(recipe.title) bearbeiten")
+                entryMenu(entry, recipe: recipe)
             }
             .padding(10)
             .background(Color.surface, in: .rect(cornerRadius: 16))
@@ -276,20 +391,7 @@ struct WeekPlanView: View {
         }
         .buttonStyle(.plain)
         // Halten und auf einen anderen Tag ziehen
-        .draggable(entry.id.uuidString) {
-            HStack(spacing: 10) {
-                RecipeImage(recipe: recipe)
-                    .frame(width: 36, height: 36)
-                    .clipShape(.rect(cornerRadius: 8))
-                Text(recipe.title)
-                    .font(.heading(16, relativeTo: .headline))
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
-            }
-            .padding(8)
-            .padding(.trailing, 6)
-            .background(Color.surface, in: .rect(cornerRadius: 14))
-        }
+        .draggable(entry.id.uuidString) { dragPreview(recipe) }
         .accessibilityIdentifier("plan-\(recipe.title)")
     }
 }

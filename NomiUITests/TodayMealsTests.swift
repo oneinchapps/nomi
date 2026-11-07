@@ -7,7 +7,7 @@ final class TodayMealsTests: NomiUITestCase {
         let app = try launchWithNewHousehold()
         createRecipe(app, title: "Linsen-Dal", ingredients: "200 g rote Linsen\n1 Dose Kokosmilch\n1 Zwiebel", steps: ["Linsen in Kokosmilch weich köcheln."])
 
-        app.tabBars.buttons["Heute"].tap()
+        app.tab("Heute").tap()
         XCTAssertTrue(app.staticTexts["Mittagessen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Abendessen"].exists)
         XCTAssertFalse(app.staticTexts["Frühstück"].exists, "Frühstück gibt es nur bei Bedarf")
@@ -39,7 +39,7 @@ final class TodayMealsTests: NomiUITestCase {
         XCTAssertTrue(cook.waitForExistence(timeout: 5))
 
         // Im Wochenplan steht der Eintrag mit Mahlzeit
-        app.tabBars.buttons["Woche"].tap()
+        app.tab("Woche").tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'MITTAG'")).firstMatch.waitForExistence(timeout: 5))
         snapshot(app, "112-week-with-meal")
     }

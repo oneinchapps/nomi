@@ -13,11 +13,11 @@ final class ProfileTests: NomiUITestCase {
         let profile = app.buttons["Haushalt und Konto"].firstMatch
 
         // Ganz rechts – auch neben den eigenen Knöpfen von Rezepte und nomi
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         let add = app.buttons["Rezept hinzufügen"]
         XCTAssertTrue(add.waitForExistence(timeout: 5))
         XCTAssertGreaterThan(profile.frame.minX, add.frame.maxX, "Profil steht bei Rezepte nicht ganz rechts")
-        app.tabBars.buttons["nomi"].tap()
+        app.tab("nomi").tap()
         let speaker = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Vorlesen'")).firstMatch
         XCTAssertTrue(speaker.waitForExistence(timeout: 5))
         XCTAssertGreaterThan(profile.frame.minX, speaker.frame.maxX, "Profil steht bei nomi nicht ganz rechts")

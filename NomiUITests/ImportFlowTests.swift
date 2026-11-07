@@ -9,7 +9,7 @@ final class ImportFlowTests: NomiUITestCase {
     func testImportRecipeFromLink() throws {
         let app = try launchWithNewHousehold()
 
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         app.buttons["Rezept aus Link"].tap()
         let field = app.textFields["https://…"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))

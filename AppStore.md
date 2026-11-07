@@ -50,6 +50,7 @@ Der Plan, um nomi zuerst per TestFlight zu testen und danach im App Store zu ver
 - [ ] **Datenschutz-Angaben** in App Store Connect: Kontaktdaten (E-Mail, Name), Fotos, Nutzerinhalte (Rezepte, Chat). Alles dient der App-Funktion, nichts dem Tracking.
 - [ ] **Altersfreigabe:** Den Fragebogen ausfüllen, inklusive der Frage nach KI-erzeugten Inhalten.
 - [ ] **Screenshots für 6,9″-iPhones (Claude):** aus den UI-Tests in der richtigen Größe erzeugen.
+- [ ] **Screenshots für 13″-iPads (Claude):** Pflicht, weil nomi auch fürs iPad freigegeben ist; aus den UI-Tests auf dem iPad Pro 13″ (quer und hochkant).
 - [ ] **Hinweise für die Prüfung:** Demo-Zugang eintragen und kurz erklären, dass die App für Haushalte zu zweit gedacht ist und wie man allein testet.
 
 ## Reihenfolge

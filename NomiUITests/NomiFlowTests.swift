@@ -17,7 +17,7 @@ final class NomiFlowTests: NomiUITestCase {
             ], as: sam)
         }
 
-        app.tabBars.buttons["nomi"].tap()
+        app.tab("nomi").tap()
         let input = app.textFields["Frag nomi"]
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         snapshot(app, "100-nomi-start")
@@ -25,7 +25,7 @@ final class NomiFlowTests: NomiUITestCase {
         input.typeText("Plan uns für morgen Linsen-Dal und setz die Zutaten auf die Einkaufsliste\n")
 
         // nomi trägt ein und springt in den Wochenplan
-        let week = app.tabBars.buttons["Woche"]
+        let week = app.tab("Woche")
         let switched = expectation(for: NSPredicate(format: "isSelected == true"), evaluatedWith: week)
         await fulfillment(of: [switched], timeout: 90)
         XCTAssertTrue(app.staticTexts["Linsen-Dal"].waitForExistence(timeout: 10), "Linsen-Dal steht nicht im Plan")
@@ -36,7 +36,7 @@ final class NomiFlowTests: NomiUITestCase {
         XCTAssertTrue(items.contains { ($0["name"] as? String) == "rote Linsen" }, "Zutaten fehlen auf der Einkaufsliste")
 
         // Zurück zu nomi: Karte mit Rückgängig
-        app.tabBars.buttons["nomi"].tap()
+        app.tab("nomi").tap()
         let undo = app.buttons["Rückgängig"]
         XCTAssertTrue(undo.waitForExistence(timeout: 10))
         snapshot(app, "102-nomi-action-card")

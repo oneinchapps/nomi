@@ -17,7 +17,7 @@ final class DecideFlowTests: NomiUITestCase {
         let householdId = try XCTUnwrap(household["id"] as? String)
 
         // Heute: Vorschläge fürs Abendessen öffnen das Auswahlblatt
-        app.tabBars.buttons["Heute"].tap()
+        app.tab("Heute").tap()
         let suggest = app.buttons["Vorschläge fürs Abendessen"]
         XCTAssertTrue(suggest.waitForExistence(timeout: 5))
         snapshot(app, "50-today-start")
@@ -82,7 +82,7 @@ final class DecideFlowTests: NomiUITestCase {
         snapshot(app, "55-today-planned")
 
         // Das neue Rezept liegt in der Sammlung
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         XCTAssertTrue(app.staticTexts["2 Rezepte"].waitForExistence(timeout: 5))
     }
 }

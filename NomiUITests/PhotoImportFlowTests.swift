@@ -12,7 +12,7 @@ final class PhotoImportFlowTests: NomiUITestCase {
     func testHandwrittenRecipeFromPhoto() throws {
         let app = try launchWithNewHousehold(extraEnvironment: ["NOMI_TEST_PHOTOS": card])
 
-        app.tabBars.buttons["Rezepte"].tap()
+        app.tab("Rezepte").tap()
         app.buttons["Rezept vom Foto"].tap()
         XCTAssertTrue(app.buttons["Foto 1 entfernen"].waitForExistence(timeout: 5), "Testfoto wurde nicht geladen")
         snapshot(app, "70-photo-picked")

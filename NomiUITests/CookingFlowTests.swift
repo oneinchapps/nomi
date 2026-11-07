@@ -93,5 +93,15 @@ final class CookingFlowTests: NomiUITestCase {
         shot.lifetime = .keepAlways
         add(shot)
         XCTAssertTrue(rang, "Kein System-Timer im Hintergrund")
+
+        // Zurück in nomi: „Alles klar“ lässt auch den System-Timer verstummen.
+        // Sonst klingelt er weiter und sein Banner verdeckt in allen folgenden Tests die Kopfleiste.
+        app.activate()
+        let ok = app.buttons["timer-alarm-ok"]
+        XCTAssertTrue(ok.waitForExistence(timeout: 10))
+        ok.tap()
+        let gone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation(for: gone, evaluatedWith: alarm)], timeout: 10), .completed,
+                       "System-Timer klingelt nach „Alles klar“ weiter")
     }
 }

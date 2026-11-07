@@ -19,6 +19,7 @@ struct WelcomeView: View {
             }
             .padding(.horizontal, Metrics.gutter)
             .padding(.bottom, 4)
+            .readableColumn()
         }
         .background(Color.canvas.ignoresSafeArea())
     }
@@ -52,6 +53,7 @@ struct WelcomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Metrics.gutter)
         .padding(.top, 40)
+        .readableColumn()
     }
 }
 

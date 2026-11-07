@@ -45,10 +45,11 @@ struct NomiView: View {
                 .padding(.horizontal, Metrics.gutter)
                 .padding(.top, 20)
                 .padding(.bottom, 16)
+                .readableColumn()
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color.canvas.ignoresSafeArea())
-            .safeAreaInset(edge: .bottom) { inputBar }
+            .safeAreaInset(edge: .bottom) { inputBar.readableColumn() }
             .onChange(of: assistant.messages.count) { scrollDown(proxy) }
             .onChange(of: assistant.isThinking) { scrollDown(proxy) }
             .onAppear { scrollDown(proxy, animated: false) }
@@ -78,7 +79,7 @@ struct NomiView: View {
     // MARK: - Kopf
 
     private var header: some View {
-        BrandHeader(bottomPadding: 22) {
+        BrandHeader(bottomPadding: 22, contentWidth: Metrics.readableWidth) {
             HStack(alignment: .bottom, spacing: 12) {
                 VStack(alignment: .leading, spacing: 10) {
                     DisplayHeadline(lines: ["Hallo \(app.me?.displayName ?? "")!"])
