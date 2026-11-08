@@ -460,3 +460,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/account/deno.json"
 entrypoint = "./functions/account/index.ts"
+
+[functions.speak]
+enabled = true
+# Auth übernimmt withSupabase({ auth: "user" }) in der Function
+verify_jwt = false
+import_map = "./functions/speak/deno.json"
+entrypoint = "./functions/speak/index.ts"

@@ -89,16 +89,44 @@ export async function saveUsage(
   entry: { householdId: string | null; userId: string | null; fn: string; meter: UsageMeter },
 ): Promise<void> {
   if (entry.meter.calls === 0) return;
+  await saveSpend(admin, {
+    householdId: entry.householdId,
+    userId: entry.userId,
+    fn: entry.fn,
+    model: MODEL,
+    calls: entry.meter.calls,
+    inputTokens: entry.meter.inputTokens,
+    outputTokens: entry.meter.outputTokens,
+    cacheReadTokens: entry.meter.cacheReadTokens,
+    costMicros: entry.meter.costMicros,
+  });
+}
+
+/** Verbrauch, der nicht in Tokens zählt (z. B. Sprachausgabe nach Zeichen) – zählt fürs selbe Tagesbudget. */
+export async function saveSpend(
+  admin: Client,
+  entry: {
+    householdId: string | null;
+    userId: string | null;
+    fn: string;
+    model: string;
+    calls: number;
+    costMicros: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+  },
+): Promise<void> {
   const { error } = await admin.from("ai_usage").insert({
     household_id: entry.householdId,
     user_id: entry.userId,
     function: entry.fn,
-    model: MODEL,
-    calls: entry.meter.calls,
-    input_tokens: entry.meter.inputTokens,
-    output_tokens: entry.meter.outputTokens,
-    cache_read_tokens: entry.meter.cacheReadTokens,
-    cost_micros: entry.meter.costMicros,
+    model: entry.model,
+    calls: entry.calls,
+    input_tokens: entry.inputTokens ?? 0,
+    output_tokens: entry.outputTokens ?? 0,
+    cache_read_tokens: entry.cacheReadTokens ?? 0,
+    cost_micros: entry.costMicros,
   });
   if (error) console.error("saveUsage failed", error);
 }

@@ -23,6 +23,8 @@ class NomiUITestCase: XCTestCase {
             "NOMI_RESET_SESSION": "1",
             "NOMI_DISABLE_NOTIFICATIONS": "1",
             "NOMI_SKIP_SPLASH": "1",
+            // Vorlesen mit der Gerätestimme – Tests geben kein Geld für ElevenLabs aus
+            "NOMI_LOCAL_VOICE": "1",
         ]) { own, _ in own } // Eigene Werte eines Tests gehen vor (z. B. Mitteilungen erlauben)
         app.launch()
         XCTAssertTrue(app.buttons["Gemeinsam Essen finden"].waitForExistence(timeout: 10))
@@ -39,6 +41,7 @@ class NomiUITestCase: XCTestCase {
             "NOMI_SUPABASE_KEY": localKey,
             "NOMI_DISABLE_NOTIFICATIONS": "1",
             "NOMI_SKIP_SPLASH": "1",
+            "NOMI_LOCAL_VOICE": "1",
         ]
         again.launch()
         return again

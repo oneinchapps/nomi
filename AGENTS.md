@@ -62,7 +62,7 @@ Die App hieß früher „nomnom“ und darf so nicht mehr heißen. Sichtbar und 
   | `Nomi/Models/` | Codable-Modelle und reine Logik (Parser, Zusammenführen, Skalieren), alles testbar |
   | `Nomi/Services/` | Supabase-Client, Function-Aufrufe, Realtime, Import, Bildkodierung |
   | `supabase/migrations/` | Schema, nur neue Dateien anlegen, nie eingespielte ändern |
-  | `supabase/functions/` | Edge Functions `import-recipe`, `decide`, `assistant`, `invite`, gemeinsamer Code in `_shared/` |
+  | `supabase/functions/` | Edge Functions `import-recipe`, `decide`, `assistant`, `invite`, `account`, `speak`, gemeinsamer Code in `_shared/` |
   | `design/` | Entwürfe als PNG und die Swift-Render-Skripte dazu |
 
 ## Bauen, Simulator, iPhone
@@ -128,7 +128,7 @@ Einzelne Auth-Werte ändert man besser gezielt im Dashboard oder über die Manag
 - Delete-Events kommen bei gefilterten Abos nicht an. Darum hört `observeTable` zusätzlich ungefiltert auf Deletes.
 - Tabellen mit Live-Sync gehören in die Publication `supabase_realtime`.
 
-**Secrets:** `ANTHROPIC_API_KEY` liegt lokal in `supabase/functions/.env` und kommt live per `supabase secrets set --env-file supabase/functions/.env`.
+**Secrets:** `ANTHROPIC_API_KEY` und `ELEVENLABS_API_KEY` liegen lokal in `supabase/functions/.env` und kommen live per `supabase secrets set --env-file supabase/functions/.env`.
 
 **Uploads aus Skripten:** Storage-Uploads aus Skripten brauchen den alten `service_role`-JWT. Der neue `sb_secret`-Key ist kein JWT und scheitert mit „Invalid Compact JWS“.
 
@@ -149,6 +149,7 @@ Einzelne Auth-Werte ändert man besser gezielt im Dashboard oder über die Manag
 | `assistant` | nomi als Assistent, siehe unten; mit `mode: "cooking"` Fragen beim Kochen (siehe Kochmodus) |
 | `invite` | Einmal-Code einlösen (öffentlich, `auth: "none"`), siehe Einladen |
 | `account` | Konto löschen, siehe Konto löschen |
+| `speak` | nomis Stimme: Text → MP3 über ElevenLabs, siehe Sprachausgabe |
 
 Neue Gerichte arbeitet `_shared/expand.ts` aus (`expandIdea`); decide und assistant nutzen es beide.
 
@@ -173,6 +174,7 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - **Erfahrungswerte:** Eine nomi-Antwort kostet bei kleiner Sammlung etwa 2 Cent. Vorschlagsrunden (alle Rezepte mit Zutaten im Prompt), Ausarbeiten und Foto-Import sind teurer.
 - **Letzte Sicherung:** ein monatliches Ausgabenlimit in der Anthropic Console (Settings → Limits). Das setzt der Nutzer selbst.
 - **Neue Function mit Claude:** `ensureBudget` vor dem Aufruf, `meter` an `structured()` durchreichen, `saveUsage` im `finally`.
+- **Sprachausgabe** (`speak`) zählt fürs selbe Tagesbudget: `saveSpend` mit Kosten nach Zeichen (`ELEVENLABS_USD_PER_1K_CHARS`, Standard 0,05 $), protokolliert als `speak`, Modell `elevenlabs:<modell>`, `input_tokens` = Zeichen.
 
 ## Funktionen der App
 
@@ -239,9 +241,17 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
   - Mitglieder dürfen nur die Spalte `result` ändern.
 - **Sprache:**
   - `VoiceInput` nutzt `SFSpeechRecognizer` für de-DE, wenn möglich auf dem Gerät. Nach 1,6 s Pause wird abgeschickt.
-  - `Speaker` (AVSpeechSynthesizer, beste installierte deutsche Stimme) liest Antworten auf gesprochene Fragen vor. Das lässt sich abschalten.
+  - `Speaker` liest Antworten auf gesprochene Fragen vor (abschaltbar), siehe Sprachausgabe.
   - Audio-Callbacks laufen in der `nonisolated` Klasse `RecognitionSession`.
   - Auf dem Gerät ist die Sprache noch nicht getestet.
+
+### Sprachausgabe (nomis Stimme)
+- `Speaker` (`Features/Nomi/Voice.swift`) holt die Stimme über `CloudVoice` von der Function `speak` (ElevenLabs, MP3) und spielt sie mit `AVAudioPlayer`. Klappt das nicht innerhalb von 8 s, liest `AVSpeechSynthesizer` mit der besten deutschen Gerätestimme vor.
+- `isSpeaking` ist schon während des Ladens wahr, damit der Kochmodus nichts als Befehl wertet. Meldungen einer abgebrochenen Ansage zählen nicht (Abgleich über `ObjectIdentifier`).
+- `CloudVoice` merkt sich die letzten 40 Sätze im Speicher. Antwortet `speak` mit 503 (nicht eingerichtet) oder 429 (Tageslimit), fragt die App bis zum nächsten Start nicht mehr.
+- **Function `speak`:** Text gesäubert und auf 1500 Zeichen gekürzt (`voice.ts`), Modell `ELEVENLABS_MODEL` (Standard `eleven_v4_turbo`, für Echtzeit), `language_code: "de"`, `mp3_44100_64`. Stimme ist „Ben“ (`DEFAULT_VOICE_ID`, gewählt nach Hörprobe aus Ben, Lucy Fennek, Mark und Jessica), übersteuerbar per `ELEVENLABS_VOICE_ID`. Fehlt der Schlüssel, antwortet die Function mit 503.
+- Bibliotheksstimmen brauchen beim ersten Aufruf bis zu 12 s (kalt), danach rund 0,3 s bis zum ersten Ton. Der Schlüssel „nomi“ in ElevenLabs hat ein eigenes Credit-Limit; ist es aufgebraucht, kommt `quota_exceeded` (die Function meldet 502, die App liest mit der Gerätestimme).
+- UI-Tests setzen `NOMI_LOCAL_VOICE=1` und geben so nichts für Stimmen aus.
 
 ### Heute (Mahlzeiten von heute)
 - **Aufbau:**
@@ -410,6 +420,7 @@ xcodebuild test -project Nomi.xcodeproj -scheme Nomi \
 | `NOMI_DISABLE_NOTIFICATIONS` | keine Rückfrage nach Mitteilungen |
 | `NOMI_SKIP_SPLASH` | ohne Splash, Standard in `UITestSupport` |
 | `NOMI_GALLERY` | Illustrations-Galerie statt App (`1`, `light`, `dark`) |
+| `NOMI_LOCAL_VOICE` | nur Gerätestimme, keine Anfragen an `speak` (Standard in `UITestSupport`) |
 | `NOMI_VOICE_TEST` | „Hey nomi“ ohne Mikrofon; Leuchtrand steht still, Sprechpause 3 s |
 | `NOMI_VOICE_SCRIPT` | Sätze durch „\|“ getrennt; jeder Tipp auf Chefi „sagt“ den nächsten (siehe `CookingVoiceUITests`) |
 

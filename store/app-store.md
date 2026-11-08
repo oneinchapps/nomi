@@ -69,7 +69,7 @@ Ihr landet in einem Demo-Haushalt mit Beispielrezepten.
 
 Anmeldung mit eigener E-Mail ist ebenfalls möglich (6-stelliger Code per Mail).
 
-KI-Funktionen (Fragen an nomi, Vorschläge, Rezept-Import aus Links und Fotos) nutzen Claude von Anthropic; ein Tagesbudget pro Haushalt verhindert Missbrauch. Konto löschen: Profil oben rechts → „Konto löschen“.
+KI-Funktionen (Fragen an nomi, Vorschläge, Rezept-Import aus Links und Fotos) nutzen Claude von Anthropic; vorgelesen wird mit einer Stimme von ElevenLabs. Ein Tagesbudget pro Haushalt verhindert Missbrauch. Konto löschen: Profil oben rechts → „Konto löschen“.
 
 Kontakt für Rückfragen: [E-Mail-Adresse], [Telefonnummer]
 
@@ -84,9 +84,9 @@ Tracking: nein. Alle Angaben: mit der Identität verknüpft, Zweck „App-Funkti
 | Nutzerinhalte → Fotos oder Videos | Rezeptfotos, Profilfoto |
 | Nutzerinhalte → Andere Nutzerinhalte | Rezepte, Wochenplan, Einkaufsliste, Nachrichten an nomi |
 | Kennungen → Nutzer-ID | Konto-ID für Anmeldung und Haushalt |
-| Nutzungsdaten → Andere Nutzungsdaten | Token-Verbrauch der KI pro Haushalt (Kostenbremse) |
+| Nutzungsdaten → Andere Nutzungsdaten | Verbrauch von KI und Sprachausgabe pro Haushalt (Kostenbremse) |
 
-Nicht erhoben: Standort, Kontakte, Gesundheit, Finanzen, Browserverlauf, Suchverlauf, Diagnosedaten. Audiodaten: nein – Sprache wird auf dem Gerät bzw. von Apple erkannt, an nomi geht nur der Text (der fällt unter „Andere Nutzerinhalte“). Das gilt auch für „Hey nomi“ im Kochmodus: Erkennung nur auf dem Gerät, Fragen gehen als Text an die KI.
+Nicht erhoben: Standort, Kontakte, Gesundheit, Finanzen, Browserverlauf, Suchverlauf, Diagnosedaten. Audiodaten: nein – Sprache wird auf dem Gerät bzw. von Apple erkannt, an nomi geht nur der Text (der fällt unter „Andere Nutzerinhalte“). Das gilt auch für „Hey nomi“ im Kochmodus: Erkennung nur auf dem Gerät, Fragen gehen als Text an die KI. Fürs Vorlesen geht nur nomis Antworttext an ElevenLabs, zurück kommt Audio von nomi – keine Audiodaten der Nutzer.
 
 ## Altersfreigabe
 

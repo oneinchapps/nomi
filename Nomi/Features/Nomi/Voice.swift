@@ -202,14 +202,21 @@ nonisolated final class RecognitionSession: @unchecked Sendable {
     }
 }
 
-/// nomi liest Antworten vor – mit der besten installierten deutschen Stimme.
+/// nomi liest Antworten vor – mit der Stimme von nomi (ElevenLabs über `CloudVoice`),
+/// sonst mit der besten installierten deutschen Stimme des Geräts.
 @Observable
-final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
+final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
+    /// Schon während die Stimme lädt – so zählt im Kochmodus nichts als Befehl, bis nomi fertig ist
     private(set) var isSpeaking = false
     /// Im Kochmodus läuft schon eine Sitzung mit Aufnahme (Hey nomi) – dann nichts umstellen,
     /// sonst verstummt das Mikrofon
     var managesSession = true
-    private let synthesizer = AVSpeechSynthesizer()
+    @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
+    @ObservationIgnored private var player: AVAudioPlayer?
+    @ObservationIgnored private var utterance: AVSpeechUtterance?
+    @ObservationIgnored private var loading: Task<Void, Never>?
+    /// Zählt jedes `speak` – eine Stimme, die erst nach dem nächsten `speak` ankommt, bleibt stumm
+    @ObservationIgnored private var generation = 0
 
     override init() {
         super.init()
@@ -218,19 +225,67 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
 
     func speak(_ text: String) {
         stop()
-        if managesSession {
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
-            try? AVAudioSession.sharedInstance().setActive(true)
-        }
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = Self.voice
+        generation += 1
+        let current = generation
         isSpeaking = true
-        synthesizer.speak(utterance)
+        loading = Task { [weak self] in
+            let audio = await CloudVoice.audio(for: text)
+            guard let self, !Task.isCancelled, self.generation == current else { return }
+            if let audio, self.play(audio) { return }
+            self.speakOnDevice(text)
+        }
     }
 
     func stop() {
+        loading?.cancel()
+        loading = nil
+        player?.stop()
+        player = nil
+        utterance = nil
         if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
+        if isSpeaking {
+            isSpeaking = false
+            deactivateSession()
+        }
+    }
+
+    private func play(_ audio: Data) -> Bool {
+        guard let player = try? AVAudioPlayer(data: audio) else { return false }
+        activateSession()
+        player.delegate = self
+        guard player.play() else { return false }
+        self.player = player
+        return true
+    }
+
+    private func speakOnDevice(_ text: String) {
+        activateSession()
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = Self.voice
+        self.utterance = utterance
+        synthesizer.speak(utterance)
+    }
+
+    /// Meldungen einer abgebrochenen Ansage kommen evtl. erst nach dem nächsten `speak` – die zählen nicht
+    private func finished(_ source: ObjectIdentifier) {
+        let current = [player.map(ObjectIdentifier.init), utterance.map(ObjectIdentifier.init)]
+        guard current.contains(source) else { return }
+        self.player = nil
+        self.utterance = nil
+        guard isSpeaking else { return }
         isSpeaking = false
+        deactivateSession()
+    }
+
+    private func activateSession() {
+        guard managesSession else { return }
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    private func deactivateSession() {
+        guard managesSession else { return }
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     /// Premium vor Erweitert vor Standard
@@ -242,15 +297,22 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            self.isSpeaking = false
-            if self.managesSession {
-                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-            }
-        }
+        let source = ObjectIdentifier(utterance)
+        Task { @MainActor in self.finished(source) }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.isSpeaking = false }
+        let source = ObjectIdentifier(utterance)
+        Task { @MainActor in self.finished(source) }
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        let source = ObjectIdentifier(player)
+        Task { @MainActor in self.finished(source) }
+    }
+
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        let source = ObjectIdentifier(player)
+        Task { @MainActor in self.finished(source) }
     }
 }
