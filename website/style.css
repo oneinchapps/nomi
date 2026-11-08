@@ -1,0 +1,135 @@
+/* nomi – Website (nomi.oneinchapps.com). Schriften liegen lokal, damit keine Anfragen an Dritte gehen. */
+
+@font-face { font-family: "Bricolage Grotesque"; font-weight: 800; src: url("fonts/BricolageGrotesque-ExtraBold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DM Sans"; font-weight: 400; src: url("fonts/DMSans-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DM Sans"; font-weight: 500; src: url("fonts/DMSans-Medium.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DM Sans"; font-weight: 600; src: url("fonts/DMSans-SemiBold.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "DM Mono"; font-weight: 400; src: url("fonts/DMMono-Regular.ttf") format("truetype"); font-display: swap; }
+
+:root {
+  --brand: #CC335E;
+  --on-brand: #FFFFFF;
+  --canvas: #F7F4EE;
+  --surface: #FCFAF6;
+  --ink: #262B28;
+  --ink-muted: #6E726F;
+  --hairline: #E6E1D8;
+  --ochre: #F2B33D;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #B8284F;
+    --canvas: #161816;
+    --surface: #1F2220;
+    --ink: #F3EFE7;
+    --ink-muted: #A3A69F;
+    --hairline: #2E322F;
+  }
+  .wordmark-light { display: none; }
+  .wordmark-dark { display: inline; }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 400 17px/1.6 "DM Sans", -apple-system, system-ui, sans-serif;
+}
+
+a { color: var(--brand); text-underline-offset: 3px; }
+
+.wordmark-dark { display: none; }
+
+/* Kopf wie in der App: Himbeere mit runden unteren Ecken */
+.head {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-radius: 0 0 32px 32px;
+  padding: 28px 16px 36px;
+}
+.head .inner, main, footer .inner { max-width: 720px; margin: 0 auto; }
+.head nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.head nav img { height: 34px; display: block; }
+.head nav ul { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.head nav a {
+  color: var(--on-brand);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.16);
+}
+.head nav a[aria-current="page"] { background: var(--on-brand); color: var(--brand); }
+.head h1 {
+  font: 800 clamp(34px, 7vw, 52px)/1.05 "Bricolage Grotesque", sans-serif;
+  letter-spacing: -0.02em;
+  margin: 36px 0 0;
+}
+.head .lead { margin: 12px 0 0; font-size: 18px; opacity: 0.92; max-width: 560px; }
+
+main { padding: 36px 16px 56px; }
+
+h2 {
+  font: 800 26px/1.2 "Bricolage Grotesque", sans-serif;
+  letter-spacing: -0.01em;
+  margin: 40px 0 10px;
+}
+h3 { font-weight: 600; font-size: 18px; margin: 24px 0 6px; }
+
+.meta {
+  font: 400 12px/1.4 "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin: 14px 0;
+}
+.card h3 { margin-top: 0; }
+
+.note {
+  border-left: 4px solid var(--ochre);
+  padding: 10px 16px;
+  background: var(--surface);
+  border-radius: 0 14px 14px 0;
+  margin: 18px 0;
+}
+
+ul.plain { padding-left: 20px; }
+ul.plain li { margin: 4px 0; }
+
+/* Startseite */
+.hero { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 12px; }
+.hero img { width: 120px; height: auto; margin-bottom: -48px; }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px; }
+.features .card { margin: 0; }
+.button {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--canvas);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 14px 22px;
+  border-radius: 18px;
+  margin-top: 20px;
+}
+
+footer { border-top: 1px solid var(--hairline); padding: 22px 16px 40px; color: var(--ink-muted); font-size: 14px; }
+footer .inner { display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
+footer a { color: var(--ink-muted); }
+
+@media (max-width: 480px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero img { width: 96px; margin: 0; }
+}

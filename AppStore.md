@@ -42,15 +42,15 @@ Der Plan, um nomi zuerst per TestFlight zu testen und danach im App Store zu ver
 - [ ] **Supabase-Tarif (Gregor):** Im kostenlosen Tarif wird das Projekt nach einer Woche ohne Nutzung pausiert. Für echten Betrieb den Pro-Tarif nehmen.
 - [x] **Kostenbremse für Claude (Claude):** Tagesbudgets pro Haushalt (2 $) und insgesamt (10 $), Verbrauch protokolliert in `ai_usage` (siehe `AGENTS.md`, Abschnitt „Kosten“).
 - [ ] **Ausgabenlimit in der Anthropic Console (Gregor):** Settings → Limits, als letzte Sicherung.
-- [ ] **Datenschutzerklärung als URL (Gregor, Claude liefert einen Entwurf):** Pflicht. Sie muss erwähnen:
+- [ ] **Datenschutzerklärung als URL (Gregor, Claude liefert einen Entwurf):** Entwurf fertig in `website/datenschutz.html` (mit Impressum und Hilfe), soll auf https://nomi.oneinchapps.com. Vor dem Veröffentlichen die Platzhalter füllen und rechtlich prüfen lassen. Sie muss erwähnen:
   - Konto (E-Mail, Name), Profilfoto, Rezepte und Fotos, Einkaufsliste und Wochenplan liegen bei Supabase (EU).
   - Texte und Fotos werden zur Verarbeitung an Anthropic geschickt.
   - Spracheingabe wird möglichst auf dem Gerät erkannt.
-- [ ] **Support-URL, Beschreibung, Stichworte und Werbetext** in App Store Connect (Claude liefert Texte).
+- [ ] **Support-URL, Beschreibung, Stichworte und Werbetext** in App Store Connect. Texte fertig in `store/app-store.md`, Support-Seite in `website/support.html`.
 - [ ] **Datenschutz-Angaben** in App Store Connect: Kontaktdaten (E-Mail, Name), Fotos, Nutzerinhalte (Rezepte, Chat). Alles dient der App-Funktion, nichts dem Tracking.
 - [ ] **Altersfreigabe:** Den Fragebogen ausfüllen, inklusive der Frage nach KI-erzeugten Inhalten.
-- [ ] **Screenshots für 6,9″-iPhones (Claude):** aus den UI-Tests in der richtigen Größe erzeugen.
-- [ ] **Screenshots für 13″-iPads (Claude):** Pflicht, weil nomi auch fürs iPad freigegeben ist; aus den UI-Tests auf dem iPad Pro 13″ (quer und hochkant).
+- [x] **Screenshots für 6,9″-iPhones (Claude):** `store/screenshots/iphone/` (1320 × 2868, 8 Bilder mit Überschrift). Neu erzeugen: siehe `AGENTS.md`, „Store und Website“.
+- [x] **Screenshots für 13″-iPads (Claude):** `store/screenshots/ipad/` (2752 × 2064 quer, 8 Bilder).
 - [ ] **Hinweise für die Prüfung:** Demo-Zugang eintragen und kurz erklären, dass die App für Haushalte zu zweit gedacht ist und wie man allein testet.
 
 ## Reihenfolge

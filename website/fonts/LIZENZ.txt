@@ -1,0 +1,3 @@
+Bricolage Grotesque, DM Sans und DM Mono stehen unter der SIL Open Font License 1.1:
+https://openfontlicense.org
+Quellen: https://github.com/ateliertriay/bricolage, https://github.com/googlefonts/dm-fonts
