@@ -71,7 +71,7 @@ targets:
           NSAllowsLocalNetworking: true
         NSAlarmKitUsageDescription: nomi klingelt, wenn ein Koch-Timer abläuft – auch wenn dein iPhone stumm ist.
         NSCameraUsageDescription: nomi fotografiert Rezepte aus Kochbüchern oder von Karteikarten, um sie auszulesen.
-        NSMicrophoneUsageDescription: nomi hört zu, wenn du per Sprache mit nomi sprichst.
+        NSMicrophoneUsageDescription: nomi hört zu, wenn du per Sprache mit nomi sprichst – und im Kochmodus auf „Hey nomi“, wenn du das Mikro dort einschaltest.
         NSSpeechRecognitionUsageDescription: Damit nomi versteht, was du sagst. Die Erkennung läuft wenn möglich direkt auf deinem iPhone.
         # Gemeinsame Anmeldung mit der Teilen-Erweiterung (siehe SupabaseEnvironment.keychainGroup)
         KeychainAccessGroup: $(AppIdentifierPrefix)de.gregorzoller.nomi.shared

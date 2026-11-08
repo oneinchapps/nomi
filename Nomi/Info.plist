@@ -32,7 +32,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>nomi fotografiert Rezepte aus Kochbüchern oder von Karteikarten, um sie auszulesen.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>nomi hört zu, wenn du per Sprache mit nomi sprichst.</string>
+	<string>nomi hört zu, wenn du per Sprache mit nomi sprichst – und im Kochmodus auf „Hey nomi“, wenn du das Mikro dort einschaltest.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Damit nomi versteht, was du sagst. Die Erkennung läuft wenn möglich direkt auf deinem iPhone.</string>
 	<key>UIAppFonts</key>

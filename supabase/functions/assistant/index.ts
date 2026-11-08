@@ -6,12 +6,16 @@
 //   und in der Sammlung gespeichert. Die Aktionen (Wochenplan, Einkaufsliste, Heute) führt die
 //   App der fragenden Person aus und vermerkt das Ergebnis in `result` – so bleibt die Logik
 //   zum Zusammenführen der Einkaufsliste an einer Stelle und alles lässt sich rückgängig machen.
+//
+// POST { mode: "cooking", text, recipe: { title, servings, ingredients, steps }, step } → { reply }
+//   Frage beim Kochen („Hey nomi, …“). Antwortet kurz zum Vorlesen, ohne Verlauf (siehe cooking.ts).
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "@anthropic-ai/sdk";
 import { withSupabase } from "@supabase/server";
 import { ClaudeError, structured } from "../_shared/recipe.ts";
 import { expandIdea } from "../_shared/expand.ts";
+import { COOKING_SCHEMA, cookingSystemPrompt, cookingUserPrompt, type CookingRequest, type CookingResult, parseCookingRequest } from "./cooking.ts";
 import { BudgetExceeded, budgetResponse, ensureBudget, saveUsage, UsageMeter } from "../_shared/budget.ts";
 import {
   addDays,
@@ -32,7 +36,7 @@ const HISTORY = 30;
 export default {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") return error(405, "Nur POST.");
-    let body: { text?: unknown };
+    let body: Record<string, unknown>;
     try {
       body = await req.json();
     } catch {
@@ -44,6 +48,11 @@ export default {
     if (!userId) return error(401, "Bitte melde dich an.");
 
     try {
+      if (body.mode === "cooking") {
+        const request = parseCookingRequest(body);
+        if (!request) return error(400, "Was möchtest du nomi fragen?");
+        return await cookingReply(ctx.supabase, ctx.supabaseAdmin, userId, request);
+      }
       return await reply(ctx.supabase, ctx.supabaseAdmin, userId, text);
     } catch (e) {
       if (e instanceof BudgetExceeded) return budgetResponse(e);
@@ -80,6 +89,27 @@ async function reply(supabase: Client, admin: Client, userId: string, text: stri
     return await answer({ supabase, admin, userId, householdId, userMessage, meter });
   } finally {
     await saveUsage(admin, { householdId, userId, fn: "assistant", meter });
+  }
+}
+
+/// Frage beim Kochen: Budget prüfen, kurz antworten, nichts im Verlauf speichern
+async function cookingReply(supabase: Client, admin: Client, userId: string, request: CookingRequest): Promise<Response> {
+  const { data: membership } = await supabase
+    .from("household_members").select("household_id").eq("user_id", userId).maybeSingle();
+  if (!membership) return error(403, "Du bist noch in keinem Haushalt.");
+  const householdId: string = membership.household_id;
+  await ensureBudget(admin, householdId);
+  const meter = new UsageMeter();
+  try {
+    const result = await structured<CookingResult>({
+      system: cookingSystemPrompt(),
+      user: cookingUserPrompt(request),
+      schema: COOKING_SCHEMA,
+      meter,
+    });
+    return Response.json({ reply: result.reply.trim() });
+  } finally {
+    await saveUsage(admin, { householdId, userId, fn: "assistant-cooking", meter });
   }
 }
 

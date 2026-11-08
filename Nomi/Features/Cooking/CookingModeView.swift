@@ -14,6 +14,14 @@ struct CookingModeView: View {
     @State private var checked: Set<Int> = []
     @State private var timers: CookingTimers
     @State private var width: CGFloat = 0
+    /// „Hey nomi“: Sprachsteuerung, merkt sich das Gerät
+    @State private var voice = CookingVoice()
+    @AppStorage("cooking.voice") private var voiceEnabled = false
+    @Environment(\.scenePhase) private var scenePhase
+    #if DEBUG
+    /// UI-Tests: wie vielter Satz aus NOMI_VOICE_SCRIPT als Nächstes „gesagt“ wird
+    @State private var voiceTestIndex = 0
+    #endif
 
     /// iPad: Zutaten links fest, Schritte rechts
     private var isWide: Bool { width >= Metrics.wideWidth }
@@ -48,6 +56,10 @@ struct CookingModeView: View {
                     }
                     .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .topBarTrailing) {
+                        voiceToggle
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .topBarTrailing) {
                         MetaLabel(progressLabel, font: .eyebrow, tracking: 2)
                             .environment(\.onBrandSurface, true)
                             .fixedSize()
@@ -59,6 +71,26 @@ struct CookingModeView: View {
         // Über allem, auch über der Leiste: Chefi klopft von innen ans Display
         .overlay { timerAlarm }
         .animation(.smooth(duration: 0.3), value: timers.justFinished?.id)
+        // Ganz oben: Nach „Hey nomi“ dimmt alles, auch ein Alarm (dann geht „Hey nomi, alles klar“)
+        .overlay { voiceListening }
+        .animation(.spring(duration: 0.45, bounce: 0.3), value: voice.phase == .listening || voice.phase == .thinking)
+        .onAppear {
+            voice.perform = { command, text in await perform(command, said: text) }
+            if voiceEnabled { Task { await voice.start() } }
+        }
+        .onDisappear { voice.stop() }
+        .onChange(of: scenePhase) { _, phase in
+            // Im Hintergrund darf die App nicht zuhören; zurück in der App geht es weiter
+            switch phase {
+            case .background: voice.stop()
+            case .active: if voiceEnabled && !voice.isOn { Task { await voice.start() } }
+            default: break
+            }
+        }
+        .onChange(of: voice.phase) { _, phase in
+            // Gibt es die Sprachsteuerung nicht (Rechte, Gerät), nicht bei jedem Start erneut versuchen
+            if case .unavailable = phase { voiceEnabled = false }
+        }
     }
 
     private var content: some View {
@@ -78,6 +110,9 @@ struct CookingModeView: View {
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .animation(.smooth, value: page)
+                    .overlay(alignment: .bottomTrailing) {
+                        VoiceCorner(voice: voice, showsChefi: page != lastPage) { chefiTapped() }
+                    }
                     bottomBar
                 }
             }
@@ -168,14 +203,7 @@ struct CookingModeView: View {
                     .frame(maxWidth: 140)
             }
             if page < lastPage {
-                Button(page == 0 ? "Los geht's" : "Weiter") {
-                    if page == 0 && !logged {
-                        // Ab hier wird wirklich gekocht – nicht schon beim bloßen Reinschauen
-                        logged = true
-                        Task { await log.logCooking(recipe, servings: servings) }
-                    }
-                    withAnimation { page += 1 }
-                }
+                Button(page == 0 ? "Los geht's" : "Weiter") { goForward() }
                 .buttonStyle(.primary)
             } else {
                 Button("Fertig") { dismiss() }
@@ -184,6 +212,18 @@ struct CookingModeView: View {
         }
         .padding(.horizontal, Metrics.gutter)
         .padding(.vertical, 10)
+    }
+
+    private func goForward() {
+        logCookingOnce()
+        withAnimation { page = min(page + 1, lastPage) }
+    }
+
+    /// Ab dem ersten Schritt wird wirklich gekocht – nicht schon beim bloßen Reinschauen
+    private func logCookingOnce() {
+        guard !logged else { return }
+        logged = true
+        Task { await log.logCooking(recipe, servings: servings) }
     }
 
     // MARK: - Seiten
@@ -313,11 +353,190 @@ struct CookingModeView: View {
                 title: "\(finished.label) ist fertig!",
                 detail: steps.indices.contains(finished.id) ? steps[finished.id].text : nil
             ) {
-                withAnimation { page = finished.id + 1 }
-                timers.dismissFinished()
+                dismissAlarm()
             }
             .id(finished.id)
             .transition(.opacity)
+        }
+    }
+}
+
+// MARK: - Sprachsteuerung
+
+extension CookingModeView {
+    fileprivate var voiceToggle: some View {
+        Button {
+            if voice.isOn {
+                voiceEnabled = false
+                voice.stop()
+            } else {
+                voiceEnabled = true
+                Task { await voice.start() }
+            }
+        } label: {
+            Group {
+                if voice.phase == .starting {
+                    ProgressView().tint(Color.brand)
+                } else {
+                    Image(systemName: voice.isOn ? "mic.fill" : "mic")
+                        .font(.system(size: 15, weight: .bold))
+                }
+            }
+            .foregroundStyle(voice.isOn ? Color.brand : Color.onBrand)
+            .frame(width: 36, height: 36)
+            .background(voice.isOn ? Color.onBrand : Color.onBrand.opacity(0.18), in: .circle)
+        }
+        .accessibilityLabel(voice.isOn ? "Sprachsteuerung ausschalten" : "Sprachsteuerung einschalten")
+        .accessibilityIdentifier("voice-toggle")
+    }
+
+    /// Bleibt immer in der Ansicht und wird nur ein- und ausgeblendet: Eine per `if` entfernte Ebene
+    /// fing während ihres Ausblendens noch Tipps ab (der Tipp auf Chefi direkt nach einer Antwort ging verloren)
+    fileprivate var voiceListening: some View {
+        let isActive = voice.phase == .listening || voice.phase == .thinking
+        return VoiceListeningOverlay(voice: voice, isActive: isActive)
+            .opacity(isActive ? 1 : 0)
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
+    }
+
+    /// Tipp auf Chefi: zuhören ohne „Hey nomi“. In UI-Tests „sagt“ der Tipp stattdessen den nächsten Satz
+    /// aus NOMI_VOICE_SCRIPT (durch „|“ getrennt) – ein Mikrofon gibt es dort nicht. Ist das Skript durch,
+    /// gilt wieder der normale Tipp. (Ein eigener unsichtbarer Testknopf bekam im Test keine Tipps ab.)
+    fileprivate func chefiTapped() {
+        #if DEBUG
+        if let script = ProcessInfo.processInfo.environment["NOMI_VOICE_SCRIPT"] {
+            let lines = script.components(separatedBy: "|")
+            if voiceTestIndex < lines.count {
+                voice.inject(lines[voiceTestIndex])
+                voiceTestIndex += 1
+                return
+            }
+        }
+        #endif
+        voice.listenNow()
+    }
+
+    fileprivate func dismissAlarm() {
+        guard let finished = timers.justFinished else { return }
+        withAnimation { page = finished.id + 1 }
+        timers.dismissFinished()
+    }
+
+    /// Schritt, der gerade zu sehen ist (nil auf Vorbereitung und „Fertig“)
+    private var currentStep: Int? {
+        page >= 1 && page <= steps.count ? page - 1 : nil
+    }
+
+    /// Führt einen gesprochenen Befehl aus und sagt, was passiert ist
+    fileprivate func perform(_ command: CookingCommand, said text: String) async -> CookingVoice.Reply {
+        switch command {
+        case .next:
+            guard page < lastPage else { return .said("Das war's schon. Guten Appetit!") }
+            goForward()
+            return pageReply()
+        case .back:
+            guard page > 0 else { return .said("Wir sind schon am Anfang.") }
+            withAnimation { page -= 1 }
+            return pageReply()
+        case .repeatStep:
+            return pageReply()
+        case .ingredients:
+            let needed = currentStep.map { steps[$0].mentionedIngredients(from: ingredients) } ?? ingredients
+            guard !needed.isEmpty else { return .said("Für diesen Schritt brauchst du nichts aus der Zutatenliste.") }
+            let parts = needed.map(\.spokenAmount)
+            return CookingVoice.Reply(parts.joined(separator: " · "), speech: CookingSpeech.speakable("Du brauchst " + CookingSpeech.list(parts) + "."))
+        case .amount(let query):
+            guard let ingredient = Ingredient.best(matching: query, in: ingredients) else {
+                // Nicht im Rezept – vielleicht weiß nomi trotzdem etwas („Wie viel Wasser?“)
+                return await ask(text)
+            }
+            return CookingVoice.Reply(ingredient.spokenAmount, speech: CookingSpeech.speakable(ingredient.spokenAmount + "."))
+        case .startTimer:
+            guard let step = currentStep, let seconds = steps[step].timerSeconds, seconds > 0 else {
+                return .said("In diesem Schritt gibt's keinen Timer.")
+            }
+            if let timer = timers.timer(for: step), timer.isRunning {
+                return .said("Läuft schon. Noch \(CookingFormat.spoken(timer.remaining(at: .now))).")
+            }
+            timers.start(step: step, label: "Schritt \(step + 1)", duration: TimeInterval(seconds))
+            let remaining = timers.timer(for: step)?.remaining(at: .now) ?? TimeInterval(seconds)
+            return .said("Läuft! \(CookingFormat.spoken(remaining)).")
+        case .stopTimer:
+            if timers.justFinished != nil {
+                dismissAlarm()
+                return CookingVoice.Reply("Alles klar!")
+            }
+            if let step = currentStep, timers.timer(for: step)?.isRunning == true {
+                timers.pause(step: step)
+                return .said("Timer angehalten.")
+            }
+            if let running = timers.active.first(where: \.isRunning) {
+                timers.pause(step: running.id)
+                return .said("Timer von Schritt \(running.id + 1) angehalten.")
+            }
+            return .said("Gerade läuft kein Timer.")
+        case .timeLeft:
+            let now = Date.now
+            let parts = timers.active.map { timer in
+                let time = CookingFormat.spoken(timer.remaining(at: now))
+                if timer.isFinished { return "Schritt \(timer.id + 1) ist fertig" }
+                if timer.isRunning {
+                    return timer.id == currentStep ? "Noch \(time)" : "Schritt \(timer.id + 1): noch \(time)"
+                }
+                return "Schritt \(timer.id + 1) ist angehalten bei \(time)"
+            }
+            guard !parts.isEmpty else { return .said("Gerade läuft kein Timer.") }
+            return .said(parts.joined(separator: ". ") + ".")
+        case .okay:
+            if timers.justFinished != nil { dismissAlarm() }
+            return CookingVoice.Reply("Alles klar!")
+        case .finish:
+            logCookingOnce()
+            withAnimation { page = lastPage }
+            return .said("Guten Appetit!")
+        case .question(let question):
+            return await ask(question)
+        case .unknown:
+            return CookingVoice.Reply("Das hab ich nicht verstanden.", speech: "Das hab ich nicht verstanden. Sag zum Beispiel: Hey nomi, weiter.")
+        }
+    }
+
+    /// Was auf der aktuellen Seite steht – zum Vorlesen nach „weiter“, „zurück“, „nochmal“
+    private func pageReply() -> CookingVoice.Reply {
+        if page == 0 {
+            let list = CookingSpeech.list(ingredients.map(\.spokenAmount))
+            return CookingVoice.Reply("Vorbereitung", speech: CookingSpeech.speakable("Erst mal alles bereitstellen: \(list)."))
+        }
+        guard let step = currentStep else { return .said("Guten Appetit!") }
+        return CookingVoice.Reply("Schritt \(step + 1)", speech: CookingSpeech.speakable("Schritt \(step + 1). \(steps[step].text)"))
+    }
+
+    /// Freie Frage an nomi (Cloud) – mit dem Rezept, wie es gerade gekocht wird
+    private func ask(_ question: String) async -> CookingVoice.Reply {
+        struct Body: Encodable {
+            struct RecipeContext: Encodable {
+                let title: String
+                let servings: Int
+                let ingredients: [String]
+                let steps: [String]
+            }
+            let mode = "cooking"
+            let text: String
+            let recipe: RecipeContext
+            let step: Int
+        }
+        struct Answer: Decodable { let reply: String }
+        let body = Body(
+            text: question,
+            recipe: .init(title: recipe.title, servings: servings, ingredients: ingredients.map(\.spokenAmount), steps: steps.map(\.text)),
+            step: page
+        )
+        do {
+            let answer: Answer = try await callFunction("assistant", body: body, timeout: 60, fallbackMessage: "nomi hat dich gerade nicht verstanden.")
+            return .said(answer.reply)
+        } catch {
+            return .said(displayMessage(for: error))
         }
     }
 }

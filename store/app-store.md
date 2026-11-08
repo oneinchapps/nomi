@@ -38,7 +38,7 @@ LIVE EINKAUFEN ZU ZWEIT
 Eine Liste für euch beide, abgehakt wird in Echtzeit. Im Einkaufsmodus bleibt der Bildschirm an, ihr geht Abteilung für Abteilung durch euren Supermarkt und seht sofort, was die andere Person schon im Wagen hat. Jeder Supermarkt bekommt seine eigene Reihenfolge.
 
 KOCHEN OHNE STRESS
-Schritt für Schritt, mit Portionen zum Umrechnen und Timern, die auch bei stummem iPhone klingeln. Wenn ein Timer abläuft, klopft Chefi von innen an euer Display.
+Schritt für Schritt, mit Portionen zum Umrechnen und Timern, die auch bei stummem iPhone klingeln. Wenn ein Timer abläuft, klopft Chefi von innen an euer Display. Hände voller Teig? „Hey nomi, weiter“ blättert um, „Hey nomi, wie viel Salz?“ sagt euch die Menge, und auch Fragen wie „Geht statt Sahne Milch?“ beantwortet nomi laut.
 
 FRAG NOMI
 Per Text oder Sprache: „Plan uns die Woche“, „Was machen wir mit den Resten?“, „Setz die Zutaten für Freitag auf die Liste“ – nomi erledigt es, und ihr könnt alles mit einem Tipp rückgängig machen.
@@ -86,7 +86,7 @@ Tracking: nein. Alle Angaben: mit der Identität verknüpft, Zweck „App-Funkti
 | Kennungen → Nutzer-ID | Konto-ID für Anmeldung und Haushalt |
 | Nutzungsdaten → Andere Nutzungsdaten | Token-Verbrauch der KI pro Haushalt (Kostenbremse) |
 
-Nicht erhoben: Standort, Kontakte, Gesundheit, Finanzen, Browserverlauf, Suchverlauf, Diagnosedaten. Audiodaten: nein – Sprache wird auf dem Gerät bzw. von Apple erkannt, an nomi geht nur der Text (der fällt unter „Andere Nutzerinhalte“).
+Nicht erhoben: Standort, Kontakte, Gesundheit, Finanzen, Browserverlauf, Suchverlauf, Diagnosedaten. Audiodaten: nein – Sprache wird auf dem Gerät bzw. von Apple erkannt, an nomi geht nur der Text (der fällt unter „Andere Nutzerinhalte“). Das gilt auch für „Hey nomi“ im Kochmodus: Erkennung nur auf dem Gerät, Fragen gehen als Text an die KI.
 
 ## Altersfreigabe
 

@@ -206,6 +206,9 @@ nonisolated final class RecognitionSession: @unchecked Sendable {
 @Observable
 final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
     private(set) var isSpeaking = false
+    /// Im Kochmodus läuft schon eine Sitzung mit Aufnahme (Hey nomi) – dann nichts umstellen,
+    /// sonst verstummt das Mikrofon
+    var managesSession = true
     private let synthesizer = AVSpeechSynthesizer()
 
     override init() {
@@ -215,8 +218,10 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
 
     func speak(_ text: String) {
         stop()
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        if managesSession {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: .duckOthers)
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = Self.voice
         isSpeaking = true
@@ -239,7 +244,9 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         Task { @MainActor in
             self.isSpeaking = false
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            if self.managesSession {
+                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            }
         }
     }
 

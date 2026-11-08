@@ -146,7 +146,7 @@ Einzelne Auth-Werte ändert man besser gezielt im Dashboard oder über die Manag
 |---|---|
 | `import-recipe` | Link holen (`scrape.ts`: JSON-LD, Open Graph, TikTok-oEmbed), Platzhalterbilder verwerfen (z. B. Chefkochs grünes „C“), Claude liest aus (`extract.ts`, auch Fotos und Handschrift), Bild nach `recipe-images` kopieren. |
 | `decide` | `suggest`: aus Chat, Sammlung und Stimmen 5 Karten mit Antwort von nomi, Menüs mit Gängen. `expand`: Idee zu vollständigem Rezept, danach `plan_decision`. |
-| `assistant` | nomi als Assistent, siehe unten |
+| `assistant` | nomi als Assistent, siehe unten; mit `mode: "cooking"` Fragen beim Kochen (siehe Kochmodus) |
 | `invite` | Einmal-Code einlösen (öffentlich, `auth: "none"`), siehe Einladen |
 | `account` | Konto löschen, siehe Konto löschen |
 
@@ -312,10 +312,16 @@ supabase functions serve --env-file supabase/functions/.env     # alle Functions
 - Geklingelt wird über **AlarmKit** (`CookingAlarm`, iOS 26): ein System-Timer pro Schritt, der auch bei Stummschaltung, gesperrt und im Hintergrund klingelt. Die Rückfrage kommt beim ersten Timer (`NSAlarmKitUsageDescription` in `project.yml`). „OK“ in der App lässt ihn verstummen, Pause und Zurücksetzen brechen ihn ab.
   - Unter iOS 26.0 braucht `AlarmPresentation.Alert` noch einen `stopButton`, ab 26.1 ist der veraltet; darum `#available`.
   - `AlarmAttributes` werden kodiert: feste Farbe statt `Color.brand` (dynamische Farben gehen verloren).
-- Ohne AlarmKit-Erlaubnis: lokale Mitteilung für den Hintergrund (bei Stummschaltung lautlos) und in der offenen App ein eigener Ton (`TimerChime`, Audio-Sitzung `.playback`, übergeht den Stummschalter).
+- Ohne AlarmKit-Erlaubnis: lokale Mitteilung für den Hintergrund (bei Stummschaltung lautlos) und in der offenen App ein eigener Ton (`TimerChime`, Audio-Sitzung `.playback`, übergeht den Stummschalter). Hört nomi gerade zu, bleibt die Sitzung `.playAndRecord` (übergeht den Stummschalter ebenso).
 - Start aus der Rezeptansicht oder per „Jetzt kochen“ im Heute-Tab.
 - **Timer-Alarm** (`TimerAlarmView`, Entwurf A in `design/cooking/timer-alarm.png`): Vollbild über allem, auch über der Leiste. Chefi hüpft hinter der „Scheibe“ hoch, klopft zweimal (Wackeln per `keyframeAnimator`, Haptik), drückt Pfoten (`GlassPaw`) und Nase ans Glas und winkt dann neben der Karte „Alles klar“. Die Lage richtet sich nach dem Gesicht (60 % von oben im Raster). Mit „Bewegung reduzieren“ gleich das letzte Bild.
 - **Rezept fertig** (`CookingDoneView`, Entwurf B in `design/cooking/rezept-fertig.png`): Chefi tanzt mit Lachaugen und Löffel (sechs Wipper), Herzen steigen links und rechts auf (`RisingHearts`, rein aus der Zeit berechnet), dann bleibt er mit Herzaugen stehen und atmet leise. Startet erst, wenn die letzte Seite wirklich gezeigt wird (`isActive`), weil die Seitenansicht Seiten vorab anlegt. Die Herz-Zeitleiste hält danach an, sonst rendert sie endlos weiter.
+- **„Hey nomi“** (Sprachsteuerung, Entwurf B in `design/cooking/sprachsteuerung.png`): Mikro-Knopf in der Leiste (`voice-toggle`), merkt sich das Gerät (`@AppStorage("cooking.voice")`).
+  - **Zuhören** (`Services/CookingListener`): `SpeechAnalyzer` von iOS 26 mit `SpeechTranscriber`, sonst `DictationTranscriber`, durchgehend und nur auf dem Gerät. Das deutsche Modell lädt iOS beim ersten Mal (`AssetInventory`). Audio-Sitzung `.playAndRecord` mit `.defaultToSpeaker` und `.mixWithOthers` (Musik läuft weiter). `contextualStrings` enthalten „nomi“, sonst schreibt die Erkennung oft „Naomi“.
+  - **Weckwort und Befehl** (getestet in `Models/VoiceCommands.swift`): `WakeWord` findet „nomi“ in vielen Schreibweisen; `VoiceTurn` sammelt nach dem Weckwort die Segmente der Erkennung bis zu 1,2 s Sprechpause (auch „Hey nomi.“ … „Wie viel Salz?“) und ignoriert Segmente, in denen nomi selbst spricht. `CookingCommand.parse` erkennt weiter, zurück, nochmal, Zutaten, Menge („wie viel Salz“ → `Ingredient.best`), Timer starten/stoppen, Restzeit, „alles klar“ (beendet den Alarm) und fertig. Navigation nur bei kurzen Sätzen; alles ab zwei Wörtern sonst ist eine Frage.
+  - **Fragen** gehen an `assistant` mit `mode: "cooking"` (`cooking.ts`): Die App schickt Titel, umgerechnete Zutaten, Schritte und die aktuelle Seite. Antwort kurz zum Vorlesen, nichts landet im Verlauf. Kostenbremse wie immer, protokolliert als `assistant-cooking`.
+  - **Ablauf** (`CookingVoice`): bereit → „Hey nomi“ (Zuhören: Bild dimmt, Rand leuchtet, Chefi springt hoch) → Befehl → Antwort in der Blase neben Chefi, vorgelesen über `Speaker` mit `managesSession = false` (sonst verstummt das Mikrofon). Tipp auf Chefi oder die Antwort hört ohne Weckwort zu, Tipp auf die gedimmte Fläche bricht ab. Im Hintergrund und bei Unterbrechungen (Anruf, System-Alarm) wird neu gestartet.
+  - Vorlesen: `CookingSpeech.speakable` schreibt Einheiten aus („2 EL“ → „2 Esslöffel“), sonst buchstabiert die Stimme.
 
 ## Design
 
@@ -404,6 +410,8 @@ xcodebuild test -project Nomi.xcodeproj -scheme Nomi \
 | `NOMI_DISABLE_NOTIFICATIONS` | keine Rückfrage nach Mitteilungen |
 | `NOMI_SKIP_SPLASH` | ohne Splash, Standard in `UITestSupport` |
 | `NOMI_GALLERY` | Illustrations-Galerie statt App (`1`, `light`, `dark`) |
+| `NOMI_VOICE_TEST` | „Hey nomi“ ohne Mikrofon; Leuchtrand steht still, Sprechpause 3 s |
+| `NOMI_VOICE_SCRIPT` | Sätze durch „\|“ getrennt; jeder Tipp auf Chefi „sagt“ den nächsten (siehe `CookingVoiceUITests`) |
 
 **Screenshots** aus einem Lauf holen und ansehen:
 ```sh
@@ -437,6 +445,9 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 - Nach dem Eintreffen neuer Inhalte scrollen Ansichten animiert (z. B. zum Kartenstapel). Ein Tipp in dieser Zeit verfehlt den Knopf, ohne Fehler. Im Test vor dem Tippen kurz warten.
 - Ziehen in Listen: `.draggable`/`.dropDestination` zwischen Sections einer `List` kam nicht an, `onMove` in einem einzigen `ForEach` schon. Ein `.contextMenu` an derselben Zeile schluckt das Halten, dann startet kein Zug. Im Test langsam ziehen: `press(forDuration:thenDragTo:withVelocity: .slow, thenHoldForDuration:)`.
 - `launchFresh(extraEnvironment:)`: Werte des Tests gehen vor den Standards, z. B. `NOMI_DISABLE_NOTIFICATIONS: "0"`, um AlarmKit im Test zu nutzen. Die Rückfrage tippt der Test auf dem Springboard weg („Erlauben“/„Allow“).
+- Ständig laufende Animationen (`TimelineView(.animation)`) lassen XCUITest-Abfragen auf „idle“ warten, bis sie scheitern. Im Testmodus anhalten (siehe `ListeningGlow`).
+- Eine per `if` eingeblendete Ebene fängt beim Ausblenden (Transition) noch Tipps ab. Ebenen, unter denen sofort wieder getippt wird, dauerhaft einbauen und mit `opacity` und `allowsHitTesting` schalten (siehe `voiceListening` im Kochmodus).
+- Ein unsichtbarer Test-Knopf bzw. ein Textfeld über der Seitenansicht des Kochmodus bekam im Test keine Tipps bzw. keinen Fokus. Test-Eingaben darum über einen echten Knopf (Chefi) einspeisen.
 - Eingabefelder nicht bei jedem Tastendruck umschreiben (z. B. Formatieren); XCUITest und schnelles Tippen verlieren sonst Zeichen. Erst formatieren, wenn die Eingabe vollständig ist.
 
 **Swift 6:**
@@ -460,7 +471,7 @@ ffmpeg -i video.mp4 -vf fps=8 f_%02d.png
 
 ## Offen und zu prüfen
 
-- Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen), der Farbübergang vom Startbildschirm zum Splash und die Koch-Timer per AlarmKit bei Stummschaltung (im Simulator klingeln sie im Hintergrund).
+- Auf dem iPhone noch ungetestet sind die Sprache (Mikrofon, Erkennung, Vorlesen), „Hey nomi“ im Kochmodus (Weckwort-Erkennung, laute Küche, Vorlesen bei laufendem Mikrofon, Laden des Sprachmodells), der Farbübergang vom Startbildschirm zum Splash und die Koch-Timer per AlarmKit bei Stummschaltung (im Simulator klingeln sie im Hintergrund).
 - „Sam kauft mit“ (Presence im Live-Einkauf) ist nur gebaut, nicht mit zwei Geräten getestet; die UI-Tests steuern die zweite Person über REST, das erreicht Presence nicht.
 - Für TestFlight und App Store gilt der Plan mit Status in `AppStore.md`.
 - Sign in with Apple kommt, sobald es einen bezahlten Developer-Account gibt.

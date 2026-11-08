@@ -31,6 +31,7 @@ final class AppModel {
             try? await supabase.auth.signOut(scope: .local)
             // Einstellungen aus früheren Läufen nicht mitschleppen
             UserDefaults.standard.removeObject(forKey: "liveShopping.hidesCart")
+            UserDefaults.standard.removeObject(forKey: "cooking.voice")
         }
         #endif
         for await (event, session) in supabase.auth.authStateChanges {

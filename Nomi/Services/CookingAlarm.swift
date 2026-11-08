@@ -83,7 +83,11 @@ final class TimerChime {
         guard let buffer else { return }
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playback, options: [.duckOthers])
+            // Hört nomi im Kochmodus gerade zu, bleibt die Sitzung mit Aufnahme – die übergeht die
+            // Stummschaltung genauso, und das Mikrofon läuft weiter
+            if session.category != .playAndRecord {
+                try session.setCategory(.playback, options: [.duckOthers])
+            }
             try session.setActive(true)
             if !engine.isRunning { try engine.start() }
         } catch {
