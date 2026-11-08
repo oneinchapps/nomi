@@ -35,7 +35,7 @@ Der Plan, um nomi zuerst per TestFlight zu testen und danach im App Store zu ver
 
 ## 3. Zusätzlich für den App Store
 
-- [ ] **Eigener Mailversand (Claude + Gregor):** Der Standard-Mailversand von Supabase schickt Anmeldecodes nur an Mitglieder des Supabase-Teams. Für fremde Nutzer:innen braucht es eigenen SMTP-Versand, z. B. Resend mit eigener Domain. Einladungen per Code funktionieren schon ohne Mail.
+- [x] **Eigener Mailversand (Claude + Gregor):** Der Standard-Mailversand von Supabase schickt Anmeldecodes nur an Mitglieder des Supabase-Teams. Für fremde Nutzer:innen braucht es eigenen SMTP-Versand, z. B. Resend mit eigener Domain. Einladungen per Code funktionieren schon ohne Mail.
   - [x] Domain `mail.oneinchapps.com` bei Resend, DNS-Einträge bei IONOS gesetzt.
   - [x] SMTP-Werte im Supabase-Dashboard eintragen (Werte in `AGENTS.md`, Abschnitt „Anmeldung und Haushalt“).
   - [x] Test: Code kommt bei einer Adresse außerhalb des Supabase-Teams an.
